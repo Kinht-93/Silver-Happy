@@ -13,8 +13,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter un article</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddArticle">+ Ajouter un article</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -99,6 +100,49 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddArticle" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un article</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="articleName" class="form-label">Nom du produit</label>
+                        <input type="text" class="form-control" id="articleName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="articleCategory" class="form-label">Catégorie</label>
+                        <select class="form-control" id="articleCategory">
+                            <option>Sélectionner une catégorie</option>
+                            <option>Confort</option>
+                            <option>Bien-être</option>
+                            <option>Électronique</option>
+                            <option>Sécurité</option>
+                            <option>Éclairage</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="articlePrice" class="form-label">Prix</label>
+                        <input type="number" class="form-control" id="articlePrice" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="articleStock" class="form-label">Stock</label>
+                        <input type="number" class="form-control" id="articleStock">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

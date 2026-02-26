@@ -14,8 +14,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter une catégorie</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddCategory">+ Ajouter une catégorie</button>
     </div>
+
 </div>
 
 <div class="row">
@@ -94,6 +95,33 @@ include '../include/header-admin.php';
                     <span>Prestations liées</span>
                     <strong>28</strong>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddCategory" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter une catégorie</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="categoryName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryIcon" class="form-label">Icône</label>
+                        <input type="text" class="form-control" id="categoryIcon" placeholder="ex: bi-briefcase">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
             </div>
         </div>
     </div>

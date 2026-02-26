@@ -15,8 +15,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter un utilisateur</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddUser">+ Ajouter un utilisateur</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -95,6 +96,44 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddUser" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un utilisateur</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="userName" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="userName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="userEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="userEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label for="userType" class="form-label">Type</label>
+                        <select class="form-control" id="userType">
+                            <option>Sélectionner un type</option>
+                            <option>Senior</option>
+                            <option>Prestataire</option>
+                            <option>Employé</option>
+                            <option>Administrateur</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

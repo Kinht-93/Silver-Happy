@@ -4,25 +4,19 @@ include './include/header-admin.php';
 
 <div class="page-title">Gestion des abonnements</div>
 
-<ul class="nav nav-tabs mb-4" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="tous-tab" data-bs-toggle="tab" data-bs-target="#tous" type="button" role="tab">Tous</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="actifs-tab" data-bs-toggle="tab" data-bs-target="#actifs" type="button" role="tab">Actifs</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="suspendus-tab" data-bs-toggle="tab" data-bs-target="#suspendus" type="button" role="tab">Suspendus</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="resilies-tab" data-bs-toggle="tab" data-bs-target="#resilies" type="button" role="tab">Résiliés</button>
-    </li>
-</ul>
-
 <div class="row mb-4">
-    <div class="col text-end">
-        <button class="btn btn-sm btn-success" type="button">+ Nouvelle formule</button>
+    <div class="col">
+        <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-primary active" id="tous-tab" data-bs-toggle="tab" data-bs-target="#tous" type="button" role="tab">Tous</button>
+            <button class="btn btn-sm btn-outline-primary" id="actifs-tab" data-bs-toggle="tab" data-bs-target="#actifs" type="button" role="tab">Actifs</button>
+            <button class="btn btn-sm btn-outline-primary" id="suspendus-tab" data-bs-toggle="tab" data-bs-target="#suspendus" type="button" role="tab">Suspendus</button>
+            <button class="btn btn-sm btn-outline-primary" id="resilies-tab" data-bs-toggle="tab" data-bs-target="#resilies" type="button" role="tab">Résiliés</button>
+        </div>
     </div>
+    <div class="col text-end">
+        <button class="btn btn-sm btn-success" data-modal="modalAddSubscription" type="button">+ Nouvelle formule</button>
+    </div>
+
 </div>
 
 <div class="tab-content">
@@ -228,6 +222,41 @@ include './include/header-admin.php';
     <div class="tab-pane fade" id="resilies" role="tabpanel">
         <div class="admin-card">
             <p class="text-muted">Aucun abonnement résilié pour le moment.</p>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddSubscription" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nouvelle formule d'abonnement</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="subscriptionName" class="form-label">Nom de la formule</label>
+                        <input type="text" class="form-control" id="subscriptionName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="subscriptionAcronym" class="form-label">Acronyme</label>
+                        <input type="text" class="form-control" id="subscriptionAcronym">
+                    </div>
+                    <div class="mb-3">
+                        <label for="subscriptionPrice" class="form-label">Prix mensuel</label>
+                        <input type="number" class="form-control" id="subscriptionPrice" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="subscriptionBenefits" class="form-label">Avantages</label>
+                        <textarea class="form-control" id="subscriptionBenefits" rows="3" placeholder="Un avantage par ligne"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Créer</button>
+            </div>
         </div>
     </div>
 </div>

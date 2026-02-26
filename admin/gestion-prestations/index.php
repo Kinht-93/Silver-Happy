@@ -14,8 +14,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter une prestation</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddService">+ Ajouter une prestation</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -106,6 +107,52 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddService" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter une prestation</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="serviceTitle" class="form-label">Titre</label>
+                        <input type="text" class="form-control" id="serviceTitle">
+                    </div>
+                    <div class="mb-3">
+                        <label for="serviceCategory" class="form-label">Catégorie</label>
+                        <select class="form-control" id="serviceCategory">
+                            <option>Sélectionner une catégorie</option>
+                            <option>Service</option>
+                            <option>Loisir</option>
+                            <option>Conseil</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="serviceType" class="form-label">Type</label>
+                        <select class="form-control" id="serviceType">
+                            <option>Sélectionner un type</option>
+                            <option>Ménage</option>
+                            <option>Atelier</option>
+                            <option>Formation</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="servicePrice" class="form-label">Prix</label>
+                        <input type="number" class="form-control" id="servicePrice" step="0.01">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

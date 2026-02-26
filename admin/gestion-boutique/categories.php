@@ -13,8 +13,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter une catégorie</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddShopCategory">+ Ajouter une catégorie</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -88,6 +89,34 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddShopCategory" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter une catégorie</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="shopCategoryName" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="shopCategoryName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="shopCategoryDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="shopCategoryDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

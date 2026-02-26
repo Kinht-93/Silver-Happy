@@ -15,8 +15,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter un senior</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddSenior">+ Ajouter un senior</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -88,6 +89,46 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddSenior" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un senior</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="seniorName" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="seniorName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="seniorEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="seniorEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label for="seniorAge" class="form-label">Âge</label>
+                        <input type="number" class="form-control" id="seniorAge">
+                    </div>
+                    <div class="mb-3">
+                        <label for="seniorSubscription" class="form-label">Type d'abonnement</label>
+                        <select class="form-control" id="seniorSubscription">
+                            <option>Sélectionner un type</option>
+                            <option>Abonné</option>
+                            <option>Essai</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

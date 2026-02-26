@@ -15,8 +15,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter un employé</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddEmployee">+ Ajouter un employé</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -88,6 +89,48 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddEmployee" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un employé</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="employeeName" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="employeeName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="employeeEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="employeeEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label for="employeePosition" class="form-label">Poste</label>
+                        <input type="text" class="form-control" id="employeePosition">
+                    </div>
+                    <div class="mb-3">
+                        <label for="employeeDepartment" class="form-label">Département</label>
+                        <select class="form-control" id="employeeDepartment">
+                            <option>Sélectionner un département</option>
+                            <option>Ressources Humaines</option>
+                            <option>IT</option>
+                            <option>Opérations</option>
+                            <option>Support</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

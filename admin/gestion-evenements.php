@@ -9,8 +9,9 @@ include './include/header-admin.php';
         <input type="text" class="form-control" style="max-width: 250px;" placeholder="Rechercher un événement...">
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Créer un événement</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddEvent">+ Créer un événement</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -82,6 +83,42 @@ include './include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddEvent" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Créer un événement</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="eventTitle" class="form-label">Titre</label>
+                        <input type="text" class="form-control" id="eventTitle">
+                    </div>
+                    <div class="mb-3">
+                        <label for="eventDate" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="eventDate">
+                    </div>
+                    <div class="mb-3">
+                        <label for="eventLocation" class="form-label">Localisation</label>
+                        <input type="text" class="form-control" id="eventLocation">
+                    </div>
+                    <div class="mb-3">
+                        <label for="eventDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="eventDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Créer</button>
+            </div>
+        </div>
     </div>
 </div>
 

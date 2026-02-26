@@ -14,8 +14,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter un type</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddType">+ Ajouter un type</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -78,6 +79,43 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddType" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un type</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="typeName" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="typeName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="typeCategory" class="form-label">Catégorie parent</label>
+                        <select class="form-control" id="typeCategory">
+                            <option>Sélectionner une catégorie</option>
+                            <option>Service</option>
+                            <option>Loisir</option>
+                            <option>Conseil</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="typeDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="typeDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

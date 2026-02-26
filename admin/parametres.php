@@ -4,20 +4,16 @@ include './include/header-admin.php';
 
 <div class="page-title">Paramètres plateforme</div>
 
-<ul class="nav nav-tabs mb-4" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">Général</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab">Email</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="securite-tab" data-bs-toggle="tab" data-bs-target="#securite" type="button" role="tab">Sécurité</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="paiements-tab" data-bs-toggle="tab" data-bs-target="#paiements" type="button" role="tab">Paiements</button>
-    </li>
-</ul>
+<div class="row mb-4">
+    <div class="col">
+        <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-primary active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">Général</button>
+            <button class="btn btn-sm btn-outline-primary" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab">Email</button>
+            <button class="btn btn-sm btn-outline-primary" id="securite-tab" data-bs-toggle="tab" data-bs-target="#securite" type="button" role="tab">Sécurité</button>
+            <button class="btn btn-sm btn-outline-primary" id="paiements-tab" data-bs-toggle="tab" data-bs-target="#paiements" type="button" role="tab">Paiements</button>
+        </div>
+    </div>
+</div>
 
 <div class="tab-content">
     <div class="tab-pane fade show active" id="general" role="tabpanel">

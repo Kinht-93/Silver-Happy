@@ -12,8 +12,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter un conseil</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddContent">+ Ajouter un conseil</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -98,6 +99,44 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddContent" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un conseil</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="contentTitle" class="form-label">Titre</label>
+                        <input type="text" class="form-control" id="contentTitle">
+                    </div>
+                    <div class="mb-3">
+                        <label for="contentCategory" class="form-label">Catégorie</label>
+                        <select class="form-control" id="contentCategory">
+                            <option>Sélectionner une catégorie</option>
+                            <option>Santé</option>
+                            <option>Nutrition</option>
+                            <option>Exercice</option>
+                            <option>Bien-être</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contentBody" class="form-label">Contenu</label>
+                        <textarea class="form-control" id="contentBody" rows="4"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

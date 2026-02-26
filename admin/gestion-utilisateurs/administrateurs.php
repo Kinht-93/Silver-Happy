@@ -15,8 +15,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter un administrateur</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddAdmin">+ Ajouter un administrateur</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -88,6 +89,43 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddAdmin" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un administrateur</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="adminName" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="adminName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="adminEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="adminEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label for="adminRole" class="form-label">Rôle</label>
+                        <select class="form-control" id="adminRole">
+                            <option>Sélectionner un rôle</option>
+                            <option>Super Admin</option>
+                            <option>Manager</option>
+                            <option>Modérateur</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

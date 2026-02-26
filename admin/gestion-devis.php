@@ -9,8 +9,9 @@ include './include/header-admin.php';
         <input type="text" class="form-control" style="max-width: 250px;" placeholder="Rechercher un devis...">
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Créer un devis</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddQuote">+ Créer un devis</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -87,6 +88,48 @@ include './include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddQuote" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Créer un devis</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="quoteSenior" class="form-label">Senior</label>
+                        <select class="form-control" id="quoteSenior">
+                            <option>Sélectionner un senior</option>
+                            <option>Marie Dupont</option>
+                            <option>Jean Martin</option>
+                            <option>Fatima Ahmed</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quoteService" class="form-label">Prestation</label>
+                        <select class="form-control" id="quoteService">
+                            <option>Sélectionner une prestation</option>
+                            <option>Aide à domicile</option>
+                            <option>Coaching bien-être</option>
+                            <option>Cours informatique</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quoteAmount" class="form-label">Montant</label>
+                        <input type="number" class="form-control" id="quoteAmount" step="0.01">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Créer</button>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -15,8 +15,9 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Ajouter un prestataire</button>
+        <button class="btn btn-sm btn-success" data-modal="modalAddProvider">+ Ajouter un prestataire</button>
     </div>
+
 </div>
 
 <div class="admin-card">
@@ -88,6 +89,38 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modalAddProvider" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un prestataire</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="providerName" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="providerName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="providerEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="providerEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label for="providerSpecialty" class="form-label">Spécialité</label>
+                        <input type="text" class="form-control" id="providerSpecialty">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter</button>
+            </div>
+        </div>
     </div>
 </div>
 

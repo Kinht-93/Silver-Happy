@@ -12,7 +12,7 @@ include '../include/header-admin.php';
         </div>
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Gérer traductions</button>
+        <button class="btn btn-sm btn-success" data-modal="modalManageTranslations">+ Gérer traductions</button>
     </div>
 </div>
 
@@ -133,6 +133,48 @@ include '../include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalManageTranslations" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Gérer les traductions</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="translationContent" class="form-label">Contenu à traduire</label>
+                        <select class="form-control" id="translationContent">
+                            <option>Sélectionner un contenu</option>
+                            <option>10 conseils pour une retraite active</option>
+                            <option>Nutrition équilibrée après 60 ans</option>
+                            <option>Les bienfaits des loisirs créatifs</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="translationLanguage" class="form-label">Langue cible</label>
+                        <select class="form-control" id="translationLanguage">
+                            <option>Sélectionner une langue</option>
+                            <option>🇬🇧 Anglais</option>
+                            <option>🇪🇸 Espagnol</option>
+                            <option>🇩🇪 Allemand</option>
+                            <option>🇮🇹 Italien</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="translationText" class="form-label">Traduction</label>
+                        <textarea class="form-control" id="translationText" rows="4" placeholder="Entrez la traduction..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Ajouter traduction</button>
+            </div>
+        </div>
     </div>
 </div>
 

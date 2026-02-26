@@ -9,7 +9,7 @@ include './include/header-admin.php';
         <input type="text" class="form-control" style="max-width: 250px;" placeholder="Rechercher une notification...">
     </div>
     <div class="col text-end">
-        <button class="btn btn-sm btn-success">+ Créer une notification</button>
+        <button class="btn btn-sm btn-success" data-modal="modalCreateNotification">+ Créer une notification</button>
     </div>
 </div>
 
@@ -125,6 +125,58 @@ include './include/header-admin.php';
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCreateNotification" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Créer une notification</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="notificationType" class="form-label">Type de notification</label>
+                        <select class="form-control" id="notificationType">
+                            <option>Sélectionner un type</option>
+                            <option>Info</option>
+                            <option>Success</option>
+                            <option>Warning</option>
+                            <option>Danger/Erreur</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notificationTitle" class="form-label">Titre</label>
+                        <input type="text" class="form-control" id="notificationTitle" placeholder="Ex: Maintenance prévue">
+                    </div>
+                    <div class="mb-3">
+                        <label for="notificationMessage" class="form-label">Message</label>
+                        <textarea class="form-control" id="notificationMessage" rows="4" placeholder="Détails de la notification..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notificationRecipients" class="form-label">Destinataires</label>
+                        <select class="form-control" id="notificationRecipients">
+                            <option>Sélectionner les destinataires</option>
+                            <option>Tous les utilisateurs</option>
+                            <option>Administrateurs uniquement</option>
+                            <option>Équipe IT</option>
+                            <option>Prestataires</option>
+                            <option>Seniors</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notificationSchedule" class="form-label">Programmer l'envoi</label>
+                        <input type="datetime-local" class="form-control" id="notificationSchedule">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="button" class="btn btn-primary">Créer et envoyer</button>
+            </div>
+        </div>
     </div>
 </div>
 
