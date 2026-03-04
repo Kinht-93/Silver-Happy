@@ -163,6 +163,8 @@
   });
 
   document.addEventListener("DOMContentLoaded", function () {
-    openTutorial(false);
+    if (window.localStorage && localStorage.getItem("sh_tutorial_autostart") === "1") {
+      openTutorial(false);
+    }
   });
 })();
