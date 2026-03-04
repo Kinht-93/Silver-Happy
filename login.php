@@ -3,8 +3,8 @@ session_start();
 include_once 'db.php';
 include_once './include/role_redirect.php';
 
-if (isset($_SESSION['user'])) {
-    header('Location: ' . sh_get_role_home($_SESSION['user']['role'] ?? ''));
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    header('Location: ' . sh_get_role_home($_SESSION['user_role'] ?? ''));
     exit;
 }
 
@@ -12,71 +12,69 @@ $errors = [];
 $email = trim($_POST['login_email'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $password = (string)($_POST['login_password'] ?? '');
+    $password = $_POST['login_password'] ?? '';
 
-    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'Veuillez saisir une adresse email valide.';
+    if (empty($email) || empty($password)) {
+        $_SESSION['login_errors'] = ['Email et mot de passe sont requis'];
+        header('Location: login.php');
+        exit();
     }
 
-    if ($password === '') {
-        $errors[] = 'Le mot de passe est obligatoire.';
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => 'Content-Type: application/json',
+            'content' => json_encode([
+                'email' => $email,
+                'password' => $password
+            ])
+        ]
+    ]);
+
+    $response = @file_get_contents('http://localhost:8080/api/login', false, $context);
+
+    if ($response === false) {
+        $_SESSION['login_errors'] = ['Email ou mot de passe incorrect'];
+        header('Location: login.php');
+        exit();
     }
 
-    if (!$pdo instanceof PDO) {
-        $errors[] = 'La base de données est indisponible pour le moment.';
+    $data = json_decode($response, true);
+
+    if ($data === null) {
+        $_SESSION['login_errors'] = ['Erreur serveur: réponse invalide'];
+        error_log('Login JSON Error: ' . $response);
+        header('Location: login.php');
+        exit();
     }
 
-    if (empty($errors) && $pdo instanceof PDO) {
-        try {
-            $stmt = $pdo->prepare(
-                'SELECT id_user, email, password, role, first_name, last_name, active
-                 FROM users
-                 WHERE email = :email
-                 LIMIT 1'
-            );
-            $stmt->execute(['email' => $email]);
-            $user = $stmt->fetch();
-
-            if (!$user) {
-                $errors[] = 'Email ou mot de passe incorrect.';
-            } elseif ((int)$user['active'] !== 1) {
-                $errors[] = 'Votre compte est désactivé.';
-            } else {
-                $storedPassword = (string)$user['password'];
-                $isPasswordValid = password_verify($password, $storedPassword) || $password === $storedPassword;
-
-                if (!$isPasswordValid) {
-                    $errors[] = 'Email ou mot de passe incorrect.';
-                } else {
-                    if ($password === $storedPassword || password_needs_rehash($storedPassword, PASSWORD_DEFAULT)) {
-                        $newHash = password_hash($password, PASSWORD_DEFAULT);
-                        $updateStmt = $pdo->prepare('UPDATE users SET password = :password WHERE id_user = :id_user');
-                        $updateStmt->execute([
-                            'password' => $newHash,
-                            'id_user' => $user['id_user'],
-                        ]);
-                    }
-
-                    session_regenerate_id(true);
-                    $_SESSION['user'] = [
-                        'id_user' => $user['id_user'],
-                        'email' => $user['email'],
-                        'role' => $user['role'],
-                        'first_name' => $user['first_name'],
-                        'last_name' => $user['last_name'],
-                    ];
-
-                    header('Location: ' . sh_get_role_home($user['role'] ?? ''));
-                    exit;
-                }
-            }
-        } catch (Exception $e) {
-            $errors[] = 'Une erreur est survenue lors de la connexion.';
-        }
+    if (isset($data['token']) && !empty($data['token'])) {
+        $_SESSION['user'] = [
+            'token' => $data['token'],
+            'id_user' => $data['user']['id_user'],
+            'email' => $data['user']['email'],
+            'role' => $data['user']['role'],
+            'first_name' => $data['user']['first_name'],
+            'last_name' => $data['user']['last_name'],
+        ];
+        header('Location: ' . sh_get_role_home($data['user']['role'] ?? ''));
+        exit();
+    } else {
+        $error = $data['error'] ?? 'Erreur de connexion inconnue';
+        $_SESSION['login_errors'] = [$error];
+        $_SESSION['form_data'] = ['login_email' => $email];
+        header('Location: login.php');
+        exit();
     }
 }
 
 $showSignupSuccess = isset($_GET['signup']) && $_GET['signup'] === 'success';
+
+$errors = $_SESSION['login_errors'] ?? [];
+$formData = $_SESSION['form_data'] ?? [];
+$email = $formData['login_email'] ?? $email;
+
+unset($_SESSION['login_errors'], $_SESSION['form_data']);
 
 include './include/header.php';
 ?>

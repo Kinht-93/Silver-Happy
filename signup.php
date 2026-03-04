@@ -1,6 +1,5 @@
 <?php
 session_start();
-include_once 'db.php';
 include_once './include/role_redirect.php';
 
 if (isset($_SESSION['user'])) {
@@ -48,65 +47,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Vous devez accepter les conditions d\'utilisation.';
     }
 
-    if (!$pdo instanceof PDO) {
-        $errors[] = 'La base de données est indisponible pour le moment.';
-    }
-
-    if (empty($errors) && $pdo instanceof PDO) {
-        try {
-            $checkStmt = $pdo->prepare('SELECT id_user FROM users WHERE email = :email LIMIT 1');
-            $checkStmt->execute(['email' => $email]);
-
-            if ($checkStmt->fetch()) {
-                $errors[] = 'Un compte existe déjà avec cette adresse email.';
-            } else {
-                try {
-                    $userId = 'usr_' . bin2hex(random_bytes(16));
-                } catch (Exception $e) {
-                    $userId = 'usr_' . uniqid('', true);
-                }
-
-                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                $createdAt = date('Y-m-d H:i:s');
-
-                $insertStmt = $pdo->prepare(
-                    'INSERT INTO users (
-                        id_user,
-                        email,
-                        password,
-                        role,
-                        last_name,
-                        first_name,
-                        birth_date,
-                        created_at
-                    ) VALUES (
-                        :id_user,
-                        :email,
-                        :password,
-                        :role,
-                        :last_name,
-                        :first_name,
-                        :birth_date,
-                        :created_at
-                    )'
-                );
-
-                $insertStmt->execute([
-                    'id_user' => $userId,
+    if (empty($errors)) {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => 'Content-Type: application/json',
+                'content' => json_encode([
                     'email' => $email,
-                    'password' => $hashedPassword,
-                    'role' => 'senior',
-                    'last_name' => $lastName,
+                    'password' => $password,
                     'first_name' => $firstName,
+                    'last_name' => $lastName,
                     'birth_date' => $birthdate,
-                    'created_at' => $createdAt,
-                ]);
+                    'role' => 'senior'
+                ]),
+                'ignore_errors' => true
+            ]
+        ]);
 
+        $response = @file_get_contents('http://localhost:8080/api/signup', false, $context);
+
+        if ($response === false) {
+            $errors[] = 'Erreur de connexion avec le serveur.';
+        } else {
+            $data = json_decode($response, true);
+
+            if ($data === null) {
+                $errors[] = 'Erreur serveur: réponse invalide';
+                error_log('Signup JSON Error: ' . $response);
+            } elseif (isset($data['success']) && $data['success'] === true) {
                 header('Location: login.php?signup=success');
                 exit;
+            } elseif (isset($data['error'])) {
+                $errors[] = $data['error'];
+            } elseif (isset($data['message'])) {
+                $errors[] = $data['message'];
+            } else {
+                $errors[] = 'Erreur lors de la création du compte.';
             }
-        } catch (Exception $e) {
-            $errors[] = 'Une erreur est survenue lors de la création du compte.';
         }
     }
 }
