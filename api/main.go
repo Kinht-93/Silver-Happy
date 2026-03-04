@@ -13,7 +13,7 @@ func main() {
 	http.HandleFunc("POST /api/login", handleLogin)
 
 	// USERS
-	http.HandleFunc("GET /api/users", authMiddleware(handleGetUsers))
+	http.HandleFunc("GET /api/users", handleGetUsers)
 	http.HandleFunc("GET /api/users/{id}", authMiddleware(handleGetUser))
 	http.HandleFunc("POST /api/users", authMiddleware(handleCreateUser))
 	http.HandleFunc("PATCH /api/users/{id}", authMiddleware(handleUpdateUser))
