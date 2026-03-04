@@ -1,6 +1,68 @@
 <?php
 include './include/header-admin.php';
+
+$message = '';
+$messageType = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    try {
+        if ($action === 'create') {
+            $stmt = $pdo->prepare("
+                INSERT INTO notifications (id_notification, type, title, message, created_at, is_read, id_user)
+                VALUES (?, ?, ?, ?, NOW(), 0, ?)
+            ");
+
+            $recipientType = $_POST['recipients'] ?? 'all';
+            $details = $_POST['message'];
+            if ($recipientType !== 'all') {
+                $details .= "\n\n[Destinataires: " . $recipientType . "]";
+            }
+
+            $stmt->execute([
+                uniqid('not_'),
+                $_POST['type'],
+                $_POST['title'],
+                $details,
+                null
+            ]);
+
+            $message = "Notification créée et enregistrée.";
+            $messageType = "success";
+        } elseif ($action === 'delete') {
+            $stmt = $pdo->prepare("DELETE FROM notifications WHERE id_notification = ?");
+            $stmt->execute([$_POST['id'] ?? '']);
+            $message = "Notification supprimée.";
+            $messageType = "success";
+        }
+    } catch (PDOException $e) {
+        $message = "Erreur: " . $e->getMessage();
+        $messageType = "danger";
+    }
+}
+
+$query = "
+    SELECT n.id_notification, n.type, n.title, n.message, n.created_at, n.is_read,
+           u.first_name, u.last_name
+    FROM notifications n
+    LEFT JOIN users u ON n.id_user = u.id_user
+    ORDER BY n.created_at DESC
+";
+try {
+    $notifications = $pdo ? $pdo->query($query)->fetchAll() : [];
+} catch (PDOException $e) {
+    $message = "Erreur: " . $e->getMessage();
+    $messageType = "danger";
+    $notifications = [];
+}
 ?>
+
+<?php if ($message): ?>
+<div class="alert alert-<?= $messageType ?> alert-dismissible fade show" role="alert">
+    <?= htmlspecialchars($message) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+<?php endif; ?>
 
 <div class="page-title">Notifications système</div>
 
@@ -99,30 +161,46 @@ include './include/header-admin.php';
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td><span class="badge bg-info">Info</span></td>
-                    <td>Notification de maintenance</td>
-                    <td>19/02/2026 10:30</td>
-                    <td>Tous les utilisateurs (234)</td>
-                    <td><span class="badge bg-success">Envoyée</span></td>
-                    <td><button class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></button></td>
-                </tr>
-                <tr>
-                    <td><span class="badge bg-success">Success</span></td>
-                    <td>Nouvelle fonctionnalité disponible</td>
-                    <td>18/02/2026 14:15</td>
-                    <td>Administrateurs (4)</td>
-                    <td><span class="badge bg-success">Envoyée</span></td>
-                    <td><button class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></button></td>
-                </tr>
-                <tr>
-                    <td><span class="badge bg-warning">Warning</span></td>
-                    <td>Alerte de performance</td>
-                    <td>17/02/2026 09:20</td>
-                    <td>Équipe IT (3)</td>
-                    <td><span class="badge bg-success">Envoyée</span></td>
-                    <td><button class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></button></td>
-                </tr>
+                <?php if (empty($notifications)): ?>
+                    <tr><td colspan="6" class="text-center">Aucune notification trouvée.</td></tr>
+                <?php else: ?>
+                    <?php foreach ($notifications as $notification): ?>
+                        <tr>
+                            <td>
+                                <?php if ($notification['type'] == 'Info'): ?>
+                                    <span class="badge bg-info">Info</span>
+                                <?php elseif ($notification['type'] == 'Success'): ?>
+                                    <span class="badge bg-success">Success</span>
+                                <?php elseif ($notification['type'] == 'Warning'): ?>
+                                    <span class="badge bg-warning">Warning</span>
+                                <?php else: ?>
+                                    <span class="badge bg-danger"><?= htmlspecialchars($notification['type']) ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars($notification['title'] ? $notification['title'] : 'Notification sans titre') ?></td>
+                            <td><?= date('d/m/Y H:i', strtotime($notification['created_at'])) ?></td>
+                            <td><?= $notification['first_name'] ? htmlspecialchars($notification['first_name'] . ' ' . $notification['last_name']) : 'Tous les utilisateurs' ?></td>
+                            <td><span class="badge bg-success">Envoyée</span></td>
+                            <td>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-primary"
+                                    data-notification="<?= htmlspecialchars(json_encode($notification)) ?>"
+                                    onclick="viewNotification(this)"
+                                >
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <form method="POST" class="d-inline" onsubmit="return confirm('Supprimer cette notification ?');">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($notification['id_notification']) ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
@@ -136,49 +214,59 @@ include './include/header-admin.php';
                 <button type="button" class="btn-close" data-modal-close></button>
             </div>
             <div class="modal-body">
-                <form>
+                <form id="formAddNotification" method="POST">
+                    <input type="hidden" name="action" value="create">
                     <div class="mb-3">
                         <label for="notificationType" class="form-label">Type de notification</label>
-                        <select class="form-control" id="notificationType">
-                            <option>Sélectionner un type</option>
-                            <option>Info</option>
-                            <option>Success</option>
-                            <option>Warning</option>
-                            <option>Danger/Erreur</option>
+                        <select class="form-control" id="notificationType" name="type" required>
+                            <option value="">Sélectionner un type</option>
+                            <option value="Info">Info</option>
+                            <option value="Success">Success</option>
+                            <option value="Warning">Warning</option>
+                            <option value="Danger">Danger/Erreur</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label for="notificationTitle" class="form-label">Titre</label>
-                        <input type="text" class="form-control" id="notificationTitle" placeholder="Ex: Maintenance prévue">
+                        <input type="text" class="form-control" id="notificationTitle" name="title" placeholder="Ex: Maintenance prévue" required>
                     </div>
                     <div class="mb-3">
                         <label for="notificationMessage" class="form-label">Message</label>
-                        <textarea class="form-control" id="notificationMessage" rows="4" placeholder="Détails de la notification..."></textarea>
+                        <textarea class="form-control" id="notificationMessage" name="message" rows="4" placeholder="Détails de la notification..." required></textarea>
                     </div>
                     <div class="mb-3">
                         <label for="notificationRecipients" class="form-label">Destinataires</label>
-                        <select class="form-control" id="notificationRecipients">
-                            <option>Sélectionner les destinataires</option>
-                            <option>Tous les utilisateurs</option>
-                            <option>Administrateurs uniquement</option>
-                            <option>Équipe IT</option>
-                            <option>Prestataires</option>
-                            <option>Seniors</option>
+                        <select class="form-control" id="notificationRecipients" name="recipients" required>
+                            <option value="">Sélectionner les destinataires</option>
+                            <option value="all">Tous les utilisateurs</option>
+                            <option value="admin">Administrateurs uniquement</option>
+                            <option value="it">Équipe IT</option>
+                            <option value="provider">Prestataires</option>
+                            <option value="senior">Seniors</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label for="notificationSchedule" class="form-label">Programmer l'envoi</label>
-                        <input type="datetime-local" class="form-control" id="notificationSchedule">
+                        <input type="datetime-local" class="form-control" id="notificationSchedule" name="scheduled_at">
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
-                <button type="button" class="btn btn-primary">Créer et envoyer</button>
+                <button type="submit" form="formAddNotification" class="btn btn-primary">Créer et envoyer</button>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function viewNotification(btn) {
+    const notification = JSON.parse(btn.getAttribute('data-notification'));
+    const title = notification.title || 'Notification';
+    const msg = notification.message || '';
+    alert(title + '\n\n' + msg);
+}
+</script>
 
 <?php
 include './include/footer-admin.php';

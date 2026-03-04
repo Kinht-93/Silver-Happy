@@ -1,5 +1,26 @@
 <?php
+require_once __DIR__ . '/../db.php';
 include './include/header-admin.php';
+
+$stats = [
+    'users' => $pdo->query("SELECT COUNT(*) FROM users WHERE active = 1")->fetchColumn(),
+    'prestations' => $pdo->query("SELECT COUNT(*) FROM completed_services WHERE status = 'Terminé'")->fetchColumn(),
+    'devis' => $pdo->query("SELECT COUNT(*) FROM quotes WHERE status = 'En attente'")->fetchColumn(),
+    'problemes' => 0
+];
+
+$transactions = $pdo->query("SELECT i.amount_incl_tax, i.invoice_type, i.issue_date, u.first_name, u.last_name 
+                             FROM invoices i 
+                             JOIN quotes q ON i.id_quote = q.id_quote
+                             JOIN service_requests sr ON q.id_request = sr.id_request
+                             JOIN users u ON sr.id_user = u.id_user
+                             ORDER BY i.issue_date DESC LIMIT 3")->fetchAll();
+
+$events = $pdo->query("SELECT title, start_date, event_type FROM events WHERE start_date >= CURDATE() ORDER BY start_date ASC LIMIT 5")->fetchAll();
+
+$pending_providers = $pdo->query("SELECT COUNT(*) FROM providers WHERE validation_status = 'En attente'")->fetchColumn();
+$pending_requests = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE status = 'En attente'")->fetchColumn();
+
 ?>
 
 <div class="page-title">Tableau de bord</div>
@@ -8,25 +29,25 @@ include './include/header-admin.php';
     <div class="col-md-3 col-sm-6">
         <div class="stat-card primary">
             <div class="stat-label">Utilisateurs actifs</div>
-            <div class="stat-value">1,234</div>
+            <div class="stat-value"><?= number_format($stats['users']) ?></div>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="stat-card success">
             <div class="stat-label">Prestations réalisées</div>
-            <div class="stat-value">567</div>
+            <div class="stat-value"><?= number_format($stats['prestations']) ?></div>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="stat-card warning">
             <div class="stat-label">Devis en attente</div>
-            <div class="stat-value">23</div>
+            <div class="stat-value"><?= number_format($stats['devis']) ?></div>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="stat-card danger">
             <div class="stat-label">Problèmes signalés</div>
-            <div class="stat-value">5</div>
+            <div class="stat-value"><?= number_format($stats['problemes']) ?></div>
         </div>
     </div>
 </div>
@@ -44,33 +65,21 @@ include './include/header-admin.php';
         <div class="admin-card p-4">
             <h3 class="h5 mb-4">Dernières transactions</h3>
             <div class="list-group list-group-flush">
-                <div class="list-group-item border-0 px-0 py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold">Paiement adhésion</div>
-                            <small class="text-muted">Marie Dupont</small>
+                <?php if (empty($transactions)): ?>
+                    <p class="text-muted text-center py-3">Aucune transaction récente.</p>
+                <?php else: ?>
+                    <?php foreach ($transactions as $tx): ?>
+                        <div class="list-group-item border-0 px-0 py-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-semibold"><?= htmlspecialchars($tx['invoice_type']) ?></div>
+                                    <small class="text-muted"><?= htmlspecialchars($tx['first_name'] . ' ' . $tx['last_name']) ?> - <?= date('d/m/Y', strtotime($tx['issue_date'])) ?></small>
+                                </div>
+                                <span class="badge bg-success">+<?= number_format($tx['amount_incl_tax'], 2) ?>€</span>
+                            </div>
                         </div>
-                        <span class="badge bg-success">+50€</span>
-                    </div>
-                </div>
-                <div class="list-group-item border-0 px-0 py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold">Prestation payée</div>
-                            <small class="text-muted">Jean Martin</small>
-                        </div>
-                        <span class="badge bg-success">+75€</span>
-                    </div>
-                </div>
-                <div class="list-group-item border-0 px-0 py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold">Achat produit</div>
-                            <small class="text-muted">Fatima Ahmed</small>
-                        </div>
-                        <span class="badge bg-success">+25€</span>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -81,24 +90,21 @@ include './include/header-admin.php';
         <div class="admin-card p-4">
             <h3 class="h5 mb-4">Événements à venir</h3>
             <div class="list-group list-group-flush">
-                <div class="list-group-item px-0 py-3 border-0">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold">Journée portes ouvertes</div>
-                            <small class="text-muted"><i class="bi bi-calendar"></i> 25/03/2026</small>
+                <?php if (empty($events)): ?>
+                    <p class="text-muted text-center py-3">Aucun événement à venir.</p>
+                <?php else: ?>
+                    <?php foreach ($events as $event): ?>
+                        <div class="list-group-item px-0 py-3 border-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-semibold"><?= htmlspecialchars($event['title']) ?></div>
+                                    <small class="text-muted"><i class="bi bi-calendar"></i> <?= date('d/m/Y H:i', strtotime($event['start_date'])) ?></small>
+                                </div>
+                                <span class="badge bg-info"><?= htmlspecialchars($event['event_type']) ?></span>
+                            </div>
                         </div>
-                        <span class="badge bg-info">Confirmé</span>
-                    </div>
-                </div>
-                <div class="list-group-item px-0 py-3 border-0">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold">Conférence bien vieillir</div>
-                            <small class="text-muted"><i class="bi bi-calendar"></i> 10/04/2026</small>
-                        </div>
-                        <span class="badge bg-warning">Planification</span>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -106,24 +112,33 @@ include './include/header-admin.php';
         <div class="admin-card p-4">
             <h3 class="h5 mb-4">Tâches urgentes</h3>
             <div class="list-group list-group-flush">
-                <div class="list-group-item px-0 py-3 border-0">
-                    <div class="d-flex gap-3">
-                        <input type="checkbox" class="form-check-input" id="task1">
-                        <label for="task1" class="flex-grow-1">Valider 5 demandes de prestataires en attente</label>
+                <?php if ($pending_providers > 0): ?>
+                    <div class="list-group-item px-0 py-3 border-0">
+                        <div class="d-flex gap-3">
+                            <i class="bi bi-exclamation-circle text-danger"></i>
+                            <label class="flex-grow-1"><a href="gestion-utilisateurs/prestataires.php" class="text-decoration-none text-dark">Valider <?= $pending_providers ?> demande(s) de prestataires en attente</a></label>
+                        </div>
                     </div>
-                </div>
-                <div class="list-group-item px-0 py-3 border-0">
-                    <div class="d-flex gap-3">
-                        <input type="checkbox" class="form-check-input" id="task2">
-                        <label for="task2" class="flex-grow-1">Répondre aux 12 devis en attente</label>
+                <?php endif; ?>
+                <?php if ($pending_requests > 0): ?>
+                    <div class="list-group-item px-0 py-3 border-0">
+                        <div class="d-flex gap-3">
+                            <i class="bi bi-exclamation-circle text-warning"></i>
+                            <label class="flex-grow-1"><a href="gestion-prestations/index.php" class="text-decoration-none text-dark">Gérer <?= $pending_requests ?> demande(s) de prestation en attente</a></label>
+                        </div>
                     </div>
-                </div>
-                <div class="list-group-item px-0 py-3 border-0">
-                    <div class="d-flex gap-3">
-                        <input type="checkbox" class="form-check-input" id="task3">
-                        <label for="task3" class="flex-grow-1">Publier 3 nouveaux conseils</label>
+                <?php endif; ?>
+                <?php if ($stats['devis'] > 0): ?>
+                    <div class="list-group-item px-0 py-3 border-0">
+                        <div class="d-flex gap-3">
+                            <i class="bi bi-exclamation-circle text-warning"></i>
+                            <label class="flex-grow-1"><a href="gestion-devis.php" class="text-decoration-none text-dark">Traiter <?= $stats['devis'] ?> devis en attente</a></label>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
+                <?php if ($pending_providers == 0 && $pending_requests == 0 && $stats['devis'] == 0): ?>
+                    <p class="text-muted text-center py-3">Aucune tâche urgente.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>

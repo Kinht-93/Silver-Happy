@@ -1,6 +1,51 @@
 <?php
 include '../include/header-admin.php';
+
+$message = '';
+$messageType = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    try {
+        if ($action === 'create') {
+            $message = "Les catégories sont créées dynamiquement lors de l'ajout d'un produit.";
+            $messageType = "info";
+        } elseif ($action === 'update') {
+            $stmt = $pdo->prepare("UPDATE products SET category=? WHERE category=?");
+            $stmt->execute([
+                $_POST['category'],
+                $_POST['old_category']
+            ]);
+            $message = "Catégorie modifiée avec succès.";
+            $messageType = "success";
+        } elseif ($action === 'delete') {
+            $stmtDb = $pdo->prepare("UPDATE products SET category='' WHERE category=?");
+            $stmtDb->execute([$_POST['id']]);
+            $message = "Catégorie supprimée (les produits sont désormais sans catégorie).";
+            $messageType = "success";
+        }
+    } catch (PDOException $e) {
+        $message = "Erreur: " . $e->getMessage();
+        $messageType = "danger";
+    }
+}
+
+$query = "
+    SELECT category as name, COUNT(*) as articles 
+    FROM products 
+    WHERE category IS NOT NULL AND category != ''
+    GROUP BY category
+    ORDER BY category
+";
+$categories = $pdo->query($query)->fetchAll();
 ?>
+
+<?php if ($message): ?>
+<div class="alert alert-<?= $messageType ?> alert-dismissible fade show" role="alert">
+    <?= htmlspecialchars($message) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+<?php endif; ?>
 
 <div class="page-title">Catégories d'articles</div>
 
@@ -32,61 +77,27 @@ include '../include/header-admin.php';
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td><strong>Confort</strong></td>
-                    <td>Produits pour améliorer le confort à domicile</td>
-                    <td>12</td>
-                    <td>Affichée</td>
-                    <td><span class="badge bg-success">Actif</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-                <tr>
-                    <td><strong>Bien-être</strong></td>
-                    <td>Crèmes, baumes et produits de soin naturels</td>
-                    <td>8</td>
-                    <td>Affichée</td>
-                    <td><span class="badge bg-success">Actif</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-                <tr>
-                    <td><strong>Électronique</strong></td>
-                    <td>Téléphones, montres et appareils adaptés aux seniors</td>
-                    <td>5</td>
-                    <td>Affichée</td>
-                    <td><span class="badge bg-success">Actif</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-                <tr>
-                    <td><strong>Sécurité</strong></td>
-                    <td>Bracelets d'alerte et systèmes de sécurité</td>
-                    <td>3</td>
-                    <td>Affichée</td>
-                    <td><span class="badge bg-success">Actif</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-                <tr>
-                    <td><strong>Éclairage</strong></td>
-                    <td>Lampes et systèmes d'éclairage adaptés</td>
-                    <td>6</td>
-                    <td>Cachée</td>
-                    <td><span class="badge bg-secondary">Inactif</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
+                <?php if (empty($categories)): ?>
+                    <tr><td colspan="6" class="text-center">Aucune catégorie trouvée.</td></tr>
+                <?php else: ?>
+                    <?php foreach ($categories as $categorie): ?>
+                        <tr>
+                            <td><strong><?= htmlspecialchars($categorie['name'] ?: 'Sans catégorie') ?></strong></td>
+                            <td>Catégorie de produits</td>
+                            <td><?= (int)$categorie['articles'] ?></td>
+                            <td>Affichée</td>
+                            <td><span class="badge bg-success">Actif</span></td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-cat="<?= htmlspecialchars($categorie['name']) ?>" onclick="editShopCategory(this)"><i class="bi bi-pencil"></i></button>
+                                <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette catégorie ?');">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($categorie['name']) ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
@@ -101,24 +112,64 @@ include '../include/header-admin.php';
                 <button type="button" class="btn-close" data-modal-close></button>
             </div>
             <div class="modal-body">
-                <form>
+                <form method="POST" id="formAddShopCategory">
+                    <input type="hidden" name="action" value="create">
                     <div class="mb-3">
-                        <label for="shopCategoryName" class="form-label">Nom</label>
-                        <input type="text" class="form-control" id="shopCategoryName">
+                        <label for="shopCategoryName" class="form-label">Nom *</label>
+                        <input type="text" class="form-control" id="shopCategoryName" name="category" required>
                     </div>
                     <div class="mb-3">
                         <label for="shopCategoryDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="shopCategoryDescription" rows="3"></textarea>
+                        <textarea class="form-control" id="shopCategoryDescription" name="description" rows="3"></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
-                <button type="button" class="btn btn-primary">Ajouter</button>
+                <button type="submit" form="formAddShopCategory" class="btn btn-primary">Ajouter</button>
             </div>
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalEditShopCategory" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier la catégorie</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="formEditShopCategory">
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" id="editShopCategoryId" name="old_category">
+                    <div class="mb-3">
+                        <label for="editShopCategoryName" class="form-label">Nom *</label>
+                        <input type="text" class="form-control" id="editShopCategoryName" name="category" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editShopCategoryDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="editShopCategoryDescription" name="description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="submit" form="formEditShopCategory" class="btn btn-primary">Mettre à jour</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function editShopCategory(btn) {
+    const categoryName = btn.getAttribute('data-cat');
+    document.getElementById('editShopCategoryId').value = categoryName;
+    document.getElementById('editShopCategoryName').value = categoryName;
+    document.getElementById('editShopCategoryDescription').value = 'Catégorie de produits';
+    openModal('modalEditShopCategory');
+}
+</script>
 
 <?php
 include '../include/footer-admin.php';

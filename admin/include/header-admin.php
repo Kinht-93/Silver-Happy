@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../db.php';
 $script = $_SERVER['SCRIPT_NAME'];
 
 $base_url = preg_replace('#/admin(/.*)?$#', '', $script);
@@ -39,7 +40,7 @@ $admin_url = $base_url . '/admin';
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                         <li><a class="dropdown-item" href="#">Mon profil</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="<?= $base_url ?>/logout.php">Déconnexion</a></li>
+                        <li><a class="dropdown-item" href="<?= $base_url ?>/login.php">Déconnexion</a></li>
                     </ul>
                 </li>
             </ul>

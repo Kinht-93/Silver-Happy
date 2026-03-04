@@ -1,6 +1,63 @@
 <?php
 include '../include/header-admin.php';
+
+$message = '';
+$messageType = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    try {
+        if ($action === 'create') {
+            $stmt = $pdo->prepare("INSERT INTO users (id_user, first_name, last_name, email, role, active, created_at, password) VALUES (?, ?, ?, ?, ?, 1, NOW(), ?)");
+            $password = password_hash('default123', PASSWORD_DEFAULT);
+            $stmt->execute([
+                uniqid('usr_'),
+                $_POST['first_name'],
+                $_POST['last_name'],
+                $_POST['email'],
+                $_POST['role'],
+                $password
+            ]);
+            $message = "Administrateur ajouté avec succès.";
+            $messageType = "success";
+        } elseif ($action === 'update') {
+            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=?, role=? WHERE id_user=?");
+            $stmt->execute([
+                $_POST['first_name'],
+                $_POST['last_name'],
+                $_POST['email'],
+                $_POST['role'],
+                $_POST['id']
+            ]);
+            $message = "Administrateur modifié avec succès.";
+            $messageType = "success";
+        } elseif ($action === 'delete') {
+            $stmt = $pdo->prepare("DELETE FROM users WHERE id_user=?");
+            $stmt->execute([$_POST['id']]);
+            $message = "Administrateur supprimé.";
+            $messageType = "success";
+        }
+    } catch (PDOException $e) {
+        $message = "Erreur: " . $e->getMessage();
+        $messageType = "danger";
+    }
+}
+
+$query = "
+    SELECT id_user, last_name, first_name, email, active, created_at, role
+    FROM users 
+    WHERE role IN ('admin', 'superadmin', 'manager', 'moderateur', 'administrateur')
+    ORDER BY created_at DESC
+";
+$administrateurs = $pdo->query($query)->fetchAll();
 ?>
+
+<?php if ($message): ?>
+<div class="alert alert-<?= $messageType ?> alert-dismissible fade show" role="alert">
+    <?= htmlspecialchars($message) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+<?php endif; ?>
 
 <div class="page-title">Gestion des Administrateurs</div>
 
@@ -35,58 +92,43 @@ include '../include/header-admin.php';
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>Directeur Admin</td>
-                    <td>admin@silverhappy.fr</td>
-                    <td><span class="badge bg-danger">Super Admin</span></td>
-                    <td>Tous les droits</td>
-                    <td><span class="badge bg-success">Actif</span></td>
-                    <td>aujourd'hui à 09:30</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></button>
-                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Responsable Contenus</td>
-                    <td>content@silverhappy.fr</td>
-                    <td><span class="badge bg-warning">Manager</span></td>
-                    <td>Gestion contenus</td>
-                    <td><span class="badge bg-success">Actif</span></td>
-                    <td>hier à 15:45</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></button>
-                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Responsable Facturation</td>
-                    <td>finance@silverhappy.fr</td>
-                    <td><span class="badge bg-warning">Manager</span></td>
-                    <td>Facturation & paiements</td>
-                    <td><span class="badge bg-success">Actif</span></td>
-                    <td>19/02/2026 à 11:20</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></button>
-                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Modérateur Support</td>
-                    <td>moderation@silverhappy.fr</td>
-                    <td><span class="badge bg-info">Modérateur</span></td>
-                    <td>Modération, Notifications</td>
-                    <td><span class="badge bg-success">Actif</span></td>
-                    <td>18/02/2026 à 14:15</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></button>
-                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
+                <?php if (empty($administrateurs)): ?>
+                    <tr><td colspan="7" class="text-center">Aucun administrateur trouvé.</td></tr>
+                <?php else: ?>
+                    <?php foreach ($administrateurs as $admin): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($admin['first_name'] . ' ' . $admin['last_name']) ?></td>
+                            <td><?= htmlspecialchars($admin['email']) ?></td>
+                            <td>
+                                <?php if (in_array(strtolower($admin['role']), ['superadmin', 'admin', 'administrateur'])): ?>
+                                    <span class="badge bg-danger">Super Admin</span>
+                                <?php elseif (in_array(strtolower($admin['role']), ['manager'])): ?>
+                                    <span class="badge bg-warning">Manager</span>
+                                <?php else: ?>
+                                    <span class="badge bg-info"><?= htmlspecialchars(ucfirst($admin['role'])) ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td>Tous les droits</td>
+                            <td>
+                                <?php if ($admin['active']): ?>
+                                    <span class="badge bg-success">Actif</span>
+                                <?php else: ?>
+                                    <span class="badge bg-danger">Inactif</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= date('d/m/Y H:i', strtotime($admin['created_at'])) ?></td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-user="<?= htmlspecialchars(json_encode($admin)) ?>" onclick="viewAdmin(this)"><i class="bi bi-eye"></i></button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-user="<?= htmlspecialchars(json_encode($admin)) ?>" onclick="editAdmin(this)"><i class="bi bi-pencil"></i></button>
+                                <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet administrateur ?');">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($admin['id_user']) ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
@@ -101,33 +143,98 @@ include '../include/header-admin.php';
                 <button type="button" class="btn-close" data-modal-close></button>
             </div>
             <div class="modal-body">
-                <form>
+                <form method="POST" id="formAddAdmin">
+                    <input type="hidden" name="action" value="create">
                     <div class="mb-3">
-                        <label for="adminName" class="form-label">Nom</label>
-                        <input type="text" class="form-control" id="adminName">
+                        <label for="adminFirstName" class="form-label">Prénom *</label>
+                        <input type="text" class="form-control" id="adminFirstName" name="first_name" required>
                     </div>
                     <div class="mb-3">
-                        <label for="adminEmail" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="adminEmail">
+                        <label for="adminLastName" class="form-label">Nom *</label>
+                        <input type="text" class="form-control" id="adminLastName" name="last_name" required>
                     </div>
                     <div class="mb-3">
-                        <label for="adminRole" class="form-label">Rôle</label>
-                        <select class="form-control" id="adminRole">
-                            <option>Sélectionner un rôle</option>
-                            <option>Super Admin</option>
-                            <option>Manager</option>
-                            <option>Modérateur</option>
+                        <label for="adminEmail" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="adminEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adminRole" class="form-label">Rôle *</label>
+                        <select class="form-control" id="adminRole" name="role" required>
+                            <option value="">Sélectionner un rôle</option>
+                            <option value="superadmin">Super Admin</option>
+                            <option value="admin">Admin</option>
+                            <option value="manager">Manager</option>
+                            <option value="moderateur">Modérateur</option>
                         </select>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
-                <button type="button" class="btn btn-primary">Ajouter</button>
+                <button type="submit" form="formAddAdmin" class="btn btn-primary">Ajouter</button>
             </div>
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalEditAdmin" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier administrateur</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="formEditAdmin">
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" id="editAdminId" name="id">
+                    <div class="mb-3">
+                        <label for="editAdminFirstName" class="form-label">Prénom *</label>
+                        <input type="text" class="form-control" id="editAdminFirstName" name="first_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAdminLastName" class="form-label">Nom *</label>
+                        <input type="text" class="form-control" id="editAdminLastName" name="last_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAdminEmail" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="editAdminEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAdminRole" class="form-label">Rôle *</label>
+                        <select class="form-control" id="editAdminRole" name="role" required>
+                            <option value="superadmin">Super Admin</option>
+                            <option value="admin">Admin</option>
+                            <option value="manager">Manager</option>
+                            <option value="moderateur">Modérateur</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
+                <button type="submit" form="formEditAdmin" class="btn btn-primary">Mettre à jour</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function viewAdmin(btn) {
+    const user = JSON.parse(btn.getAttribute('data-user'));
+    alert('Administrateur: ' + user.first_name + ' ' + user.last_name + '\nRôle: ' + user.role + '\nEmail: ' + user.email);
+}
+
+function editAdmin(btn) {
+    const user = JSON.parse(btn.getAttribute('data-user'));
+    document.getElementById('editAdminId').value = user.id_user;
+    document.getElementById('editAdminFirstName').value = user.first_name;
+    document.getElementById('editAdminLastName').value = user.last_name;
+    document.getElementById('editAdminEmail').value = user.email;
+    document.getElementById('editAdminRole').value = user.role || '';
+    openModal('modalEditAdmin');
+}
+</script>
 
 <?php
 include '../include/footer-admin.php';
