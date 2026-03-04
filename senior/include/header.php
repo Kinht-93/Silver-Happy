@@ -24,6 +24,10 @@ if (!isset($seniorCurrent) || $seniorCurrent === '') {
         'profil-informations.php' => 'profil',
         'profil-preferences.php' => 'profil',
         'profil-contact-urgence.php' => 'profil',
+        'contact.php' => 'contact',
+        'planning.php' => 'planning',
+        'prestation.php' => 'prestation',
+        'messagerie.php' => 'messagerie',
         'prestations.php' => 'prestations',
         'prestations-catalogue.php' => 'prestations',
         'prestations-demande.php' => 'prestations',
@@ -42,9 +46,11 @@ if (!isset($seniorCurrent) || $seniorCurrent === '') {
 $firstName = (string)($_SESSION['user']['first_name'] ?? '');
 $menuItems = [
     ['key' => 'dashboard', 'label' => 'Tableau de bord', 'href' => 'index.php'],
+    ['key' => 'planning', 'label' => 'Planning', 'href' => 'planning.php'],
+    ['key' => 'prestation', 'label' => 'Prestation', 'href' => 'prestation.php'],
+    ['key' => 'messagerie', 'label' => 'Messagerie', 'href' => 'messagerie.php'],
+    ['key' => 'contact', 'label' => 'Contact', 'href' => 'contact.php'],
     ['key' => 'profil', 'label' => 'Mon profil', 'href' => 'mon-profil.php'],
-    ['key' => 'prestations', 'label' => 'Prestations', 'href' => 'prestations.php'],
-    ['key' => 'evenements', 'label' => 'Événements', 'href' => 'evenements.php'],
 ];
 ?>
 <!DOCTYPE html>
@@ -56,6 +62,7 @@ $menuItems = [
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../senier.css">
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-light bg-light senior-main-header">
@@ -81,6 +88,10 @@ $menuItems = [
             </ul>
 
             <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-open-tutorial">
+                    <i class="bi bi-question-circle"></i>
+                    <span class="d-none d-md-inline">Guide</span>
+                </button>
                 <span class="btn btn-outline-primary btn-sm disabled">
                     <?php echo $firstName !== '' ? 'Bonjour ' . htmlspecialchars($firstName) : 'Espace senior'; ?>
                 </span>
@@ -90,4 +101,29 @@ $menuItems = [
     </div>
 </nav>
 
+<div id="tutorial-overlay" class="tutorial-overlay d-none">
+    <div class="tutorial-backdrop"></div>
+</div>
+
+<div id="tutorial-panel" class="tutorial-panel shadow-lg d-none">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+            <h2 class="tutorial-title h5 mb-1" id="tutorial-title"></h2>
+            <p class="tutorial-step-label small text-muted mb-0" id="tutorial-step-label"></p>
+        </div>
+        <button type="button" class="btn-close" aria-label="Fermer" id="tutorial-close"></button>
+    </div>
+    <p class="tutorial-text mb-3" id="tutorial-text"></p>
+    <div class="d-flex justify-content-between align-items-center">
+        <button type="button" class="btn btn-link btn-sm p-0" id="tutorial-skip">Ne plus afficher</button>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="tutorial-prev">Précédent</button>
+            <button type="button" class="btn btn-primary btn-sm" id="tutorial-next">Suivant</button>
+        </div>
+    </div>
+</div>
+
 <div class="container mt-4">
+    <div class="senier-global-shell">
+        <?php include __DIR__ . '/../_menu.php'; ?>
+        <main class="senier-global-main">

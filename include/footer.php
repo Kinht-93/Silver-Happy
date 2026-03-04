@@ -1,5 +1,4 @@
 <?php
-// footer.php
 $basePath = isset($basePath) ? rtrim($basePath, '/') . '/' : '';
 ?>
 </div>

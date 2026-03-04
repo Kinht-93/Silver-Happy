@@ -1,5 +1,4 @@
 <?php
-// header.php
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
@@ -19,20 +18,6 @@ $roleHome = $isLoggedIn ? sh_get_role_home($_SESSION['user']['role'] ?? '') : 'i
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="<?php echo $basePath; ?>style.css">
-    <!-- Google Translate widget -->
-    <script type="text/javascript">
-    function googleTranslateElementInit() {
-        new google.translate.TranslateElement(
-            {
-                pageLanguage: 'fr',
-                includedLanguages: 'fr,en,es,de,it',
-                layout: google.translate.TranslateElement.InlineLayout.SIMPLE
-            },
-            'google_translate_element'
-        );
-    }
-    </script>
-    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -70,12 +55,10 @@ $roleHome = $isLoggedIn ? sh_get_role_home($_SESSION['user']['role'] ?? '') : 'i
         </div>
     </div>
 </nav>
-<!-- Overlay tutoriel utilisateur -->
 <div id="tutorial-overlay" class="tutorial-overlay d-none">
     <div class="tutorial-backdrop"></div>
 </div>
 
-<!-- Bulle de tutoriel (séparée pour rester au-dessus) -->
 <div id="tutorial-panel" class="tutorial-panel shadow-lg d-none">
     <div class="d-flex justify-content-between align-items-start mb-2">
         <div>

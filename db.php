@@ -1,5 +1,4 @@
 <?php
-// Connexion à la base de données MySQL
 $host = getenv('DB_HOST') ?: '127.0.0.1';
 $db = getenv('DB_NAME') ?: 'silverhappy';
 $user = getenv('DB_USER') ?: 'root';
@@ -16,7 +15,6 @@ if ($envPort !== false && $envPort !== '') {
     $portCandidates[] = (int)$envPort;
 }
 
-// Ports courants selon environnements locaux (XAMPP/WAMP/MAMP)
 $portCandidates[] = 3306;
 $portCandidates[] = 8889;
 $portCandidates = array_values(array_unique($portCandidates));
@@ -25,7 +23,6 @@ $credentialCandidates = [
     ['user' => $user, 'pass' => $pass],
 ];
 
-// Fallback MAMP fréquent : root / root
 if ($user === 'root' && $pass === '') {
     $credentialCandidates[] = ['user' => 'root', 'pass' => 'root'];
 }
@@ -56,7 +53,6 @@ try {
         throw $lastError ?: new PDOException('Connexion MySQL impossible.');
     }
 } catch (PDOException $e) {
-    // En cas d'erreur, on garde le site fonctionnel et on log simplement le problème.
     $pdo = null;
     $dbError = 'Erreur de connexion à la base de données.';
     if (function_exists('error_log')) {

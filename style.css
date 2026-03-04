@@ -1,4 +1,3 @@
-/* Silver Happy custom styles */
 body {
   font-family: "Segoe UI", Arial, sans-serif;
   background: linear-gradient(180deg, #f3f5ff 0, #f8f9fa 120px);
@@ -59,7 +58,6 @@ section {
   font-weight: 600;
 }
 
-/* Hero */
 .hero-section {
   padding: 32px 0 8px;
 }
@@ -84,7 +82,6 @@ section {
   max-width: 220px;
 }
 
-/* Avantages */
 .advantage-card {
   border-radius: 16px;
   background-color: #ffffff;
@@ -103,7 +100,6 @@ section {
   font-size: 1.3rem;
 }
 
-/* Prestations */
 .prestation-card {
   border-radius: 16px;
   border: 1px solid #e5e7eb;
@@ -119,13 +115,11 @@ section {
   border-color: #c7d2fe;
 }
 
-/* Événements */
 .event-card {
   border-radius: 16px;
   border: 1px solid #e5e7eb;
 }
 
-/* Appel prestataires */
 .callout-prestataire {
   border-radius: 20px;
   padding: 24px 28px;
@@ -137,7 +131,6 @@ section {
   color: #285aff;
 }
 
-/* Témoignages */
 .testimonial-card {
   border-radius: 16px;
   border: 1px solid #e5e7eb;
@@ -201,7 +194,6 @@ footer {
   margin-top: 40px;
 }
 
-/* Tutorial overlay */
 .tutorial-overlay {
   position: fixed;
   inset: 0;
@@ -253,7 +245,6 @@ footer {
   overflow: hidden;
 }
 
-/* Auth pages (login / signup) */
 .auth-wrapper {
   min-height: calc(100vh - 200px);
   display: flex;
@@ -332,7 +323,72 @@ footer {
   border-color: #10b981;
 }
 
-/* User account pages (profil / factures) */
+.presta-signup-wrapper {
+  min-height: calc(100vh - 220px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0 20px;
+}
+
+.presta-signup-card {
+  width: 100%;
+  max-width: 540px;
+  background: #e9e9e9;
+  border: 1px solid #d7d7d7;
+  border-radius: 20px;
+  padding: 26px 22px 24px;
+}
+
+.presta-signup-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 500;
+  margin: 0 0 18px;
+  color: #212529;
+}
+
+.presta-signup-section {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #6366f1;
+}
+
+.presta-signup-form .form-control {
+  border-radius: 10px;
+  border-color: #bfbfbf;
+  background: #efefef;
+  min-height: 42px;
+}
+
+.presta-signup-form .form-control:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+  background: #ffffff;
+}
+
+.presta-signup-form textarea.form-control {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.presta-signup-submit {
+  width: 100%;
+  max-width: 390px;
+  border-radius: 8px;
+  border: 1px solid #34d399;
+  background: #34d399;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.presta-signup-submit:hover {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
 .account-section {
   padding: 12px 0 0;
 }
@@ -427,7 +483,6 @@ footer {
   font-size: 0.95rem;
 }
 
-/* Espace senior */
 .senior-shell {
   display: block;
 }
@@ -816,7 +871,6 @@ footer {
   color: #ffffff;
 }
 
-/* Responsive tweaks */
 @media (max-width: 768px) {
   .hero-section {
     padding-top: 16px;
@@ -832,6 +886,15 @@ footer {
 
   .auth-card {
     padding: 24px 18px 20px;
+  }
+
+  .presta-signup-card {
+    border-radius: 16px;
+    padding: 20px 14px 18px;
+  }
+
+  .presta-signup-title {
+    font-size: 1.6rem;
   }
 
   .tutorial-panel {

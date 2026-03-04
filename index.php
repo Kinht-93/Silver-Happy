@@ -1,9 +1,7 @@
 <?php
-// index.php
 include './include/header.php';
 include_once 'db.php';
 
-// Récupération des données (si base disponible), sinon données de secours
 $prestations = [];
 $events = [];
 $testimonials = [];
@@ -32,7 +30,6 @@ if (isset($pdo) && $pdo instanceof PDO) {
     }
 }
 
-// Données par défaut si la base est vide ou inaccessible
 if (empty($prestations)) {
     $prestations = [
         ['title' => 'Aide à domicile', 'description' => 'Accompagnement au quotidien pour les tâches de la vie courante.', 'price' => 29.90, 'category' => 'Service'],
@@ -63,7 +60,6 @@ if (empty($testimonials)) {
 }
 ?>
 
-<!-- Présentation / Hero -->
 <section id="presentation" class="hero-section mb-5">
     <div class="row align-items-center">
         <div class="col-md-7">
@@ -82,7 +78,6 @@ if (empty($testimonials)) {
     </div>
 </section>
 
-<!-- Points positifs -->
 <section class="mb-5" aria-label="Les points forts de Silver Happy">
     <div class="row text-center g-3">
         <div class="col-md-4">
@@ -109,7 +104,6 @@ if (empty($testimonials)) {
     </div>
 </section>
 
-<!-- Nos prestations -->
 <section id="prestations" class="mb-5">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <h2 class="section-title mb-0">Nos prestations</h2>
@@ -146,7 +140,6 @@ if (empty($testimonials)) {
     </div>
 </section>
 
-<!-- Prochains événements -->
 <section id="evenements" class="mb-5">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <h2 class="section-title mb-0">Prochains événements</h2>
@@ -174,7 +167,6 @@ if (empty($testimonials)) {
     </div>
 </section>
 
-<!-- Devenir prestataire -->
 <section class="callout-prestataire mb-5">
     <div class="row align-items-center">
         <div class="col-md-8 mb-3 mb-md-0">
@@ -187,7 +179,6 @@ if (empty($testimonials)) {
     </div>
 </section>
 
-<!-- Témoignages -->
 <section id="temoignages" class="mb-4">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <h2 class="section-title mb-0">Ils parlent de nous</h2>

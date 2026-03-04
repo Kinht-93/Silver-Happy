@@ -170,7 +170,7 @@ include './include/header.php';
             <button type="submit" class="btn btn-success w-100 mb-3 auth-submit">Créer mon compte</button>
 
             <div class="auth-links text-center">
-                <a href="#" class="d-block mb-1">Devenir partenaire</a>
+                <a href="signup_presta.php" class="d-block mb-1">Devenir partenaire</a>
                 <a href="login.php" class="auth-link-secondary">Déjà inscrit ?</a>
             </div>
         </form>
