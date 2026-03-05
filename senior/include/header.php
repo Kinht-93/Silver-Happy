@@ -91,7 +91,7 @@ $menuItems = [
                 <a href="<?php echo $basePath . $roleHome; ?>" class="btn btn-outline-primary">
                     <?php echo $userFirstName !== '' ? 'Bonjour ' . htmlspecialchars($firstName) : 'Espace senior'; ?>
                 </a>
-                <a href="<?php echo $basePath; ?>logout.php" class="btn btn-primary">Déconnexion</a>
+                <a href="<?php echo $basePath; ?>../logout.php" class="btn btn-primary">Déconnexion</a>
             </div>
         </div>
     </div>
