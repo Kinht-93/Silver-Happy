@@ -134,48 +134,29 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 // verifi jwt
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			jsonError(w, "Token manquant", http.StatusUnauthorized)
+	return func(response http.ResponseWriter, request *http.Request) {
+		token := request.Header.Get("X-Token")
+
+		if token == "" {
+			response.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintln(response, "Token required")
 			return
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		var userId int
+		queryError := db.QueryRow("SELECT id FROM users WHERE token = ?", token).Scan(&userId)
 
-		token, err := jwt.ParseWithClaims(tokenStr, &CustomClaims{},
-			func(t *jwt.Token) (interface{}, error) {
-				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("méthode de signature inattendue")
-				}
-				return jwtSecret, nil
-			},
-		)
-
-		if err != nil || !token.Valid {
-			jsonError(w, "Token invalide ou expiré", http.StatusUnauthorized)
+		if queryError != nil {
+			response.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintln(response, "Invalid token")
 			return
 		}
-		next(w, r)
+
+		next(response, request)
 	}
 }
 
 // admin
 func adminOnly(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-
-		token, _ := jwt.ParseWithClaims(tokenStr, &CustomClaims{},
-			func(t *jwt.Token) (interface{}, error) { return jwtSecret, nil },
-		)
-
-		claims, ok := token.Claims.(*CustomClaims)
-		if !ok || claims.Role != "admin" {
-			jsonError(w, "Accès réservé aux administrateurs", http.StatusForbidden)
-			return
-		}
-
-		next(w, r)
-	}
+	// test a mettre plus tard
 }
