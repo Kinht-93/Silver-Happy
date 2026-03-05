@@ -157,6 +157,6 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 // admin
-func adminOnly(next http.HandlerFunc) http.HandlerFunc {
-	// test a mettre plus tard
-}
+//func adminOnly(next http.HandlerFunc) http.HandlerFunc {
+// test a mettre plus tard
+//}

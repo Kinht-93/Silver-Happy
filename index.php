@@ -72,7 +72,7 @@ if (empty($testimonials)) {
         </div>
         <div class="col-md-5 text-center mt-4 mt-md-0">
             <div class="hero-illustration">
-                <img src="./img/zelda-legend-of-zelda.gif" alt="Illustration Silver Happy" class="img-fluid rounded-circle shadow-sm hero-image">
+                <img src="./img/logo.png" alt="Illustration Silver Happy" class="img-fluid rounded-circle shadow-sm hero-image">
             </div>
         </div>
     </div>
