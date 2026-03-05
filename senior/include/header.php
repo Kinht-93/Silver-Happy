@@ -88,22 +88,14 @@ $menuItems = [
             </ul>
 
             <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-open-tutorial">
-                    <i class="bi bi-question-circle"></i>
-                    <span class="d-none d-md-inline">Guide</span>
-                </button>
-                <span class="btn btn-outline-primary btn-sm disabled">
-                    <?php echo $firstName !== '' ? 'Bonjour ' . htmlspecialchars($firstName) : 'Espace senior'; ?>
-                </span>
-                <a href="../logout.php" class="btn btn-primary btn-sm">Déconnexion</a>
+                <a href="<?php echo $basePath . $roleHome; ?>" class="btn btn-outline-primary">
+                    <?php echo $userFirstName !== '' ? 'Bonjour ' . htmlspecialchars($firstName) : 'Espace senior'; ?>
+                </a>
+                <a href="<?php echo $basePath; ?>logout.php" class="btn btn-primary">Déconnexion</a>
             </div>
         </div>
     </div>
 </nav>
-
-<div id="tutorial-overlay" class="tutorial-overlay d-none">
-    <div class="tutorial-backdrop"></div>
-</div>
 
 <div id="tutorial-panel" class="tutorial-panel shadow-lg d-none">
     <div class="d-flex justify-content-between align-items-start mb-2">
