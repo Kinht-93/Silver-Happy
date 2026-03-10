@@ -13,7 +13,8 @@ func main() {
 	http.HandleFunc("POST /api/login", handleLogin)
 
 	// USERS
-	http.HandleFunc("GET /api/users", handleGetUsers)
+	http.HandleFunc("GET /api/users", authMiddleware(handleGetUsers))
+	http.HandleFunc("GET /api/users/active-count", handleGetActiveUsersCount)
 	http.HandleFunc("GET /api/users/{id}", authMiddleware(handleGetUser))
 	http.HandleFunc("POST /api/users", authMiddleware(handleCreateUser))
 	http.HandleFunc("PATCH /api/users/{id}", authMiddleware(handleUpdateUser))
@@ -61,6 +62,7 @@ func main() {
 	http.HandleFunc("GET /api/invoices", authMiddleware(handleGetInvoices))
 	http.HandleFunc("GET /api/invoices/{id}", authMiddleware(handleGetInvoice))
 	http.HandleFunc("POST /api/invoices", authMiddleware(handleCreateInvoice))
+
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal("Erreur démarrage serveur :", err)
 	}

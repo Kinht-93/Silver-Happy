@@ -62,13 +62,14 @@ type Contract struct {
 	ProviderID    string  `json:"id_provider"`
 }
 
-// SERVICE CATEGORIES & TYPES
+// SERVICE CATEGORIES
 type ServiceCategory struct {
 	ID          string `json:"id_service_category"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 }
 
+// SERVICE TYPES
 type ServiceType struct {
 	ID                    string  `json:"id_service_type"`
 	Name                  string  `json:"name"`
@@ -78,7 +79,7 @@ type ServiceType struct {
 	ServiceCategoryID     string  `json:"id_service_category"`
 }
 
-// SERVICE REQUESTS & QUOTES
+// SERVICE REQUESTS
 type ServiceRequest struct {
 	ID                  string    `json:"id_request"`
 	DesiredDate         string    `json:"desired_date"`
@@ -91,6 +92,7 @@ type ServiceRequest struct {
 	ServiceCategoryID   string    `json:"id_service_category"`
 }
 
+// QUOTES
 type Quote struct {
 	ID            string    `json:"id_quote"`
 	QuoteNumber   string    `json:"quote_number"`
@@ -135,6 +137,7 @@ type Event struct {
 	Price     float64 `json:"price"`
 }
 
+// EVENT REGISTRATIONS
 type EventRegistration struct {
 	ID               string    `json:"id_registration"`
 	RegistrationDate time.Time `json:"registration_date"`
@@ -197,4 +200,9 @@ type ErrorResponse struct {
 type TokenResponse struct {
 	Token string `json:"token"`
 	User  User   `json:"user"`
+}
+
+type SuccessResponse struct {
+	ID      interface{} `json:"id"`
+	Message string      `json:"message"`
 }

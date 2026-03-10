@@ -5,13 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
-)
 
-// Helper functions
-func getUUID() string {
-	return fmt.Sprintf("%d", len([]byte("uuid")))
-}
+	"golang.org/x/crypto/bcrypt"
+)
 
 func jsonError(w http.ResponseWriter, msg string, code int) {
 	w.Header().Set("Content-Type", "application/json")
@@ -19,11 +15,129 @@ func jsonError(w http.ResponseWriter, msg string, code int) {
 	json.NewEncoder(w).Encode(ErrorResponse{Error: msg})
 }
 
-// USERS
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(response http.ResponseWriter, request *http.Request) {
+		token := request.Header.Get("X-Token")
+
+		if token == "" {
+			response.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintln(response, "Token required")
+			return
+		}
+
+		if len(token) < 7 || token[:6] != "token_" {
+			response.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintln(response, "Invalid token")
+			return
+		}
+
+		next(response, request)
+	}
+}
+
+// SIGNUP
+func handleSignup(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "Impossible de lire la requête", http.StatusBadRequest)
+		return
+	}
+
+	var payload SignupPayload
+	if err := json.Unmarshal(body, &payload); err != nil {
+		jsonError(w, "JSON invalide", http.StatusBadRequest)
+		return
+	}
+
+	if payload.Email == "" || payload.Password == "" || payload.FirstName == "" || payload.LastName == "" {
+		jsonError(w, "Champs obligatoires manquants", http.StatusUnprocessableEntity)
+		return
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
+	if err != nil {
+		jsonError(w, "Erreur lors du hachage du mot de passe", http.StatusInternalServerError)
+		return
+	}
+
+	role := payload.Role
+	if role == "" {
+		role = "senior"
+	}
+
+	stmt, err := db.Prepare(`
+		INSERT INTO users (id_user, email, password, role, last_name, first_name, birth_date, created_at)
+		VALUES (UUID(), ?, ?, ?, ?, ?, ?, NOW())
+	`)
+	if err != nil {
+		jsonError(w, "Erreur interne", http.StatusInternalServerError)
+		return
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(payload.Email, string(hashed), role, payload.LastName, payload.FirstName, payload.BirthDate)
+	if err != nil {
+		jsonError(w, "Erreur lors de la création du compte", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
+}
+
+// LOGIN
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "Impossible de lire la requête", http.StatusBadRequest)
+		return
+	}
+
+	var payload LoginPayload
+	if err := json.Unmarshal(body, &payload); err != nil {
+		jsonError(w, "JSON invalide", http.StatusBadRequest)
+		return
+	}
+
+	var id string
+	var hashedPassword string
+	var email, role, firstName, lastName string
+	row := db.QueryRow("SELECT id_user, password, email, role, first_name, last_name FROM users WHERE email = ?", payload.Email)
+
+	if err := row.Scan(&id, &hashedPassword, &email, &role, &firstName, &lastName); err != nil {
+		jsonError(w, "Identifiants invalides", http.StatusUnauthorized)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(payload.Password)); err != nil {
+		jsonError(w, "Identifiants invalides", http.StatusUnauthorized)
+		return
+	}
+
+	token := "token_" + id
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"token": token,
+		"user": map[string]interface{}{
+			"id_user":    id,
+			"email":      email,
+			"role":       role,
+			"first_name": firstName,
+			"last_name":  lastName,
+		},
+	})
+}
+
+// USERS Tous
 func handleGetUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT id_user, email, role, last_name, first_name, phone, address, 
-		       city, postal_code, birth_date, active, verified_email, tutorial_seen, created_at 
+		city, postal_code, birth_date, active, verified_email, tutorial_seen, created_at 
 		FROM users
 	`)
 	if err != nil {
@@ -48,6 +162,7 @@ func handleGetUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
+// USERS un
 func handleGetUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -74,6 +189,22 @@ func handleGetUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(u)
 }
 
+// USERS count active
+func handleGetActiveUsersCount(w http.ResponseWriter, r *http.Request) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE active = 1").Scan(&count)
+	if err != nil {
+		jsonError(w, "Erreur lors du comptage des utilisateurs", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"count": count,
+	})
+}
+
+// USERS +
 func handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var u User
@@ -105,9 +236,10 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Utilisateur créé avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Utilisateur créé avec succès"})
 }
 
+// USERS change
 func handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -149,7 +281,12 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	args = append(args, id)
-	query := fmt.Sprintf("UPDATE users SET %s WHERE id_user = ?", strings.Join(updates, ", "))
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id_user = ?", updates[0])
+	if len(updates) > 1 {
+		for i := 1; i < len(updates); i++ {
+			query += ", " + updates[i]
+		}
+	}
 
 	_, err := db.Exec(query, args...)
 	if err != nil {
@@ -158,9 +295,10 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Utilisateur mis à jour"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Utilisateur mis à jour"})
 }
 
+// USERS -
 func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -183,7 +321,7 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// SENIORS
+// SENIORS tous
 func handleGetSeniors(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT id_senior, membership_number, subscription_date, emergency_contact_name,
@@ -209,6 +347,7 @@ func handleGetSeniors(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(seniors)
 }
 
+// SENIORS un
 func handleGetSenior(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	row := db.QueryRow(`
@@ -227,6 +366,7 @@ func handleGetSenior(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(s)
 }
 
+// SENIORS +
 func handleCreateSenior(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var s Senior
@@ -251,10 +391,10 @@ func handleCreateSenior(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Senior créé avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Senior créé avec succès"})
 }
 
-// SERVICE CATEGORIES
+// SERVICE CATEGORIES tous
 func handleGetServiceCategories(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`SELECT id_service_category, name, description FROM service_categories`)
 	if err != nil {
@@ -276,6 +416,7 @@ func handleGetServiceCategories(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(categories)
 }
 
+// SERVICE CATEGORIES un
 func handleGetServiceCategory(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	row := db.QueryRow(`SELECT id_service_category, name, description FROM service_categories WHERE id_service_category = ?`, id)
@@ -290,6 +431,7 @@ func handleGetServiceCategory(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(c)
 }
 
+// SERVICE CATEGORIES +
 func handleCreateServiceCategory(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var c ServiceCategory
@@ -312,10 +454,10 @@ func handleCreateServiceCategory(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Catégorie créée avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Catégorie créée avec succès"})
 }
 
-// SERVICE TYPES
+// SERVICE TYPES tous
 func handleGetServiceTypes(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT id_service_type, name, description, hourly_rate, certification_required, id_service_category
@@ -341,6 +483,7 @@ func handleGetServiceTypes(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(serviceTypes)
 }
 
+// SERVICE TYPES un
 func handleGetServiceType(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	row := db.QueryRow(`
@@ -359,6 +502,7 @@ func handleGetServiceType(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(st)
 }
 
+// SERVICE TYPES +
 func handleCreateServiceType(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var st ServiceType
@@ -381,10 +525,10 @@ func handleCreateServiceType(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Type de service créé avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Type de service créé avec succès"})
 }
 
-// SERVICE REQUESTS
+// SERVICE REQUESTS tous
 func handleGetServiceRequests(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT id_request, desired_date, start_time, estimated_duration, intervention_address,
@@ -411,6 +555,7 @@ func handleGetServiceRequests(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(requests)
 }
 
+// SERVICE REQUESTS un
 func handleGetServiceRequest(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	row := db.QueryRow(`
@@ -430,6 +575,7 @@ func handleGetServiceRequest(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(sr)
 }
 
+// SERVICE REQUESTS +
 func handleCreateServiceRequest(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var sr ServiceRequest
@@ -454,10 +600,10 @@ func handleCreateServiceRequest(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Demande créée avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Demande créée avec succès"})
 }
 
-// QUOTES
+// QUOTES tous
 func handleGetQuotes(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT id_quote, quote_number, amount_excl_tax, tax_rate, amount_incl_tax, status, created_at, id_request
@@ -483,6 +629,7 @@ func handleGetQuotes(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(quotes)
 }
 
+// QUOTES un
 func handleGetQuote(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	row := db.QueryRow(`
@@ -501,6 +648,7 @@ func handleGetQuote(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(q)
 }
 
+// QUOTES +
 func handleCreateQuote(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var q Quote
@@ -523,10 +671,10 @@ func handleCreateQuote(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Devis créé avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Devis créé avec succès"})
 }
 
-// EVENTS
+// EVENTS tous
 func handleGetEvents(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT id_event, title, event_type, start_date, end_date, max_places, price FROM events
@@ -550,6 +698,7 @@ func handleGetEvents(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(events)
 }
 
+// EVENTS un
 func handleGetEvent(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	row := db.QueryRow(`
@@ -566,6 +715,7 @@ func handleGetEvent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(e)
 }
 
+// EVENTS +
 func handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var e Event
@@ -588,10 +738,10 @@ func handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Événement créé avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Événement créé avec succès"})
 }
 
-// EVENT REGISTRATIONS
+// EVENT REGISTRATIONS tous
 func handleGetEventRegistrations(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT id_registration, registration_date, status, paid, id_user, id_event
@@ -616,6 +766,7 @@ func handleGetEventRegistrations(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(registrations)
 }
 
+// EVENT REGISTRATIONS +
 func handleCreateEventRegistration(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var er EventRegistration
@@ -638,10 +789,10 @@ func handleCreateEventRegistration(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Inscription créée avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Inscription créée avec succès"})
 }
 
-// MESSAGES
+// MESSAGES tous
 func handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	receiver := r.URL.Query().Get("receiver")
 	if receiver == "" {
@@ -671,6 +822,7 @@ func handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(messages)
 }
 
+// MESSAGES - SEND
 func handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var m Message
@@ -698,10 +850,10 @@ func handleSendMessage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Message envoyé avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Message envoyé avec succès"})
 }
 
-// INVOICES
+// INVOICES tous
 func handleGetInvoices(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT id_invoice, invoice_number, invoice_type, amount_excl_tax, tax_rate, amount_incl_tax,
@@ -728,6 +880,7 @@ func handleGetInvoices(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(invoices)
 }
 
+// INVOICES un
 func handleGetInvoice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	row := db.QueryRow(`
@@ -747,6 +900,7 @@ func handleGetInvoice(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(inv)
 }
 
+// INVOICES +
 func handleCreateInvoice(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var inv Invoice
@@ -771,5 +925,5 @@ func handleCreateInvoice(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Facture créée avec succès"})
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Facture créée avec succès"})
 }
