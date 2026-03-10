@@ -205,4 +205,37 @@ CREATE TABLE subscribed (
     FOREIGN KEY (id_subscription_type) REFERENCES subscription_types(id_subscription_type)
 );
 
+CREATE TABLE products (
+    id_product VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(100),
+    price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    stock INT NOT NULL DEFAULT 0,
+    sales INT NOT NULL DEFAULT 0,
+    status VARCHAR(50) NOT NULL DEFAULT 'En stock'
+);
+
+CREATE TABLE contents (
+    id_content VARCHAR(255) PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    category VARCHAR(100),
+    content_body TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'Brouillon',
+    created_at DATETIME NOT NULL,
+    views INT NOT NULL DEFAULT 0,
+    author_id VARCHAR(255),
+    FOREIGN KEY (author_id) REFERENCES users(id_user)
+);
+
+CREATE TABLE notifications (
+    id_notification VARCHAR(255) PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,
+    title VARCHAR(255),
+    message TEXT,
+    created_at DATETIME NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    id_user VARCHAR(255),
+    FOREIGN KEY (id_user) REFERENCES users(id_user)
+);
+
 INSERT INTO users (id_user,email,password,role,last_name,first_name,phone,address,city,postal_code,birth_date,active,verified_email,tutorial_seen,created_at) VALUES ('usr_admin_default','admin@silverhappy.fr','Admin123!','admin','Administrateur','Super',NULL,NULL,NULL,NULL,NULL,TRUE,TRUE,TRUE,NOW())ON DUPLICATE KEY UPDATE id_user = id_user;
