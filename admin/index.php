@@ -2,26 +2,55 @@
 require_once __DIR__ . '/../db.php';
 include './include/header-admin.php';
 
-$stats = [
-    'users' => $pdo->query("SELECT COUNT(*) FROM users WHERE active = 1")->fetchColumn(),
-    'prestations' => $pdo->query("SELECT COUNT(*) FROM completed_services WHERE status = 'Terminé'")->fetchColumn(),
-    'devis' => $pdo->query("SELECT COUNT(*) FROM quotes WHERE status = 'En attente'")->fetchColumn(),
-    'problemes' => 0
-];
+$message = '';
+$messageType = '';
+if (isset($_GET['success'])) {
+    if ($_GET['success'] === 'user_added') {
+        $message = 'Utilisateur ajouté avec succès ! Les statistiques ont été mises à jour.';
+        $messageType = 'success';
+    }
+}
 
-$transactions = $pdo->query("SELECT i.amount_incl_tax, i.invoice_type, i.issue_date, u.first_name, u.last_name 
-                             FROM invoices i 
-                             JOIN quotes q ON i.id_quote = q.id_quote
-                             JOIN service_requests sr ON q.id_request = sr.id_request
-                             JOIN users u ON sr.id_user = u.id_user
-                             ORDER BY i.issue_date DESC LIMIT 3")->fetchAll();
+try {
+    $stats = [
+        'users_actifs' => (int)$pdo->query("SELECT COUNT(*) FROM users WHERE active = TRUE")->fetchColumn(),
+        'prestations' => (int)$pdo->query("SELECT COUNT(*) FROM completed_services WHERE status = 'Terminé'")->fetchColumn(),
+        'devis' => (int)$pdo->query("SELECT COUNT(*) FROM quotes WHERE status = 'En attente'")->fetchColumn(),
+        'problemes' => 0
+    ];
 
-$events = $pdo->query("SELECT title, start_date, event_type FROM events WHERE start_date >= CURDATE() ORDER BY start_date ASC LIMIT 5")->fetchAll();
+    $transactions = $pdo->query("
+        SELECT i.amount_incl_tax, i.invoice_type, i.issue_date, u.first_name, u.last_name 
+        FROM invoices i 
+        JOIN quotes q ON i.id_quote = q.id_quote
+        JOIN service_requests sr ON q.id_request = sr.id_request
+        JOIN users u ON sr.id_user = u.id_user
+        ORDER BY i.issue_date DESC LIMIT 3
+    ")->fetchAll();
 
-$pending_providers = $pdo->query("SELECT COUNT(*) FROM providers WHERE validation_status = 'En attente'")->fetchColumn();
-$pending_requests = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE status = 'En attente'")->fetchColumn();
+    $events = $pdo->query("
+        SELECT title, start_date, event_type FROM events 
+        WHERE start_date >= CURDATE() 
+        ORDER BY start_date ASC LIMIT 5
+    ")->fetchAll();
 
+    $pending_providers = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'prestataire' AND validation_status = 'En attente'")->fetchColumn();
+    $pending_requests = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE status = 'En attente'")->fetchColumn();
+} catch (PDOException $e) {
+    $stats = ['users_actifs' => 0, 'prestations' => 0, 'devis' => 0, 'problemes' => 0];
+    $transactions = [];
+    $events = [];
+    $pending_providers = 0;
+    $pending_requests = 0;
+}
 ?>
+
+<?php if ($message): ?>
+<div class="alert alert-<?= $messageType ?> alert-dismissible fade show" role="alert">
+    <?= htmlspecialchars($message) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+<?php endif; ?>
 
 <div class="page-title">Tableau de bord</div>
 
@@ -29,25 +58,25 @@ $pending_requests = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE sta
     <div class="col-md-3 col-sm-6">
         <div class="stat-card primary">
             <div class="stat-label">Utilisateurs actifs</div>
-            <div class="stat-value"><?= number_format($stats['users']) ?></div>
+            <div class="stat-value"><?= (int)$stats['users_actifs'] ?></div>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="stat-card success">
             <div class="stat-label">Prestations réalisées</div>
-            <div class="stat-value"><?= number_format($stats['prestations']) ?></div>
+            <div class="stat-value"><?= (int)$stats['prestations'] ?></div>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="stat-card warning">
             <div class="stat-label">Devis en attente</div>
-            <div class="stat-value"><?= number_format($stats['devis']) ?></div>
+            <div class="stat-value"><?= (int)$stats['devis'] ?></div>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="stat-card danger">
             <div class="stat-label">Problèmes signalés</div>
-            <div class="stat-value"><?= number_format($stats['problemes']) ?></div>
+            <div class="stat-value"><?= (int)$stats['problemes'] ?></div>
         </div>
     </div>
 </div>
@@ -75,7 +104,7 @@ $pending_requests = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE sta
                                     <div class="fw-semibold"><?= htmlspecialchars($tx['invoice_type']) ?></div>
                                     <small class="text-muted"><?= htmlspecialchars($tx['first_name'] . ' ' . $tx['last_name']) ?> - <?= date('d/m/Y', strtotime($tx['issue_date'])) ?></small>
                                 </div>
-                                <span class="badge bg-success">+<?= number_format($tx['amount_incl_tax'], 2) ?>€</span>
+                                <span class="badge bg-success">+<?= number_format((float)$tx['amount_incl_tax'], 2) ?>€</span>
                             </div>
                         </div>
                     <?php endforeach; ?>
