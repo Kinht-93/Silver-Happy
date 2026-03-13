@@ -5,7 +5,7 @@ CREATE TABLE users (
     id_user VARCHAR(255) PRIMARY KEY,
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL,
+    role ENUM('senior','prestataire','admin') NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
@@ -16,25 +16,24 @@ CREATE TABLE users (
     active BOOLEAN DEFAULT TRUE,
     verified_email BOOLEAN DEFAULT FALSE,
     tutorial_seen BOOLEAN DEFAULT FALSE,
-    created_at DATETIME NOT NULL
-);
-
-CREATE TABLE seniors (
-    id_senior VARCHAR(255) PRIMARY KEY,
-    membership_number VARCHAR(20) NOT NULL UNIQUE,
-    subscription_date DATE NOT NULL,
+    created_at DATETIME NOT NULL,
+    membership_number VARCHAR(20) UNIQUE,
+    subscription_date DATE,
     emergency_contact_name VARCHAR(100),
     emergency_contact_phone VARCHAR(20),
-    mobility VARCHAR(30)
-);
-
-CREATE TABLE providers (
-    id_provider VARCHAR(255) PRIMARY KEY,
-    siret_number VARCHAR(14) NOT NULL UNIQUE,
-    company_name VARCHAR(100) NOT NULL UNIQUE,
-    validation_status VARCHAR(20) NOT NULL,
+    mobility VARCHAR(30),
+    siret_number VARCHAR(14) UNIQUE,
+    company_name VARCHAR(100) UNIQUE,
+    validation_status VARCHAR(20),
     average_rating DECIMAL(2,1),
-    commission_rate DECIMAL(5,2)
+    commission_rate DECIMAL(5,2),
+    zone VARCHAR(255),
+    iban VARCHAR(64),
+    provider_description TEXT,
+    skills_text TEXT,
+    provider_updated_at DATETIME,
+    INDEX idx_users_role (role),
+    INDEX idx_users_validation_status (validation_status)
 );
 
 CREATE TABLE subscription_types (
@@ -53,8 +52,8 @@ CREATE TABLE contracts (
     payment_method VARCHAR(20) NOT NULL,
     status VARCHAR(20) NOT NULL,
     auto_renew BOOLEAN DEFAULT FALSE,
-    id_provider VARCHAR(255) NOT NULL,
-    FOREIGN KEY (id_provider) REFERENCES providers(id_provider)
+    id_user VARCHAR(255) NOT NULL,
+    FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
 CREATE TABLE service_categories (
@@ -118,8 +117,8 @@ CREATE TABLE reviews (
     comment TEXT,
     review_date DATETIME NOT NULL,
     visible BOOLEAN DEFAULT TRUE,
-    id_provider VARCHAR(255) NOT NULL,
-    FOREIGN KEY (id_provider) REFERENCES providers(id_provider)
+    id_user VARCHAR(255) NOT NULL,
+    FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
 CREATE TABLE events (
@@ -173,22 +172,6 @@ CREATE TABLE availability (
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
-CREATE TABLE is_senior (
-    id_user VARCHAR(255),
-    id_senior VARCHAR(255),
-    PRIMARY KEY (id_user, id_senior),
-    FOREIGN KEY (id_user) REFERENCES users(id_user),
-    FOREIGN KEY (id_senior) REFERENCES seniors(id_senior)
-);
-
-CREATE TABLE is_provider (
-    id_user VARCHAR(255),
-    id_provider VARCHAR(255),
-    PRIMARY KEY (id_user, id_provider),
-    FOREIGN KEY (id_user) REFERENCES users(id_user),
-    FOREIGN KEY (id_provider) REFERENCES providers(id_provider)
-);
-
 CREATE TABLE show_type (
     id_service_type VARCHAR(255),
     id_request VARCHAR(255),
@@ -215,6 +198,27 @@ CREATE TABLE products (
     status VARCHAR(50) NOT NULL DEFAULT 'En stock'
 );
 
+CREATE TABLE orders (
+    id_order VARCHAR(255) PRIMARY KEY,
+    order_number VARCHAR(50) NOT NULL UNIQUE,
+    id_user VARCHAR(255) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    order_date DATETIME NOT NULL,
+    delivery_method VARCHAR(100) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'En attente',
+    FOREIGN KEY (id_user) REFERENCES users(id_user)
+);
+
+CREATE TABLE order_items (
+    id_order VARCHAR(255) NOT NULL,
+    id_product VARCHAR(255) NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    unit_price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    PRIMARY KEY (id_order, id_product),
+    FOREIGN KEY (id_order) REFERENCES orders(id_order),
+    FOREIGN KEY (id_product) REFERENCES products(id_product)
+);
+
 CREATE TABLE contents (
     id_content VARCHAR(255) PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -238,4 +242,62 @@ CREATE TABLE notifications (
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
+CREATE TABLE provider_availabilities (
+    id_availability INT AUTO_INCREMENT PRIMARY KEY,
+    id_user VARCHAR(255) NOT NULL,
+    available_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (id_user) REFERENCES users(id_user)
+);
+
+CREATE TABLE provider_missions (
+    id_mission VARCHAR(255) PRIMARY KEY,
+    mission_title VARCHAR(255) NOT NULL,
+    mission_description TEXT,
+    mission_date DATE,
+    status VARCHAR(50) NOT NULL DEFAULT 'Proposee',
+    id_user VARCHAR(255),
+    accepted_at DATETIME,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (id_user) REFERENCES users(id_user)
+);
+
+CREATE TABLE provider_invoices (
+    id_invoice VARCHAR(255) PRIMARY KEY,
+    id_user VARCHAR(255) NOT NULL,
+    month_label VARCHAR(7) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    status VARCHAR(50) NOT NULL DEFAULT 'Brouillon',
+    generated_at DATETIME NOT NULL,
+    UNIQUE KEY uniq_provider_month (id_user, month_label),
+    FOREIGN KEY (id_user) REFERENCES users(id_user)
+);
+
+CREATE TABLE provider_payments (
+    id_payment VARCHAR(255) PRIMARY KEY,
+    id_invoice VARCHAR(255) NOT NULL,
+    id_user VARCHAR(255) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    paid_at DATETIME,
+    status VARCHAR(50) NOT NULL DEFAULT 'En attente',
+    FOREIGN KEY (id_invoice) REFERENCES provider_invoices(id_invoice),
+    FOREIGN KEY (id_user) REFERENCES users(id_user)
+);
+
 INSERT INTO users (id_user,email,password,role,last_name,first_name,phone,address,city,postal_code,birth_date,active,verified_email,tutorial_seen,created_at) VALUES ('usr_admin_default','admin@silverhappy.fr','Admin123!','admin','Administrateur','Super',NULL,NULL,NULL,NULL,NULL,TRUE,TRUE,TRUE,NOW())ON DUPLICATE KEY UPDATE id_user = id_user;
+
+INSERT INTO users (
+    id_user,email,password,role,last_name,first_name,phone,address,city,postal_code,birth_date,
+    active,verified_email,tutorial_seen,created_at,
+    siret_number,company_name,validation_status,average_rating,commission_rate,zone,iban,provider_description,skills_text,provider_updated_at
+) VALUES (
+    'usr_presta_default','prestataire@silverhappy.fr','Azerty123!','prestataire','Martin','Sophie','0600000001',NULL,NULL,NULL,NULL,
+    TRUE,TRUE,TRUE,NOW(),
+    '12345678901234','Aide & Compagnie','Valide',4.8,12.50,'Lyon et environs','FR7630006000011234567890189',
+    'Prestataire polyvalente pour accompagnement, courses et aide quotidienne.',
+    'Aide a domicile, courses, compagnie, accompagnement rendez-vous',
+    NOW()
+) ON DUPLICATE KEY UPDATE id_user = id_user;
