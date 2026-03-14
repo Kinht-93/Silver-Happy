@@ -3,52 +3,6 @@ session_start();
 require_once __DIR__ . '/../db.php';
 include './include/header-admin.php';
 
-<<<<<<< HEAD
-$token = $_SESSION['user']['token'];
-
-
-// userscount
-
-
-$options = [
-    "http" => [
-        "method" => "GET",
-        "header" => "X-Token: " . $token . "\r\n",
-        "ignore_errors" => true
-    ]
-];
-
-$context = stream_context_create($options);
-
-$usercount = file_get_contents("http://localhost:8080/api/users/active-count", false, $context);
-$data = json_decode($usercount, true);
-$usercount = $data["count"] ?? 0;
-
-
-// DEVIS /QUOTES
-
-$options = [
-    "http" => [
-        "method" => "GET",
-        "header" => "X-Token: " . $token . "\r\n",
-        "ignore_errors" => true
-    ]
-];
-
-$context = stream_context_create($options);
-
-$servicecount = file_get_contents("http://localhost:8080/api/quotes/count", false, $context);
-$data = json_decode($servicecount, true);
-$servicecount = $data["count"] ?? 0;
-
-
-$stats = [
-    'users' => $usercount,
-    'prestations' => $pdo->query("SELECT COUNT(*) FROM completed_services WHERE status = 'Terminé'")->fetchColumn(),
-    'devis' => $servicecount,
-    'problemes' => 0
-];
-=======
 $message = '';
 $messageType = '';
 if (isset($_GET['success'])) {
@@ -57,7 +11,6 @@ if (isset($_GET['success'])) {
         $messageType = 'success';
     }
 }
->>>>>>> 13b8014f7bdeb8e2477fd8bbfedf0043a64f313a
 
 try {
     $stats = [
