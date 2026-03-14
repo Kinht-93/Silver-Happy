@@ -14,7 +14,7 @@ func main() {
 
 	// USERS
 	http.HandleFunc("GET /api/users", authMiddleware(handleGetUsers))
-	http.HandleFunc("GET /api/users/active-count", handleGetActiveUsersCount)
+	http.HandleFunc("GET /api/users/active-count", authMiddleware(handleGetActiveUsersCount))
 	http.HandleFunc("GET /api/users/{id}", authMiddleware(handleGetUser))
 	http.HandleFunc("POST /api/users", authMiddleware(handleCreateUser))
 	http.HandleFunc("PATCH /api/users/{id}", authMiddleware(handleUpdateUser))
@@ -43,6 +43,7 @@ func main() {
 	// QUOTES
 	http.HandleFunc("GET /api/quotes", authMiddleware(handleGetQuotes))
 	http.HandleFunc("GET /api/quotes/{id}", authMiddleware(handleGetQuote))
+	http.HandleFunc("GET /api/quotes/count", authMiddleware(handleGetQuoteCount))
 	http.HandleFunc("POST /api/quotes", authMiddleware(handleCreateQuote))
 
 	// EVENTS
