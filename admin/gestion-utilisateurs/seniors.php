@@ -10,24 +10,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'create') {
             $id = uniqid('usr_');
             $password = password_hash('default123', PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO users (id_user, first_name, last_name, email, role, birth_date, active, created_at, password) VALUES (?, ?, ?, ?, 'senior', ?, 1, NOW(), ?)");
+            $stmt = $pdo->prepare("INSERT INTO users (id_user, first_name, last_name, email, role, active, created_at, password) VALUES (?, ?, ?, ?, 'senior', 1, NOW(), ?)");
             $stmt->execute([
                 $id,
                 $_POST['first_name'],
                 $_POST['last_name'],
                 $_POST['email'],
-                $_POST['birth_date'] ?: null,
                 $password
             ]);
             $message = "Senior ajouté avec succès.";
             $messageType = "success";
         } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=?, birth_date=? WHERE id_user=?");
+            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=? WHERE id_user=?");
             $stmt->execute([
                 $_POST['first_name'],
                 $_POST['last_name'],
                 $_POST['email'],
-                $_POST['birth_date'] ?: null,
                 $_POST['id']
             ]);
             $message = "Senior modifié avec succès.";
@@ -45,22 +43,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $query = "
-    SELECT u.id_user, u.last_name, u.first_name, u.email, u.birth_date, u.active, u.created_at, 
-           st.name as subscription_name
+    SELECT u.id_user, u.last_name, u.first_name, u.email, u.active, u.created_at
     FROM users u
-    LEFT JOIN subscribed sub ON u.id_user = sub.id_user
-    LEFT JOIN subscription_types st ON sub.id_subscription_type = st.id_subscription_type
     WHERE u.role = 'senior'
     ORDER BY u.created_at DESC
 ";
 $seniors = $pdo->query($query)->fetchAll();
-
-function getAge($birth_date) {
-    if (!$birth_date) return 'N/A';
-    $from = new DateTime($birth_date);
-    $to = new DateTime('today');
-    return $from->diff($to)->y . ' ans';
-}
 ?>
 
 <?php if ($message): ?>
@@ -95,8 +83,6 @@ function getAge($birth_date) {
                 <tr>
                     <th>Nom</th>
                     <th>Email</th>
-                    <th>Âge</th>
-                    <th>Statut abonnement</th>
                     <th>Statut</th>
                     <th>Date inscription</th>
                     <th>Actions</th>
@@ -104,20 +90,12 @@ function getAge($birth_date) {
             </thead>
             <tbody>
                 <?php if (empty($seniors)): ?>
-                    <tr><td colspan="7" class="text-center">Aucun senior trouvé.</td></tr>
+                    <tr><td colspan="5" class="text-center">Aucun senior trouvé.</td></tr>
                 <?php else: ?>
                     <?php foreach ($seniors as $senior): ?>
                         <tr>
                             <td><?= htmlspecialchars($senior['first_name'] . ' ' . $senior['last_name']) ?></td>
                             <td><?= htmlspecialchars($senior['email']) ?></td>
-                            <td><?= getAge($senior['birth_date']) ?></td>
-                            <td>
-                                <?php if ($senior['subscription_name']): ?>
-                                    <span class="badge bg-success"><?= htmlspecialchars($senior['subscription_name']) ?></span>
-                                <?php else: ?>
-                                    <span class="badge bg-secondary">Aucun</span>
-                                <?php endif; ?>
-                            </td>
                             <td>
                                 <?php if ($senior['active']): ?>
                                     <span class="badge bg-success">Actif</span>
@@ -166,10 +144,6 @@ function getAge($birth_date) {
                         <label for="seniorEmail" class="form-label">Email *</label>
                         <input type="email" class="form-control" id="seniorEmail" name="email" required>
                     </div>
-                    <div class="mb-3">
-                        <label for="seniorBirthDate" class="form-label">Date de naissance</label>
-                        <input type="date" class="form-control" id="seniorBirthDate" name="birth_date">
-                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -202,10 +176,6 @@ function getAge($birth_date) {
                     <div class="mb-3">
                         <label for="editSeniorEmail" class="form-label">Email *</label>
                         <input type="email" class="form-control" id="editSeniorEmail" name="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editSeniorBirthDate" class="form-label">Date de naissance</label>
-                        <input type="date" class="form-control" id="editSeniorBirthDate" name="birth_date">
                     </div>
                 </form>
             </div>
@@ -246,11 +216,9 @@ function loadSeniorData(btn) {
 
 function viewSenior(btn) {
     const user = JSON.parse(btn.getAttribute('data-user'));
-    const age = calculateAge(user.birth_date);
     let html = `
         <p><strong>Nom:</strong> ${user.first_name} ${user.last_name}</p>
         <p><strong>Email:</strong> ${user.email}</p>
-        <p><strong>Âge:</strong> ${age || 'Non renseigné'}</p>
         <p><strong>Statut:</strong> ${user.active ? 'Actif' : 'Inactif'}</p>
         <p><strong>Date d'inscription:</strong> ${new Date(user.created_at).toLocaleDateString('fr-FR')}</p>
     `;
@@ -258,8 +226,14 @@ function viewSenior(btn) {
     openModal('modalViewSenior');
 }
 
-function calculateAge(birthDate) {
-    if (!birthDate) return null;
+function loadSeniorData(btn) {
+    const user = JSON.parse(btn.getAttribute('data-user'));
+    document.getElementById('editSeniorId').value = user.id_user;
+    document.getElementById('editSeniorFirstName').value = user.first_name;
+    document.getElementById('editSeniorLastName').value = user.last_name;
+    document.getElementById('editSeniorEmail').value = user.email;
+    openModal('modalEditSenior');
+}
     const today = new Date();
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();

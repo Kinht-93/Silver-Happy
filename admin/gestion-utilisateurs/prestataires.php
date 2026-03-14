@@ -4,57 +4,40 @@ include '../include/header-admin.php';
 $message = '';
 $messageType = '';
 
+if (!isset($pdo)) {
+    die('Erreur: Connexion à la base de données non disponible');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     try {
         if ($action === 'create') {
             $pdo->beginTransaction();
             $id_user = uniqid('usr_');
-            $id_provider = uniqid('prov_');
             $password = password_hash('default123', PASSWORD_DEFAULT);
             $siret = substr(md5(uniqid()), 0, 14);
             
-            $stmt = $pdo->prepare("INSERT INTO users (id_user, first_name, last_name, email, role, phone, active, created_at, password) VALUES (?, ?, ?, ?, 'provider', ?, 1, NOW(), ?)");
-            $stmt->execute([$id_user, $_POST['first_name'], $_POST['last_name'], $_POST['email'], $_POST['phone'] ?: null, $password]);
-            
-            $stmt2 = $pdo->prepare("INSERT INTO providers (id_provider, siret_number, company_name, validation_status) VALUES (?, ?, ?, 'En attente')");
+            $stmt = $pdo->prepare("INSERT INTO users (id_user, first_name, last_name, email, role, phone, active, created_at, password, siret_number, company_name, validation_status) VALUES (?, ?, ?, ?, 'prestataire', ?, 1, NOW(), ?, ?, ?, 'En attente')");
             $companyName = !empty($_POST['company_name']) ? $_POST['company_name'] : 'Entreprise ' . substr($id_user, 4, 6);
-            $stmt2->execute([$id_provider, $siret, $companyName]);
-            
-            $stmt3 = $pdo->prepare("INSERT INTO is_provider (id_user, id_provider) VALUES (?, ?)");
-            $stmt3->execute([$id_user, $id_provider]);
+            $stmt->execute([$id_user, $_POST['first_name'], $_POST['last_name'], $_POST['email'], $_POST['phone'] ?: null, $password, $siret, $companyName]);
             
             $pdo->commit();
             $message = "Prestataire ajouté avec succès.";
             $messageType = "success";
         } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=?, phone=? WHERE id_user=?");
+            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=?, phone=?, validation_status=? WHERE id_user=?");
             $stmt->execute([
                 $_POST['first_name'],
                 $_POST['last_name'],
                 $_POST['email'],
                 $_POST['phone'] ?: null,
+                $_POST['validation_status'] ?? 'En attente',
                 $_POST['id']
             ]);
             $message = "Prestataire modifié avec succès.";
             $messageType = "success";
         } elseif ($action === 'delete') {
-            $stmtFetch = $pdo->prepare("SELECT id_provider FROM is_provider WHERE id_user=?");
-            $stmtFetch->execute([$_POST['id']]);
-            $provId = $stmtFetch->fetchColumn();
-            
-            $pdo->beginTransaction();
-            if ($provId) {
-                $pdo->prepare("DELETE FROM is_provider WHERE id_user=?")->execute([$_POST['id']]);
-                $pdo->prepare("DELETE FROM users WHERE id_user=?")->execute([$_POST['id']]);
-                try {
-                    $pdo->prepare("DELETE FROM providers WHERE id_provider=?")->execute([$provId]);
-                } catch(PDOException $e) {
-                }
-            } else {
-                $pdo->prepare("DELETE FROM users WHERE id_user=?")->execute([$_POST['id']]);
-            }
-            $pdo->commit();
+            $pdo->prepare("DELETE FROM users WHERE id_user=?")->execute([$_POST['id']]);
             $message = "Prestataire supprimé.";
             $messageType = "success";
         }
@@ -67,16 +50,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$query = "
-    SELECT u.id_user, u.last_name, u.first_name, u.email, u.phone, u.active, 
-           p.company_name, p.validation_status,
-           (SELECT COUNT(*) FROM contracts c WHERE c.id_provider = p.id_provider) as prestations_count
-    FROM users u
-    INNER JOIN is_provider iprov ON u.id_user = iprov.id_user
-    INNER JOIN providers p ON iprov.id_provider = p.id_provider
-    ORDER BY u.created_at DESC
-";
-$prestataires = $pdo->query($query)->fetchAll();
+try {
+    $query = "
+        SELECT u.id_user, u.last_name, u.first_name, u.email, u.phone, u.active, 
+               u.company_name, u.siret_number, u.validation_status,
+               (SELECT COUNT(*) FROM contracts c WHERE c.id_user = u.id_user) as prestations_count
+        FROM users u
+        WHERE u.role = 'prestataire'
+        ORDER BY u.created_at DESC
+    ";
+    $prestataires = $pdo->query($query)->fetchAll();
+} catch (PDOException $e) {
+    $message = "Erreur de requête: " . $e->getMessage();
+    $messageType = "danger";
+    $prestataires = [];
+}
 ?>
 
 <?php if ($message): ?>
@@ -229,6 +217,22 @@ $prestataires = $pdo->query($query)->fetchAll();
                         <label for="editProviderPhone" class="form-label">Téléphone</label>
                         <input type="tel" class="form-control" id="editProviderPhone" name="phone">
                     </div>
+                    <div class="mb-3">
+                        <label for="editProviderCompany" class="form-label">Spécialité/Entreprise</label>
+                        <input type="text" class="form-control" id="editProviderCompany" name="company_name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editProviderSiret" class="form-label">SIRET</label>
+                        <input type="text" class="form-control" id="editProviderSiret" name="siret_number" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editProviderValidation" class="form-label">Statut de validation</label>
+                        <select class="form-select" id="editProviderValidation" name="validation_status">
+                            <option value="En attente">En attente</option>
+                            <option value="Validé">Validé</option>
+                            <option value="Rejeté">Rejeté</option>
+                        </select>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -252,6 +256,9 @@ function editProvider(btn) {
     document.getElementById('editProviderLastName').value = user.last_name;
     document.getElementById('editProviderEmail').value = user.email;
     document.getElementById('editProviderPhone').value = user.phone || '';
+    document.getElementById('editProviderCompany').value = user.company_name || '';
+    document.getElementById('editProviderSiret').value = user.siret_number || '';
+    document.getElementById('editProviderValidation').value = user.validation_status || 'En attente';
     openModal('modalEditProvider');
 }
 </script>

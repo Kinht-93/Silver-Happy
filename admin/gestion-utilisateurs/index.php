@@ -21,8 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['active'] ?? 1,
                 $password
             ]);
-            $message = "Utilisateur ajouté.";
-            $messageType = "success";
+
+            header("Location: ../index.php?success=user_added");
+            exit();
         } elseif ($action === 'update') {
             $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=?, role=?, phone=?, city=?, active=? WHERE id_user=?");
             $stmt->execute([
@@ -69,17 +70,15 @@ $utilisateurs = $pdo->query($query)->fetchAll();
 <div class="row mb-4">
     <div class="col">
         <div class="btn-group" role="group">
-            <a href="./index.php" class="btn btn-sm btn-primary active">Tous</a>
-            <a href="./seniors.php" class="btn btn-sm btn-outline-primary">Seniors</a>
-            <a href="./prestataires.php" class="btn btn-sm btn-outline-primary">Prestataires</a>
-            <a href="./employes.php" class="btn btn-sm btn-outline-primary">Employés</a>
-            <a href="./administrateurs.php" class="btn btn-sm btn-outline-primary">Administrateurs</a>
+            <button type="button" class="btn btn-sm btn-primary active" data-filter="all">Tous</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-filter="senior">Seniors</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-filter="prestataire">Prestataires</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-filter="admin">Administrateurs</button>
         </div>
     </div>
     <div class="col text-end">
         <button class="btn btn-sm btn-success" data-modal="modalAddUser">+ Ajouter un utilisateur</button>
     </div>
-
 </div>
 
 <div class="admin-card">
@@ -97,10 +96,10 @@ $utilisateurs = $pdo->query($query)->fetchAll();
             </thead>
             <tbody>
                 <?php if (empty($utilisateurs)): ?>
-                    <tr><td colspan="6" class="text-center">Aucun utilisateur trouvé.</td></tr>
+                    <tr class="no-users"><td colspan="6" class="text-center">Aucun utilisateur trouvé.</td></tr>
                 <?php else: ?>
                     <?php foreach ($utilisateurs as $user): ?>
-                        <tr>
+                        <tr data-role="<?= $user['role'] ?>">
                             <td><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></td>
                             <td><?= htmlspecialchars($user['email']) ?></td>
                             <td>
@@ -108,11 +107,9 @@ $utilisateurs = $pdo->query($query)->fetchAll();
                                 $role = strtolower($user['role']);
                                 if ($role === 'senior') {
                                     echo '<span class="badge bg-info">Senior</span>';
-                                } elseif (in_array($role, ['provider', 'prestataire'])) {
+                                } elseif ($role === 'prestataire') {
                                     echo '<span class="badge bg-warning text-dark">Prestataire</span>';
-                                } elseif (in_array($role, ['employee', 'employe'])) {
-                                    echo '<span class="badge bg-primary">Employé</span>';
-                                } elseif (in_array($role, ['admin', 'superadmin', 'manager', 'administrateur'])) {
+                                } elseif ($role === 'admin') {
                                     echo '<span class="badge bg-danger">Administrateur</span>';
                                 } else {
                                     echo '<span class="badge bg-secondary">' . htmlspecialchars(ucfirst($role)) . '</span>';
@@ -178,7 +175,6 @@ $utilisateurs = $pdo->query($query)->fetchAll();
                             <option value="">Sélectionner un type</option>
                             <option value="senior">Senior</option>
                             <option value="prestataire">Prestataire</option>
-                            <option value="employe">Employé</option>
                             <option value="admin">Administrateur</option>
                         </select>
                     </div>
@@ -236,7 +232,6 @@ $utilisateurs = $pdo->query($query)->fetchAll();
                             <option value="">Sélectionner un type</option>
                             <option value="senior">Senior</option>
                             <option value="prestataire">Prestataire</option>
-                            <option value="employe">Employé</option>
                             <option value="admin">Administrateur</option>
                         </select>
                     </div>
@@ -283,6 +278,33 @@ function loadUserData(btn) {
     document.getElementById('editUserActive').value = user.active ? '1' : '0';
     openModal('modalEditUser');
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('[data-filter]');
+    const tableRows = document.querySelectorAll('#usersTable tbody tr[data-role]');
+    
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            filterButtons.forEach(b => {
+                b.classList.remove('btn-primary', 'active');
+                b.classList.add('btn-outline-primary');
+            });
+            this.classList.add('btn-primary', 'active');
+            this.classList.remove('btn-outline-primary');
+            
+            const filter = this.getAttribute('data-filter');
+            tableRows.forEach(row => {
+                if (filter === 'all') {
+                    row.style.display = '';
+                } else {
+                    row.style.display = row.getAttribute('data-role') === filter ? '' : 'none';
+                }
+            });
+        });
+    });
+});
 </script>
 
 <?php
