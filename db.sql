@@ -46,14 +46,19 @@ CREATE TABLE subscription_types (
 
 CREATE TABLE contracts (
     id_contract VARCHAR(255) PRIMARY KEY,
+    id_user VARCHAR(255) NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     payment_method VARCHAR(20) NOT NULL,
     status VARCHAR(20) NOT NULL,
     auto_renew BOOLEAN DEFAULT FALSE,
-    id_user VARCHAR(255) NOT NULL,
-    FOREIGN KEY (id_user) REFERENCES users(id_user)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE,
+    INDEX idx_user (id_user),
+    INDEX idx_status (status),
+    INDEX idx_end_date (end_date)
 );
 
 CREATE TABLE service_categories (
@@ -285,6 +290,48 @@ CREATE TABLE provider_payments (
     status VARCHAR(50) NOT NULL DEFAULT 'En attente',
     FOREIGN KEY (id_invoice) REFERENCES provider_invoices(id_invoice),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
+);
+
+CREATE TABLE IF NOT EXISTS medical_appointments (
+    id_appointment VARCHAR(255) PRIMARY KEY,
+    id_user VARCHAR(255) NOT NULL,
+    appointment_date DATETIME NOT NULL,
+    appointment_type VARCHAR(100),
+    doctor_name VARCHAR(100),
+    medical_reason_anonymized VARCHAR(255) DEFAULT 'Visite médicale',
+    notes_internal TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'Programmé',
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME,
+    created_by VARCHAR(255),
+    INDEX idx_user (id_user),
+    INDEX idx_status (status),
+    INDEX idx_appointment_date (appointment_date),
+    CONSTRAINT fk_medical_appointments_user FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE,
+    CONSTRAINT fk_medical_appointments_creator FOREIGN KEY (created_by) REFERENCES users(id_user) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id_ticket VARCHAR(255) PRIMARY KEY,
+    ticket_number VARCHAR(20) NOT NULL UNIQUE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(100),
+    priority VARCHAR(50) NOT NULL DEFAULT 'Moyen',
+    status VARCHAR(50) NOT NULL DEFAULT 'Ouvert',
+    id_user VARCHAR(255) NOT NULL,
+    assigned_to VARCHAR(255),
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME,
+    resolved_at DATETIME,
+    resolution_notes TEXT,
+    INDEX idx_status (status),
+    INDEX idx_priority (priority),
+    INDEX idx_assigned (assigned_to),
+    INDEX idx_created_at (created_at),
+    INDEX idx_user (id_user),
+    CONSTRAINT fk_support_tickets_user FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE,
+    CONSTRAINT fk_support_tickets_assigned FOREIGN KEY (assigned_to) REFERENCES users(id_user) ON DELETE SET NULL
 );
 
 INSERT INTO users (id_user,email,password,role,last_name,first_name,phone,address,city,postal_code,birth_date,active,verified_email,tutorial_seen,created_at) VALUES ('usr_admin_default','admin@silverhappy.fr','Admin123!','admin','Administrateur','Super',NULL,NULL,NULL,NULL,NULL,TRUE,TRUE,TRUE,NOW())ON DUPLICATE KEY UPDATE id_user = id_user;

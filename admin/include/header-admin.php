@@ -66,6 +66,18 @@ $admin_url = $base_url . '/admin';
                     </li>
 
                     <li class="nav-item">
+                        <a class="nav-link" href="<?= $admin_url ?>/gestion-utilisateurs/contrats.php">
+                            <i class="bi bi-file-earmark-check"></i> Gestion contrats
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= $admin_url ?>/gestion-utilisateurs/rdv-medicaux.php">
+                            <i class="bi bi-hospital"></i> RDV médicaux
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
                         <a class="nav-link" href="<?= $admin_url ?>/gestion-prestations/">
                             <i class="bi bi-briefcase"></i> Gestion prestations
                         </a>
@@ -110,6 +122,12 @@ $admin_url = $base_url . '/admin';
                     <li class="nav-item">
                         <a class="nav-link" href="<?= $admin_url ?>/notifications.php">
                             <i class="bi bi-bell"></i> Notifications système
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= $admin_url ?>/gestion-problemes.php">
+                            <i class="bi bi-exclamation-circle"></i> Tickets & problèmes
                         </a>
                     </li>
 
