@@ -8,6 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     try {
         if ($action === 'create') {
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) as count FROM contracts WHERE id_user = ? AND status = 'Actif'");
+            $checkStmt->execute([$_POST['id_user']]);
+            $checkResult = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($checkResult['count'] > 0) {
+                throw new Exception("Cet utilisateur possède déjà un contrat actif. Un seul contrat par utilisateur autorisé.");
+            }
+            
             $id_contract = uniqid('ctr_');
             $stmt = $pdo->prepare("
                 INSERT INTO contracts (id_contract, id_user, start_date, end_date, amount, payment_method, status, auto_renew, created_at)
@@ -48,8 +56,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "Contrat supprimé.";
             $messageType = "success";
         }
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         $message = "Erreur: " . $e->getMessage();
+        $messageType = "danger";
+    } catch (PDOException $e) {
+        $message = "Erreur BD: " . $e->getMessage();
         $messageType = "danger";
     }
 }
@@ -82,7 +93,16 @@ try {
 }
 
 try {
-    $users = $pdo->query("SELECT id_user, first_name, last_name, role FROM users WHERE active = TRUE ORDER BY last_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $users = $pdo->query("
+        SELECT u.id_user, u.first_name, u.last_name, u.role
+        FROM users u
+        WHERE u.active = TRUE
+        AND NOT EXISTS (
+            SELECT 1 FROM contracts c 
+            WHERE c.id_user = u.id_user AND c.status = 'Actif'
+        )
+        ORDER BY u.last_name ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $users = [];
 }
