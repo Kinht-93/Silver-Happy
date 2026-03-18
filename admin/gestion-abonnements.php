@@ -40,6 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $message = "Formule d'abonnement mise à jour.";
             $messageType = "success";
+        } elseif ($action === 'delete') {
+            $stmt = $pdo->prepare("DELETE FROM subscription_types WHERE id_subscription_type = ?");
+            $stmt->execute([$_POST['id']]);
+            $message = "Formule d'abonnement supprimée avec succès.";
+            $messageType = "success";
         }
     } catch (PDOException $e) {
         $message = "Erreur: " . $e->getMessage();
@@ -53,16 +58,30 @@ $query = "
     FROM subscription_types st
     ORDER BY st.monthly_price ASC
 ";
-$subscriptions = $pdo->query($query)->fetchAll();
+try {
+    $subscriptions = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $message = "Erreur lors du chargement des abonnements: " . $e->getMessage();
+    $messageType = "danger";
+    $subscriptions = [];
+}
 
-$total_actifs = $pdo->query("SELECT COUNT(DISTINCT id_user) FROM subscribed")->fetchColumn();
+try {
+    $total_actifs = $pdo->query("SELECT COUNT(DISTINCT id_user) FROM subscribed")->fetchColumn();
+} catch (PDOException $e) {
+    $total_actifs = 0;
+}
 
 $query_revenus = "
     SELECT SUM(st.monthly_price)
     FROM subscribed s
     JOIN subscription_types st ON s.id_subscription_type = st.id_subscription_type
 ";
-$revenus = $pdo->query($query_revenus)->fetchColumn();
+try {
+    $revenus = $pdo->query($query_revenus)->fetchColumn();
+} catch (PDOException $e) {
+    $revenus = 0;
+}
 ?>
 
 <?php if ($message): ?>
@@ -152,6 +171,11 @@ $revenus = $pdo->query($query_revenus)->fetchColumn();
                                         >
                                             <i class="bi bi-pencil"></i>
                                         </button>
+                                        <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette formule ?');">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="id" value="<?= htmlspecialchars($sub['id_subscription_type']) ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -203,6 +227,11 @@ $revenus = $pdo->query($query_revenus)->fetchColumn();
                                         >
                                             <i class="bi bi-pencil"></i>
                                         </button>
+                                        <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette formule ?');">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="id" value="<?= htmlspecialchars($sub['id_subscription_type']) ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
