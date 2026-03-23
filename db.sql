@@ -33,7 +33,10 @@ CREATE TABLE users (
     skills_text TEXT,
     provider_updated_at DATETIME,
     INDEX idx_users_role (role),
-    INDEX idx_users_validation_status (validation_status)
+    INDEX idx_users_validation_status (validation_status),
+    INDEX idx_users_role_active_created (role, active, created_at),
+    INDEX idx_users_role_subscription (role, subscription_date),
+    INDEX idx_users_role_validation (role, validation_status)
 );
 
 CREATE TABLE subscription_types (
@@ -55,10 +58,8 @@ CREATE TABLE contracts (
     auto_renew BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE,
-    INDEX idx_user (id_user),
-    INDEX idx_status (status),
-    INDEX idx_end_date (end_date)
+    INDEX idx_contracts_user_status_dates (id_user, status, start_date, end_date),
+    FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE
 );
 
 CREATE TABLE service_categories (
@@ -74,6 +75,7 @@ CREATE TABLE service_types (
     hourly_rate DECIMAL(10,2) NOT NULL,
     certification_required BOOLEAN NOT NULL,
     id_service_category VARCHAR(255) NOT NULL,
+    INDEX idx_service_types_category_name (id_service_category, name),
     FOREIGN KEY (id_service_category) 
         REFERENCES service_categories(id_service_category)
 );
@@ -88,6 +90,10 @@ CREATE TABLE service_requests (
     created_at DATETIME NOT NULL,
     id_user VARCHAR(255) NOT NULL,
     id_service_category VARCHAR(255) NOT NULL,
+    INDEX idx_sr_user_date_time (id_user, desired_date, start_time),
+    INDEX idx_sr_user_status_created (id_user, status, created_at),
+    INDEX idx_sr_category_date (id_service_category, desired_date),
+    INDEX idx_sr_status_created (status, created_at),
     FOREIGN KEY (id_user) REFERENCES users(id_user),
     FOREIGN KEY (id_service_category) REFERENCES service_categories(id_service_category)
 );
@@ -101,6 +107,7 @@ CREATE TABLE quotes (
     status VARCHAR(20) NOT NULL,
     created_at DATETIME NOT NULL,
     id_request VARCHAR(255) NOT NULL UNIQUE,
+    INDEX idx_quotes_status_created (status, created_at),
     FOREIGN KEY (id_request) REFERENCES service_requests(id_request)
 );
 
@@ -113,6 +120,7 @@ CREATE TABLE completed_services (
     platform_commission DECIMAL(10,2) NOT NULL,
     status VARCHAR(20) NOT NULL,
     id_request VARCHAR(255) NOT NULL UNIQUE,
+    INDEX idx_completed_status_date (status, service_date),
     FOREIGN KEY (id_request) REFERENCES service_requests(id_request)
 );
 
@@ -123,6 +131,7 @@ CREATE TABLE reviews (
     review_date DATETIME NOT NULL,
     visible BOOLEAN DEFAULT TRUE,
     id_user VARCHAR(255) NOT NULL,
+    INDEX idx_reviews_user_date_visible (id_user, review_date, visible),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
@@ -133,7 +142,9 @@ CREATE TABLE events (
     start_date DATETIME NOT NULL,
     end_date DATETIME NOT NULL,
     max_places INT NOT NULL,
-    price DECIMAL(10,2) NOT NULL
+    price DECIMAL(10,2) NOT NULL,
+    INDEX idx_events_start_end (start_date, end_date),
+    INDEX idx_events_type_start (event_type, start_date)
 );
 
 CREATE TABLE event_registrations (
@@ -143,6 +154,9 @@ CREATE TABLE event_registrations (
     paid BOOLEAN DEFAULT FALSE,
     id_user VARCHAR(255) NOT NULL,
     id_event VARCHAR(255) NOT NULL,
+    UNIQUE KEY uniq_event_registration_user_event (id_user, id_event),
+    INDEX idx_er_user_status_date (id_user, status, registration_date),
+    INDEX idx_er_event_status (id_event, status),
     FOREIGN KEY (id_user) REFERENCES users(id_user),
     FOREIGN KEY (id_event) REFERENCES events(id_event)
 );
@@ -158,15 +172,22 @@ CREATE TABLE invoices (
     due_date DATE NOT NULL,
     status VARCHAR(20) NOT NULL,
     id_quote VARCHAR(255) NOT NULL UNIQUE,
+    INDEX idx_invoices_status_issue (status, issue_date),
+    INDEX idx_invoices_due_date (due_date),
     FOREIGN KEY (id_quote) REFERENCES quotes(id_quote)
 );
 
 CREATE TABLE messages (
     id_message VARCHAR(50) PRIMARY KEY,
     content TEXT,
-    sent_at DATETIME,
-    receiver VARCHAR(255),
-    sender VARCHAR(255)
+    sent_at DATETIME NOT NULL,
+    receiver VARCHAR(255) NOT NULL,
+    sender VARCHAR(255) NOT NULL,
+    INDEX idx_messages_sender_receiver_sent (sender, receiver, sent_at),
+    INDEX idx_messages_receiver_sender_sent (receiver, sender, sent_at),
+    INDEX idx_messages_sent_at (sent_at),
+    FOREIGN KEY (receiver) REFERENCES users(id_user),
+    FOREIGN KEY (sender) REFERENCES users(id_user)
 );
 
 CREATE TABLE availability (
@@ -174,6 +195,7 @@ CREATE TABLE availability (
     time_slot DATETIME,
     is_available BOOLEAN,
     id_user VARCHAR(255) NOT NULL,
+    INDEX idx_availability_user_time_status (id_user, time_slot, is_available),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
@@ -200,7 +222,9 @@ CREATE TABLE products (
     price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     stock INT NOT NULL DEFAULT 0,
     sales INT NOT NULL DEFAULT 0,
-    status VARCHAR(50) NOT NULL DEFAULT 'En stock'
+    status VARCHAR(50) NOT NULL DEFAULT 'En stock',
+    INDEX idx_products_category_status (category, status),
+    INDEX idx_products_stock (stock)
 );
 
 CREATE TABLE orders (
@@ -211,6 +235,8 @@ CREATE TABLE orders (
     order_date DATETIME NOT NULL,
     delivery_method VARCHAR(100) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'En attente',
+    INDEX idx_orders_user_date (id_user, order_date),
+    INDEX idx_orders_status_date (status, order_date),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
@@ -233,6 +259,8 @@ CREATE TABLE contents (
     created_at DATETIME NOT NULL,
     views INT NOT NULL DEFAULT 0,
     author_id VARCHAR(255),
+    INDEX idx_contents_status_created (status, created_at),
+    INDEX idx_contents_category_status (category, status),
     FOREIGN KEY (author_id) REFERENCES users(id_user)
 );
 
@@ -244,6 +272,7 @@ CREATE TABLE notifications (
     created_at DATETIME NOT NULL,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     id_user VARCHAR(255),
+    INDEX idx_notifications_user_read_created (id_user, is_read, created_at),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
@@ -255,6 +284,9 @@ CREATE TABLE provider_availabilities (
     end_time TIME NOT NULL,
     is_available BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,
+    UNIQUE KEY uniq_provider_slot (id_user, available_date, start_time, end_time),
+    INDEX idx_provider_avail_lookup (is_available, available_date, start_time),
+    INDEX idx_provider_avail_user_date (id_user, available_date),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
@@ -267,6 +299,8 @@ CREATE TABLE provider_missions (
     id_user VARCHAR(255),
     accepted_at DATETIME,
     created_at DATETIME NOT NULL,
+    INDEX idx_provider_missions_user_status_date (id_user, status, mission_date),
+    INDEX idx_provider_missions_status_created (status, created_at),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
@@ -278,6 +312,7 @@ CREATE TABLE provider_invoices (
     status VARCHAR(50) NOT NULL DEFAULT 'Brouillon',
     generated_at DATETIME NOT NULL,
     UNIQUE KEY uniq_provider_month (id_user, month_label),
+    INDEX idx_provider_invoices_status_generated (status, generated_at),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
@@ -288,7 +323,20 @@ CREATE TABLE provider_payments (
     amount DECIMAL(10,2) NOT NULL,
     paid_at DATETIME,
     status VARCHAR(50) NOT NULL DEFAULT 'En attente',
+    INDEX idx_provider_payments_user_status_paid (id_user, status, paid_at),
+    INDEX idx_provider_payments_invoice_status (id_invoice, status),
     FOREIGN KEY (id_invoice) REFERENCES provider_invoices(id_invoice),
+    FOREIGN KEY (id_user) REFERENCES users(id_user)
+);
+
+CREATE TABLE senior_settings (
+    id_user VARCHAR(255) PRIMARY KEY,
+    language VARCHAR(10) NOT NULL DEFAULT 'fr',
+    font_size VARCHAR(30) NOT NULL DEFAULT 'Normale',
+    email_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+    emergency_relation VARCHAR(120) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    INDEX idx_senior_settings_updated_at (updated_at),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
@@ -298,15 +346,15 @@ CREATE TABLE IF NOT EXISTS medical_appointments (
     appointment_date DATETIME NOT NULL,
     appointment_type VARCHAR(100),
     doctor_name VARCHAR(100),
-    medical_reason_anonymized VARCHAR(255) DEFAULT 'Visite médicale',
+    medical_reason_anonymized VARCHAR(255) DEFAULT 'Visite medicale',
     notes_internal TEXT,
-    status VARCHAR(50) NOT NULL DEFAULT 'Programmé',
+    status VARCHAR(50) NOT NULL DEFAULT 'Programme',
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
     created_by VARCHAR(255),
-    INDEX idx_user (id_user),
-    INDEX idx_status (status),
-    INDEX idx_appointment_date (appointment_date),
+    INDEX idx_medical_appointments_user (id_user),
+    INDEX idx_medical_appointments_status (status),
+    INDEX idx_medical_appointments_date (appointment_date),
     CONSTRAINT fk_medical_appointments_user FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE,
     CONSTRAINT fk_medical_appointments_creator FOREIGN KEY (created_by) REFERENCES users(id_user) ON DELETE SET NULL
 );
@@ -325,11 +373,11 @@ CREATE TABLE IF NOT EXISTS support_tickets (
     updated_at DATETIME,
     resolved_at DATETIME,
     resolution_notes TEXT,
-    INDEX idx_status (status),
-    INDEX idx_priority (priority),
-    INDEX idx_assigned (assigned_to),
-    INDEX idx_created_at (created_at),
-    INDEX idx_user (id_user),
+    INDEX idx_support_tickets_status (status),
+    INDEX idx_support_tickets_priority (priority),
+    INDEX idx_support_tickets_assigned (assigned_to),
+    INDEX idx_support_tickets_created_at (created_at),
+    INDEX idx_support_tickets_user (id_user),
     CONSTRAINT fk_support_tickets_user FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE,
     CONSTRAINT fk_support_tickets_assigned FOREIGN KEY (assigned_to) REFERENCES users(id_user) ON DELETE SET NULL
 );
