@@ -1,5 +1,73 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+include_once '../db.php';
+
 $seniorCurrent = 'prestation';
+$serviceCategories = [];
+$loadError = '';
+
+$defaultServiceCategories = [
+    ['id_service_category' => 'cat_menage', 'name' => 'Menage', 'description' => 'Aide menagere reguliere ou ponctuelle.'],
+    ['id_service_category' => 'cat_assistance', 'name' => 'Assistance', 'description' => 'Aide quotidienne et accompagnement a domicile.'],
+    ['id_service_category' => 'cat_transport', 'name' => 'Transport', 'description' => 'Accompagnement pour deplacements et rendez-vous.'],
+    ['id_service_category' => 'cat_informatique', 'name' => 'Informatique', 'description' => 'Aide pour ordinateur, smartphone et internet.'],
+    ['id_service_category' => 'cat_sante', 'name' => 'Sante', 'description' => 'Accompagnement pour besoins lies a la sante.'],
+    ['id_service_category' => 'cat_courses', 'name' => 'Courses', 'description' => 'Aide pour les courses et petites commissions.'],
+];
+
+if ($pdo instanceof PDO) {
+    try {
+        $serviceMap = [];
+        foreach ($defaultServiceCategories as $category) {
+            $serviceMap[strtolower((string)$category['name'])] = $category;
+        }
+
+        $categoriesStmt = $pdo->query(
+            "SELECT id_service_category, name, description
+             FROM service_categories
+             WHERE id_service_category <> 'cat_rdv_prestataire'
+             ORDER BY name ASC"
+        );
+        $dbCategories = $categoriesStmt ? $categoriesStmt->fetchAll() : [];
+
+        foreach ($dbCategories as $dbCategory) {
+            $dbName = (string)($dbCategory['name'] ?? '');
+            if ($dbName === '') {
+                continue;
+            }
+
+            $key = strtolower($dbName);
+            $dbDescription = trim((string)($dbCategory['description'] ?? ''));
+            if ($dbDescription === '' || strtolower($dbDescription) === 'categorie de service') {
+                $dbDescription = '';
+            }
+
+            if (isset($serviceMap[$key])) {
+                $serviceMap[$key]['id_service_category'] = (string)($dbCategory['id_service_category'] ?? $serviceMap[$key]['id_service_category']);
+                if ($dbDescription !== '') {
+                    $serviceMap[$key]['description'] = $dbDescription;
+                }
+            } else {
+                $serviceMap[$key] = [
+                    'id_service_category' => (string)($dbCategory['id_service_category'] ?? ''),
+                    'name' => $dbName,
+                    'description' => $dbDescription !== '' ? $dbDescription : 'Service disponible.',
+                ];
+            }
+        }
+
+        $serviceCategories = array_values($serviceMap);
+    } catch (PDOException $e) {
+        $loadError = 'Impossible de charger les types de service.';
+        $serviceCategories = $defaultServiceCategories;
+    }
+} else {
+    $serviceCategories = $defaultServiceCategories;
+}
+
 include './include/header.php';
 ?>
 
@@ -12,37 +80,44 @@ include './include/header.php';
         <div class="senier-breadcrumb">Accueil/Prestations</div>
     </div>
 
-    <div class="senier-pills">
-        <span class="senier-pill">Toutes</span>
-        <span class="senier-pill">Services</span>
-        <span class="senier-pill">Loisirs</span>
-        <span class="senier-pill">Conseils</span>
-    </div>
+    <?php if ($loadError): ?>
+        <div class="alert alert-danger" role="alert">
+            <?= htmlspecialchars($loadError) ?>
+        </div>
+    <?php endif; ?>
 
-    <div class="senier-prestation-layout">
-        <aside class="senier-categories">
-            <h4>Catégories</h4>
-            <a href="#">Toutes les prestations</a>
-            <a href="#">Ménage</a>
-            <a href="#">Assistance</a>
-            <a href="#">Transport</a>
-            <a href="#">Informatique</a>
-            <a href="#">Santé</a>
-            <a href="#">Courses</a>
-            <a href="#">Animation</a>
-            <a href="#">Accompagnement</a>
-        </aside>
-
-        <div class="senier-prestation-grid">
-            <?php for ($i = 1; $i <= 6; $i++): ?>
-                <article class="senier-prestation-card">
-                    <h5>Nom prestation</h5>
-                    <p>Service personnalisé pour simplifier votre quotidien.</p>
-                    <button type="button" class="btn btn-outline-secondary w-100">Prendre un rendez-vous</button>
-                </article>
-            <?php endfor; ?>
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="mb-3">Types de services</h5>
+            <?php if (empty($serviceCategories)): ?>
+                <p class="mb-0">Aucun type de service disponible pour le moment.</p>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Description</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($serviceCategories as $category): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars((string)$category['name']) ?></td>
+                                    <td><?= htmlspecialchars((string)($category['description'] ?? '')) ?></td>
+                                    <td>
+                                        <a class="btn btn-sm btn-primary" href="prestations-creneaux.php?category_id=<?= urlencode((string)$category['id_service_category']) ?>&category_name=<?= urlencode((string)$category['name']) ?>">Voir les creneaux</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
+
 </section>
 
 <?php include './include/footer.php'; ?>

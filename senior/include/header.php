@@ -27,6 +27,7 @@ if (!isset($seniorCurrent) || $seniorCurrent === '') {
         'contact.php' => 'contact',
         'planning.php' => 'planning',
         'prestation.php' => 'prestation',
+        'prestations-creneaux.php' => 'prestation',
         'messagerie.php' => 'messagerie',
         'prestations.php' => 'prestations',
         'prestations-catalogue.php' => 'prestations',
@@ -44,6 +45,7 @@ if (!isset($seniorCurrent) || $seniorCurrent === '') {
 }
 
 $firstName = (string)($_SESSION['user']['first_name'] ?? '');
+$roleHome = sh_get_role_home($userRole);
 $menuItems = [
     ['key' => 'dashboard', 'label' => 'Tableau de bord', 'href' => 'index.php'],
     ['key' => 'planning', 'label' => 'Planning', 'href' => 'planning.php'],
@@ -88,10 +90,10 @@ $menuItems = [
             </ul>
 
             <div class="d-flex align-items-center gap-2">
-                <a href="<?php echo $basePath . $roleHome; ?>" class="btn btn-outline-primary">
-                    <?php echo $userFirstName !== '' ? 'Bonjour ' . htmlspecialchars($firstName) : 'Espace senior'; ?>
+                <a href="../<?php echo ltrim($roleHome, '/'); ?>" class="btn btn-outline-primary">
+                    <?php echo $firstName !== '' ? 'Bonjour ' . htmlspecialchars($firstName) : 'Espace senior'; ?>
                 </a>
-                <a href="<?php echo $basePath; ?>../logout.php" class="btn btn-primary">Déconnexion</a>
+                <a href="../logout.php" class="btn btn-primary">Déconnexion</a>
             </div>
         </div>
     </div>

@@ -1,5 +1,80 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+include_once '../db.php';
+
 $seniorCurrent = 'contact';
+$userId = (string)($_SESSION['user']['id_user'] ?? '');
+
+$errors = [];
+$success = '';
+$contactName = trim((string)($_POST['contact_name'] ?? ''));
+$contactEmail = trim((string)($_POST['contact_email'] ?? ''));
+$contactSubject = trim((string)($_POST['contact_subject'] ?? ''));
+$contactMessage = trim((string)($_POST['contact_message'] ?? ''));
+
+if ($contactName === '' && isset($_SESSION['user'])) {
+    $contactName = trim((string)(($_SESSION['user']['first_name'] ?? '') . ' ' . ($_SESSION['user']['last_name'] ?? '')));
+}
+if ($contactEmail === '' && isset($_SESSION['user']['email'])) {
+    $contactEmail = (string)$_SESSION['user']['email'];
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!$pdo instanceof PDO) {
+        $errors[] = 'Base de donnees indisponible.';
+    }
+    if ($userId === '') {
+        $errors[] = 'Session utilisateur invalide.';
+    }
+    if ($contactName === '') {
+        $errors[] = 'Le nom est obligatoire.';
+    }
+    if ($contactEmail === '' || !filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Un email valide est obligatoire.';
+    }
+    if ($contactMessage === '') {
+        $errors[] = 'Le message est obligatoire.';
+    }
+
+    if (empty($errors)) {
+        try {
+            $adminId = '';
+            $adminStmt = $pdo->query("SELECT id_user FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1");
+            if ($adminStmt) {
+                $adminId = (string)$adminStmt->fetchColumn();
+            }
+            if ($adminId === '') {
+                $adminId = 'usr_admin_default';
+            }
+
+            $payload = "Sujet: " . ($contactSubject !== '' ? $contactSubject : 'General')
+                . "\nNom: " . $contactName
+                . "\nEmail: " . $contactEmail
+                . "\n\n" . $contactMessage;
+
+            $insertStmt = $pdo->prepare(
+                'INSERT INTO messages (id_message, content, sent_at, receiver, sender)
+                 VALUES (?, ?, NOW(), ?, ?)'
+            );
+            $insertStmt->execute([
+                'msg_' . bin2hex(random_bytes(8)),
+                mb_substr($payload, 0, 5000),
+                $adminId,
+                $userId,
+            ]);
+
+            $success = 'Votre message a bien ete envoye.';
+            $contactSubject = '';
+            $contactMessage = '';
+        } catch (Throwable $e) {
+            $errors[] = 'Impossible d envoyer le message pour le moment.';
+        }
+    }
+}
+
 include './include/header.php';
 ?>
 
@@ -33,33 +108,45 @@ include './include/header.php';
             <h3 class="senier-panel-title text-center">Rejoindre Silver Happy</h3>
             <p class="text-center text-muted small mb-3">Créer votre communauté de services</p>
 
-            <form class="senier-form">
+            <?php if ($success): ?>
+                <div class="alert alert-success" role="alert"><?= htmlspecialchars($success) ?></div>
+            <?php endif; ?>
+
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-danger" role="alert">
+                    <?php foreach ($errors as $error): ?>
+                        <div><?= htmlspecialchars($error) ?></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <form class="senier-form" method="post">
                 <div class="row g-2">
                     <div class="col-md-6">
                         <label class="form-label" for="contact_name">Votre nom *</label>
-                        <input type="text" class="form-control" id="contact_name">
+                        <input type="text" class="form-control" id="contact_name" name="contact_name" value="<?= htmlspecialchars($contactName) ?>" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="contact_email">Votre Email *</label>
-                        <input type="email" class="form-control" id="contact_email">
+                        <input type="email" class="form-control" id="contact_email" name="contact_email" value="<?= htmlspecialchars($contactEmail) ?>" required>
                     </div>
                     <div class="col-12">
                         <label class="form-label" for="contact_subject">Sujet</label>
-                        <select class="form-select" id="contact_subject">
+                        <select class="form-select" id="contact_subject" name="contact_subject">
                             <option value="">Choisir un sujet</option>
-                            <option>Information prestation</option>
-                            <option>Aide compte</option>
-                            <option>Partenariat</option>
+                            <option <?= $contactSubject === 'Information prestation' ? 'selected' : '' ?>>Information prestation</option>
+                            <option <?= $contactSubject === 'Aide compte' ? 'selected' : '' ?>>Aide compte</option>
+                            <option <?= $contactSubject === 'Partenariat' ? 'selected' : '' ?>>Partenariat</option>
                         </select>
                     </div>
                     <div class="col-12">
                         <label class="form-label" for="contact_message">Message *</label>
-                        <textarea class="form-control" id="contact_message" rows="5"></textarea>
+                        <textarea class="form-control" id="contact_message" name="contact_message" rows="5" required><?= htmlspecialchars($contactMessage) ?></textarea>
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-center mt-3">
-                    <button type="button" class="btn senier-send">Envoyer le message <i class="bi bi-send"></i></button>
+                    <button type="submit" class="btn senier-send">Envoyer le message <i class="bi bi-send"></i></button>
                 </div>
             </form>
         </div>

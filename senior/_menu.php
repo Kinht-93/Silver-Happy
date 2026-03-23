@@ -6,7 +6,7 @@ $menuItems = [
     ['key' => 'planning', 'label' => 'Mon planning', 'href' => 'planning.php', 'icon' => 'bi-calendar3'],
     ['key' => 'messagerie', 'label' => 'Messagerie', 'href' => 'messagerie.php', 'icon' => 'bi-chat-dots-fill'],
     ['key' => 'prestation', 'label' => 'Prestations', 'href' => 'prestation.php', 'icon' => 'bi-briefcase'],
-    ['key' => 'factures', 'label' => 'Mes factures', 'href' => '../mes-factures.php', 'icon' => 'bi-receipt'],
+    ['key' => 'factures', 'label' => 'Mes factures', 'href' => 'mes-factures.php', 'icon' => 'bi-receipt'],
     ['key' => 'profil', 'label' => 'Mon profil', 'href' => 'mon-profil.php', 'icon' => 'bi-person-fill'],
     ['key' => 'contact', 'label' => 'Contact', 'href' => 'contact.php', 'icon' => 'bi-envelope'],
     ['key' => 'logout', 'label' => 'Déconnexion', 'href' => '../logout.php', 'icon' => 'bi-box-arrow-right', 'danger' => true],

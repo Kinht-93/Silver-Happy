@@ -1,0 +1,69 @@
+<?php
+include_once __DIR__ . '/_auth.php';
+$basePath = '../';
+include '../include/header.php';
+
+$totalDisponibilites = 0;
+$totalMissionsAcceptees = 0;
+$totalFactures = 0;
+
+if ($pdo instanceof PDO && $providerData) {
+    try {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM provider_availabilities WHERE id_user = ?');
+        $stmt->execute([$providerData['id_user']]);
+        $totalDisponibilites = (int)$stmt->fetchColumn();
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM provider_missions WHERE id_user = ? AND status = 'Acceptee'");
+        $stmt->execute([$providerData['id_user']]);
+        $totalMissionsAcceptees = (int)$stmt->fetchColumn();
+
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM provider_invoices WHERE id_user = ?');
+        $stmt->execute([$providerData['id_user']]);
+        $totalFactures = (int)$stmt->fetchColumn();
+    } catch (PDOException $e) {
+        $dbPageError = 'Erreur base de donnees: ' . $e->getMessage();
+    }
+}
+?>
+
+<?php if ($dbPageError): ?>
+<div class="alert alert-danger" role="alert"><?= htmlspecialchars($dbPageError) ?></div>
+<?php endif; ?>
+
+<div class="page-title h3 mb-3">Espace prestataire</div>
+<?php include __DIR__ . '/_menu.php'; ?>
+
+<?php if (!$providerData): ?>
+<div class="alert alert-warning" role="alert">
+    Votre compte prestataire n'est pas encore relie a une fiche fournisseur. Contactez un administrateur.
+</div>
+<?php else: ?>
+    <?php if (!$isProviderValidated): ?>
+    <div class="alert alert-warning" role="alert">
+        Compte en attente de validation administrateur. Vous pouvez completer votre profil, mais certaines actions restent limitees.
+    </div>
+    <?php endif; ?>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card"><div class="card-body"><div class="small text-muted">Disponibilites</div><div class="h4 mb-0"><?= $totalDisponibilites ?></div></div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body"><div class="small text-muted">Missions acceptees</div><div class="h4 mb-0"><?= $totalMissionsAcceptees ?></div></div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body"><div class="small text-muted">Factures generees</div><div class="h4 mb-0"><?= $totalFactures ?></div></div></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="mb-3">Resume</h5>
+            <p class="mb-1"><strong>Entreprise:</strong> <?= htmlspecialchars($providerData['company_name'] ?? 'N/A') ?></p>
+            <p class="mb-1"><strong>SIRET:</strong> <?= htmlspecialchars($providerData['siret_number'] ?? 'N/A') ?></p>
+            <p class="mb-0"><strong>Validation:</strong> <?= htmlspecialchars((string)($providerData['validation_status'] ?? 'Inconnu')) ?></p>
+        </div>
+    </div>
+<?php endif; ?>
+
+<?php include '../include/footer.php'; ?>
