@@ -3,57 +3,87 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$contenus = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $stmt = $pdo->prepare("INSERT INTO contents (id_content, title, category, content_body, status, created_at, views) VALUES (?, ?, ?, ?, ?, NOW(), 0)");
-            $stmt->execute([
-                uniqid('cnt_'),
-                $_POST['title'],
-                $_POST['category'],
-                $_POST['body'],
-                $_POST['status'] ?? 'Brouillon'
-            ]);
+    
+    if ($action === 'create') {
+        $data = [
+            'title' => $_POST['title'],
+            'category' => $_POST['category'],
+            'content_body' => $_POST['body'],
+            'status' => $_POST['status'] ?? 'Brouillon'
+        ];
+        
+        $response = callAPI('http://localhost:8080/api/contents', 'POST', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Contenu ajouté avec succès.";
             $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE contents SET title=?, category=?, content_body=?, status=? WHERE id_content=?");
-            $stmt->execute([
-                $_POST['title'],
-                $_POST['category'],
-                $_POST['body'],
-                $_POST['status'] ?? 'Brouillon',
-                $_POST['id']
-            ]);
+        } else {
+            $message = "Erreur lors de l'ajout.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'title' => $_POST['title'],
+            'category' => $_POST['category'],
+            'content_body' => $_POST['body'],
+            'status' => $_POST['status'] ?? 'Brouillon'
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/contents/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Contenu modifié avec succès.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmtDb = $pdo->prepare("DELETE FROM contents WHERE id_content=?");
-            $stmtDb->execute([$_POST['id']]);
-            $message = "Contenu supprimé.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification.";
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/contents/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "Contenu supprimé.";
+        $messageType = "success";
     }
 }
 
-$query = "
-    SELECT c.id_content, c.title, c.category, c.content_body, c.views, c.status, c.created_at,
-           u.first_name, u.last_name
-    FROM contents c
-    LEFT JOIN users u ON c.author_id = u.id_user
-    ORDER BY c.created_at DESC
-";
-try {
-    $contenus = $pdo ? $pdo->query($query)->fetchAll() : [];
-} catch (PDOException $e) {
-    $message = "Erreur: " . $e->getMessage();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/contents', 'GET', null, $token);
+    
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+        $contenus = [];
+    } elseif (is_array($response)) {
+        $contenus = $response;
+    }
+} else {
+    $message = "Token d'authentification manquant.";
     $messageType = "danger";
-    $contenus = [];
 }
 ?>
 
@@ -101,9 +131,9 @@ try {
                         <tr>
                             <td><strong><?= htmlspecialchars($contenu['title']) ?></strong></td>
                             <td><?= htmlspecialchars($contenu['category']) ?></td>
-                            <td><?= htmlspecialchars($contenu['first_name'] . ' ' . $contenu['last_name']) ?></td>
+                            <td><?= htmlspecialchars(($contenu['first_name'] ?? '') . ' ' . ($contenu['last_name'] ?? '')) ?></td>
                             <td><?= date('d/m/Y', strtotime($contenu['created_at'])) ?></td>
-                            <td><?= (int)$contenu['views'] ?></td>
+                            <td><?= (int)($contenu['views'] ?? 0) ?></td>
                             <td>
                                 <?php if ($contenu['status'] == 'Publié'): ?>
                                     <span class="badge bg-success">Publié</span>
@@ -228,10 +258,10 @@ function viewContent(btn) {
 function editContent(btn) {
     const contentData = JSON.parse(btn.getAttribute('data-content'));
     document.getElementById('editContentId').value = contentData.id_content;
-    document.getElementById('editContentTitle').value = contentData.title;
-    document.getElementById('editContentCategory').value = contentData.category;
+    document.getElementById('editContentTitle').value = contentData.title || '';
+    document.getElementById('editContentCategory').value = contentData.category || '';
     document.getElementById('editContentBody').value = contentData.content_body || '';
-    document.getElementById('editContentStatus').value = contentData.status;
+    document.getElementById('editContentStatus').value = contentData.status || 'Brouillon';
     openModal('modalEditContent');
 }
 </script>

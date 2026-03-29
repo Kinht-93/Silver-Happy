@@ -1,24 +1,46 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
 // USERS
 type User struct {
-	ID            string    `json:"id_user"`
-	Email         string    `json:"email"`
-	Password      string    `json:"-"`
-	Role          string    `json:"role"`
-	LastName      string    `json:"last_name"`
-	FirstName     string    `json:"first_name"`
-	Phone         string    `json:"phone,omitempty"`
-	Address       string    `json:"address,omitempty"`
-	City          string    `json:"city,omitempty"`
-	PostalCode    string    `json:"postal_code,omitempty"`
-	BirthDate     string    `json:"birth_date,omitempty"`
-	Active        bool      `json:"active"`
-	VerifiedEmail bool      `json:"verified_email"`
-	TutorialSeen  bool      `json:"tutorial_seen"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID                    string    `json:"id_user"`
+	Email                 string    `json:"email"`
+	Password              string    `json:"password"`
+	Role                  string    `json:"role"`
+	LastName              string    `json:"last_name"`
+	FirstName             string    `json:"first_name"`
+	Phone                 *string   `json:"phone,omitempty"`
+	Address               *string   `json:"address,omitempty"`
+	City                  *string   `json:"city,omitempty"`
+	PostalCode            *string   `json:"postal_code,omitempty"`
+	BirthDate             *string   `json:"birth_date,omitempty"`
+	EmergencyContactName  *string   `json:"emergency_contact_name,omitempty"`
+	EmergencyContactPhone *string   `json:"emergency_contact_phone,omitempty"`
+	CompanyName           *string   `json:"company_name,omitempty"`
+	SiretNumber           *string   `json:"siret_number,omitempty"`
+	ValidationStatus      *string   `json:"validation_status,omitempty"`
+	AverageRating         *float64  `json:"average_rating,omitempty"`
+	CommissionRate        *float64  `json:"commission_rate,omitempty"`
+	Zone                  *string   `json:"zone,omitempty"`
+	IBAN                  *string   `json:"iban,omitempty"`
+	ProviderDescription   *string   `json:"provider_description,omitempty"`
+	SkillsText            *string   `json:"skills_text,omitempty"`
+	ProviderUpdatedAt     *string   `json:"provider_updated_at,omitempty"`
+	Active                *bool     `json:"active"`
+	VerifiedEmail         *bool     `json:"verified_email"`
+	TutorialSeen          *bool     `json:"tutorial_seen"`
+	CreatedAt             time.Time `json:"created_at"`
+}
+
+type SeniorSettings struct {
+	UserID             string  `json:"id_user"`
+	Language           string  `json:"language"`
+	FontSize           string  `json:"font_size"`
+	EmailNotifications bool    `json:"email_notifications"`
+	EmergencyRelation  *string `json:"emergency_relation,omitempty"`
 }
 
 // SENIORS
@@ -101,7 +123,9 @@ type Quote struct {
 	AmountInclTax float64   `json:"amount_incl_tax"`
 	Status        string    `json:"status"`
 	CreatedAt     time.Time `json:"created_at"`
-	RequestID     string    `json:"id_request"`
+	RequestID     *string   `json:"id_request"`
+	UserID        string    `json:"id_user"`
+	ServiceTypeID string    `json:"id_service_type"`
 }
 
 // COMPLETED SERVICES
@@ -204,5 +228,5 @@ type TokenResponse struct {
 
 type SuccessResponse struct {
 	ID      interface{} `json:"id"`
-	Message string      `json:"message"`
+	Message string      `json:"Message"`
 }

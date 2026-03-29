@@ -1,55 +1,72 @@
 <?php
 include './include/header-admin.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+
+$events = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
+    if (!empty($token)) {
         if ($action === 'create') {
-            $stmt = $pdo->prepare("INSERT INTO events (id_event, title, event_type, start_date, end_date, max_places, price) VALUES (?, ?, ?, ?, DATE_ADD(?, INTERVAL 2 HOUR), ?, ?)");
-            $stmt->execute([
-                uniqid('evt_'),
-                $_POST['title'],
-                $_POST['event_type'] ?? 'Autre',
-                $_POST['start_date'],
-                $_POST['start_date'],
-                $_POST['max_places'] ?: 20,
-                $_POST['price'] ?: 0
-            ]);
-            $message = "Événement créé avec succès.";
-            $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE events SET title=?, start_date=?, max_places=?, price=? WHERE id_event=?");
-            $stmt->execute([
-                $_POST['title'],
-                $_POST['start_date'],
-                $_POST['max_places'] ?: 20,
-                $_POST['price'] ?: 0,
-                $_POST['id']
-            ]);
-            $message = "Événement modifié avec succès.";
-            $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmtDb = $pdo->prepare("DELETE FROM events WHERE id_event=?");
-            $stmtDb->execute([$_POST['id']]);
-            $message = "Événement supprimé.";
-            $messageType = "success";
+            $response = callAPI('http://localhost:8080/api/admin-events', 'POST', [
+                'title' => $_POST['title'] ?? '',
+                'event_type' => $_POST['event_type'] ?? 'Autre',
+                'start_date' => $_POST['start_date'] ?? '',
+                'max_places' => !empty($_POST['max_places']) ? (int) $_POST['max_places'] : 20,
+                'price' => isset($_POST['price']) ? (float) $_POST['price'] : 0,
+            ], $token);
+
+            if (is_array($response) && !isset($response['error'])) {
+                $message = "Événement créé avec succès.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . ($response['error'] ?? 'Création impossible.');
+                $messageType = 'danger';
+            }
+        } elseif ($action === 'update' && !empty($_POST['id'])) {
+            $response = callAPI('http://localhost:8080/api/admin-events/' . urlencode($_POST['id']), 'PATCH', [
+                'title' => $_POST['title'] ?? '',
+                'start_date' => $_POST['start_date'] ?? '',
+                'max_places' => !empty($_POST['max_places']) ? (int) $_POST['max_places'] : 20,
+                'price' => isset($_POST['price']) ? (float) $_POST['price'] : 0,
+            ], $token);
+
+            if (is_array($response) && !isset($response['error'])) {
+                $message = "Événement modifié avec succès.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . ($response['error'] ?? 'Mise à jour impossible.');
+                $messageType = 'danger';
+            }
+        } elseif ($action === 'delete' && !empty($_POST['id'])) {
+            $response = callAPI('http://localhost:8080/api/admin-events/' . urlencode($_POST['id']), 'DELETE', null, $token);
+            if (!is_array($response) || !isset($response['error'])) {
+                $message = "Événement supprimé.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . $response['error'];
+                $messageType = 'danger';
+            }
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
     }
 }
 
-$query = "
-    SELECT e.id_event, e.title, e.start_date, e.event_type, e.max_places, e.price,
-           (SELECT COUNT(*) FROM event_registrations er WHERE er.id_event = e.id_event) as participants
-    FROM events e
-    ORDER BY e.start_date DESC
-";
-$events = $pdo->query($query)->fetchAll();
+if (!empty($token)) {
+    $eventsResponse = callAPI('http://localhost:8080/api/admin-events', 'GET', null, $token);
+    if (is_array($eventsResponse) && !isset($eventsResponse['error'])) {
+        $events = $eventsResponse;
+    } elseif ($message === '') {
+        $message = 'Erreur lors du chargement des événements.';
+        $messageType = 'danger';
+    }
+} elseif ($message === '') {
+    $message = 'Token d\'authentification manquant.';
+    $messageType = 'danger';
+}
 ?>
 
 <?php if ($message): ?>

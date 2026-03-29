@@ -1,61 +1,84 @@
 <?php
+
 include '../include/header-admin.php';
+require_once __DIR__ . '/../../include/callapi.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$utilisateurs = [];
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $stmt = $pdo->prepare("INSERT INTO users (id_user, first_name, last_name, email, role, phone, city, active, created_at, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
-            $password = !empty($_POST['password']) ? password_hash($_POST['password'], PASSWORD_DEFAULT) : password_hash('default123', PASSWORD_DEFAULT);
-            $stmt->execute([
-                uniqid('usr_'),
-                $_POST['first_name'],
-                $_POST['last_name'],
-                $_POST['email'],
-                $_POST['role'],
-                $_POST['phone'] ?? null,
-                $_POST['city'] ?? null,
-                $_POST['active'] ?? 1,
-                $password
-            ]);
-
-            header("Location: ../index.php?success=user_added");
-            exit();
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=?, role=?, phone=?, city=?, active=? WHERE id_user=?");
-            $stmt->execute([
-                $_POST['first_name'],
-                $_POST['last_name'],
-                $_POST['email'],
-                $_POST['role'],
-                $_POST['phone'] ?? null,
-                $_POST['city'] ?? null,
-                $_POST['active'] ?? 1,
-                $_POST['id']
-            ]);
+    
+    if ($action === 'create') {
+        $data = [
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'password'   => $_POST['password'],
+            'email' => $_POST['email'],
+            'role' => $_POST['role'],
+            'phone' => $_POST['phone'] ?? '',
+            'city' => $_POST['city'] ?? '',
+            'active' => (bool)(int)$_POST['active'] ?? 1
+        ];
+        var_dump(json_encode($data));
+        
+        $response = callAPI('http://localhost:8080/api/users', 'POST', $data, $token);
+        var_dump($response);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
+            $message = "Utilisateur ajouté";
+            $messageType = "success";
+        } else {
+            $message = "Erreur lors de l'ajout.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'email' => $_POST['email'],
+            'role' => $_POST['role'],
+            'phone' => $_POST['phone'] ?? null,
+            'city' => $_POST['city'] ?? null,
+            'active' => $_POST['active'] ?? 1
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Utilisateur modifié.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM users WHERE id_user=?");
-            $stmt->execute([$_POST['id']]);
-            $message = "Utilisateur supprimé.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification.";
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "Utilisateur supprimé.";
+        $messageType = "success";
     }
 }
 
-$query = "
-    SELECT id_user, last_name, first_name, email, role, active, created_at, phone, city
-    FROM users
-    ORDER BY created_at DESC
-";
-$utilisateurs = $pdo->query($query)->fetchAll();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/users', 'GET', null, $token);
+
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+    } elseif (is_array($response) && !empty($response)) {
+        $utilisateurs = $response;
+    } elseif (is_array($response) && empty($response)) {
+        $message = "Aucun utilisateur trouvé.";
+        $messageType = "info";
+    } else {
+        $message = "Format de réponse invalide de l'API: " . gettype($response);
+        $messageType = "warning";
+    }
+} else {
+    $message = "Token d'authentification manquant.";
+    $messageType = "danger";
+}
 ?>
 
 <?php if ($message): ?>

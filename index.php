@@ -1,33 +1,76 @@
 <?php
 include './include/header.php';
-include_once 'db.php';
+require_once __DIR__ . '/include/callapi.php';
 
 $prestations = [];
 $events = [];
 $testimonials = [];
 
-if (isset($pdo) && $pdo instanceof PDO) {
-    try {
-        $stmt = $pdo->query("SELECT title, description, price, category FROM prestations WHERE validated = 1 ORDER BY created_at DESC LIMIT 8");
-        $prestations = $stmt->fetchAll();
-    } catch (Exception $e) {
-        $prestations = [];
-    }
 
-    try {
-        $stmt = $pdo->query("SELECT title, description, date, location FROM events ORDER BY date ASC LIMIT 3");
-        $events = $stmt->fetchAll();
-    } catch (Exception $e) {
-        $events = [];
-    }
+try {
+    $serviceCategories = callAPI('http://localhost:8080/api/service-categories');
+    $serviceTypes = callAPI('http://localhost:8080/api/service-types');
 
-    try {
-        $sql = "SELECT t.content, t.rating, u.name FROM testimonials t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC LIMIT 3";
-        $stmt = $pdo->query($sql);
-        $testimonials = $stmt->fetchAll();
-    } catch (Exception $e) {
+    if (is_array($serviceCategories) && !isset($serviceCategories['error']) && is_array($serviceTypes) && !isset($serviceTypes['error'])) {
+        $categoriesById = [];
+        foreach ($serviceCategories as $category) {
+            if (!empty($category['id_service_category'])) {
+                $categoriesById[(string)$category['id_service_category']] = $category;
+            }
+        }
+
+        foreach ($serviceTypes as $serviceType) {
+            if (count($prestations) >= 8) {
+                break;
+            }
+
+            $categoryId = (string)($serviceType['id_service_category'] ?? '');
+            $category = $categoriesById[$categoryId] ?? null;
+            $description = trim((string)($serviceType['description'] ?? ''));
+            if ($description === '') {
+                $description = trim((string)($category['description'] ?? ''));
+            }
+
+            $prestations[] = [
+                'title' => (string)($serviceType['name'] ?? ''),
+                'description' => $description,
+                'price' => (float)($serviceType['hourly_rate'] ?? 0),
+                'category' => (string)($category['name'] ?? 'Service'),
+            ];
+        }
+    }
+} catch (Throwable $e) {
+    $prestations = [];
+}
+
+try {
+    $eventsResponse = callAPI('http://localhost:8080/api/events');
+    if (is_array($eventsResponse) && !isset($eventsResponse['error'])) {
+        usort($eventsResponse, static function ($left, $right) {
+            return strcmp((string)($left['start_date'] ?? ''), (string)($right['start_date'] ?? ''));
+        });
+
+        foreach ($eventsResponse as $event) {
+            if (count($events) >= 3) {
+                break;
+            }
+
+            $events[] = [
+                'title' => (string)($event['title'] ?? ''),
+                'description' => (string)($event['event_type'] ?? ''),
+                'date' => $event['start_date'] ?? '',
+                'location' => '',
+            ];
+        }
+    }
+} catch (Throwable $e) {
+    $events = [];
+}
+
+try {
+    $testimonials = [];
+} catch (Throwable $e) {
         $testimonials = [];
-    }
 }
 
 if (empty($prestations)) {

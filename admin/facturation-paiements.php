@@ -1,54 +1,61 @@
 <?php
 include './include/header-admin.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+
+$factures = [];
+$ca = 0;
+$payees = 0;
+$attente = 0;
+$retard = 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'update_status') {
-            $stmt = $pdo->prepare("UPDATE invoices SET status = ? WHERE id_invoice = ?");
-            $stmt->execute([
-                $_POST['status'] ?? 'En attente',
-                $_POST['id'] ?? ''
-            ]);
+    if ($action === 'update_status' && !empty($_POST['id']) && !empty($token)) {
+        $response = callAPI(
+            'http://localhost:8080/api/admin-invoices/' . urlencode($_POST['id']) . '/status',
+            'PATCH',
+            ['status' => $_POST['status'] ?? 'En attente'],
+            $token
+        );
+
+        if (!is_array($response) || !isset($response['error'])) {
             $message = "Statut de la facture mis à jour.";
             $messageType = "success";
+        } else {
+            $message = "Erreur: " . $response['error'];
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
     }
 }
 
-$queryFactures = "
-    SELECT 
-        i.id_invoice,
-        i.issue_date,
-        i.amount_incl_tax AS amount,
-        i.status,
-        u.first_name,
-        u.last_name
-    FROM invoices i
-    JOIN quotes q ON i.id_quote = q.id_quote
-    JOIN service_requests sr ON q.id_request = sr.id_request
-    JOIN users u ON sr.id_user = u.id_user
-    ORDER BY i.issue_date DESC
-    LIMIT 20
-";
-try {
-    $factures = $pdo ? $pdo->query($queryFactures)->fetchAll() : [];
-} catch (PDOException $e) {
-    $message = "Erreur: " . $e->getMessage();
-    $messageType = "danger";
-    $factures = [];
-}
+if (!empty($token)) {
+    $statsResponse = callAPI('http://localhost:8080/api/admin-invoices/stats', 'GET', null, $token);
+    $facturesResponse = callAPI('http://localhost:8080/api/admin-invoices', 'GET', null, $token);
 
-$ca = $pdo->query("SELECT SUM(amount_incl_tax) FROM invoices WHERE status = 'Payée'")->fetchColumn();
-$payees = $pdo->query("SELECT COUNT(*) FROM invoices WHERE status = 'Payée'")->fetchColumn();
-$attente = $pdo->query("SELECT COUNT(*) FROM invoices WHERE status = 'En attente'")->fetchColumn();
-$retard = $pdo->query("SELECT COUNT(*) FROM invoices WHERE status = 'En retard'")->fetchColumn();
+    if (is_array($statsResponse) && !isset($statsResponse['error'])) {
+        $ca = (float) ($statsResponse['ca'] ?? 0);
+        $payees = (int) ($statsResponse['payees'] ?? 0);
+        $attente = (int) ($statsResponse['attente'] ?? 0);
+        $retard = (int) ($statsResponse['retard'] ?? 0);
+    } elseif ($message === '') {
+        $message = 'Erreur lors du chargement des statistiques de facturation.';
+        $messageType = 'danger';
+    }
+
+    if (is_array($facturesResponse) && !isset($facturesResponse['error'])) {
+        $factures = $facturesResponse;
+    } elseif ($message === '') {
+        $message = 'Erreur lors du chargement des factures.';
+        $messageType = 'danger';
+    }
+} elseif ($message === '') {
+    $message = 'Token d\'authentification manquant.';
+    $messageType = 'danger';
+}
 ?>
 
 <?php if ($message): ?>

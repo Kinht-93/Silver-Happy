@@ -1,124 +1,108 @@
 <?php
 include './include/header-admin.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+
+$tickets = [];
+$admins = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
+    if (!empty($token)) {
         if ($action === 'create') {
-            $year = date('Y');
-            $lastNumber = $pdo->prepare("SELECT ticket_number FROM support_tickets WHERE ticket_number LIKE ? ORDER BY ticket_number DESC LIMIT 1");
-            $like = "TKT-$year-%";
-            $lastNumber->execute([$like]);
-            $last = $lastNumber->fetchColumn();
-            $seq = 1;
-            if ($last && preg_match('#TKT-' . $year . '-(\d{4})#', $last, $m)) {
-                $seq = (int)$m[1] + 1;
+            $response = callAPI('http://localhost:8080/api/support-tickets', 'POST', [
+                'title' => $_POST['title'] ?? '',
+                'description' => $_POST['description'] ?? '',
+                'category' => $_POST['category'] ?? 'Autre',
+                'priority' => $_POST['priority'] ?? 'Moyen',
+                'id_user' => $_POST['id_user'] ?? '',
+            ], $token);
+
+            if (is_array($response) && !isset($response['error'])) {
+                $message = "Ticket créé avec succès.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . ($response['error'] ?? 'Création impossible.');
+                $messageType = 'danger';
             }
-            $ticketNumber = sprintf('TKT-%s-%04d', $year, $seq);
-            
-            $stmt = $pdo->prepare("
-                INSERT INTO support_tickets 
-                (id_ticket, ticket_number, title, description, category, priority, status, id_user, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
-            $stmt->execute([
-                uniqid('tkt_'),
-                $ticketNumber,
-                $_POST['title'],
-                $_POST['description'],
-                $_POST['category'] ?? 'Autre',
-                $_POST['priority'] ?? 'Moyen',
-                'Ouvert',
-                $_POST['id_user']
-            ]);
-            $message = "Ticket créé avec succès.";
-            $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("
-                UPDATE support_tickets 
-                SET title=?, description=?, priority=?, status=?, assigned_to=?, updated_at=NOW()
-                WHERE id_ticket=?
-            ");
-            $stmt->execute([
-                $_POST['title'],
-                $_POST['description'],
-                $_POST['priority'],
-                $_POST['status'],
-                !empty($_POST['assigned_to']) ? $_POST['assigned_to'] : null,
-                $_POST['id']
-            ]);
-            $message = "Ticket modifié.";
-            $messageType = "success";
-        } elseif ($action === 'resolve') {
-            $stmt = $pdo->prepare("
-                UPDATE support_tickets 
-                SET status='Fermé', resolved_at=NOW(), resolution_notes=?, updated_at=NOW()
-                WHERE id_ticket=?
-            ");
-            $stmt->execute([
-                $_POST['resolution_notes'] ?? '',
-                $_POST['id']
-            ]);
-            $message = "Ticket fermé.";
-            $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM support_tickets WHERE id_ticket=?");
-            $stmt->execute([$_POST['id']]);
-            $message = "Ticket supprimé.";
-            $messageType = "success";
+        } elseif ($action === 'update' && !empty($_POST['id'])) {
+            $assignedTo = !empty($_POST['assigned_to']) ? $_POST['assigned_to'] : null;
+            $response = callAPI('http://localhost:8080/api/support-tickets/' . urlencode($_POST['id']), 'PATCH', [
+                'title' => $_POST['title'] ?? '',
+                'description' => $_POST['description'] ?? '',
+                'priority' => $_POST['priority'] ?? 'Moyen',
+                'status' => $_POST['status'] ?? 'Ouvert',
+                'assigned_to' => $assignedTo,
+            ], $token);
+
+            if (is_array($response) && !isset($response['error'])) {
+                $message = "Ticket modifié.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . ($response['error'] ?? 'Mise à jour impossible.');
+                $messageType = 'danger';
+            }
+        } elseif ($action === 'resolve' && !empty($_POST['id'])) {
+            $response = callAPI('http://localhost:8080/api/support-tickets/' . urlencode($_POST['id']) . '/resolve', 'PATCH', [
+                'resolution_notes' => $_POST['resolution_notes'] ?? '',
+            ], $token);
+
+            if (is_array($response) && !isset($response['error'])) {
+                $message = "Ticket fermé.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . ($response['error'] ?? 'Résolution impossible.');
+                $messageType = 'danger';
+            }
+        } elseif ($action === 'delete' && !empty($_POST['id'])) {
+            $response = callAPI('http://localhost:8080/api/support-tickets/' . urlencode($_POST['id']), 'DELETE', null, $token);
+            if (!is_array($response) || !isset($response['error'])) {
+                $message = "Ticket supprimé.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . $response['error'];
+                $messageType = 'danger';
+            }
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
     }
 }
 
 $filterStatus = $_GET['status'] ?? 'tous';
-$query = "
-    SELECT st.id_ticket, st.ticket_number, st.title, st.description, st.category, st.priority, st.status,
-           st.id_user, st.assigned_to, st.created_at, st.updated_at, st.resolved_at, st.resolution_notes,
-           u.first_name, u.last_name, u.email,
-           a.first_name as assigned_first, a.last_name as assigned_last
-    FROM support_tickets st
-    INNER JOIN users u ON st.id_user = u.id_user
-    LEFT JOIN users a ON st.assigned_to = a.id_user
-";
-
-if ($filterStatus !== 'tous') {
-    $query .= " WHERE st.status = ?";
-    $params = [$filterStatus];
-} else {
-    $params = [];
-}
-
-$query .= " ORDER BY st.priority DESC, st.created_at DESC";
-
-try {
-    if (!empty($params)) {
-        $stmt = $pdo->prepare($query);
-        $stmt->execute($params);
-        $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } else {
-        $tickets = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
+if (!empty($token)) {
+    $ticketsUrl = 'http://localhost:8080/api/support-tickets';
+    if ($filterStatus !== 'tous') {
+        $ticketsUrl .= '?status=' . urlencode($filterStatus);
     }
-} catch (PDOException $e) {
-    $tickets = [];
-    $message = "Erreur BD: " . $e->getMessage();
-    $messageType = "danger";
-}
 
-try {
-    $admins = $pdo->query("
-        SELECT id_user, first_name, last_name 
-        FROM users 
-        WHERE active = TRUE
-        ORDER BY last_name ASC
-    ")->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $admins = [];
+    $ticketsResponse = callAPI($ticketsUrl, 'GET', null, $token);
+    $usersResponse = callAPI('http://localhost:8080/api/users-summary', 'GET', null, $token);
+    $assignResponse = callAPI('http://localhost:8080/api/users-summary?roles=admin,employe,employee', 'GET', null, $token);
+
+    if (is_array($ticketsResponse) && !isset($ticketsResponse['error'])) {
+        $tickets = $ticketsResponse;
+    } elseif ($message === '') {
+        $message = 'Erreur lors du chargement des tickets.';
+        $messageType = 'danger';
+    }
+
+    if (is_array($usersResponse) && !isset($usersResponse['error'])) {
+        $admins = array_values(array_filter($usersResponse, static function ($user) {
+            return !empty($user['active']);
+        }));
+    }
+
+    if (is_array($assignResponse) && !isset($assignResponse['error'])) {
+        $assignableUsers = array_values(array_filter($assignResponse, static function ($user) {
+            return !empty($user['active']);
+        }));
+    } else {
+        $assignableUsers = [];
+    }
+} else {
+    $assignableUsers = [];
 }
 ?>
 
@@ -325,7 +309,7 @@ try {
                         <label class="form-label">Assigner à</label>
                         <select class="form-control" name="assigned_to" id="editTicketAssigned">
                             <option value="">Aucun</option>
-                            <?php foreach ($admins as $admin): ?>
+                            <?php foreach ($assignableUsers as $admin): ?>
                                 <option value="<?= htmlspecialchars($admin['id_user']) ?>">
                                     <?= htmlspecialchars($admin['first_name'] . ' ' . $admin['last_name']) ?>
                                 </option>

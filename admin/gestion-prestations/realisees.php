@@ -1,18 +1,39 @@
 <?php
 include '../include/header-admin.php';
 
-$query = "
-    SELECT cs.id_completed_service, cs.service_date, cs.start_time, cs.end_time, cs.senior_amount, cs.status,
-           u_senior.first_name as senior_first, u_senior.last_name as senior_last,
-           st.name as prestation_name
-    FROM completed_services cs
-    JOIN service_requests sr ON cs.id_request = sr.id_request
-    JOIN users u_senior ON sr.id_user = u_senior.id_user
-    LEFT JOIN show_type sht ON sr.id_request = sht.id_request
-    LEFT JOIN service_types st ON sht.id_service_type = st.id_service_type
-    ORDER BY cs.service_date DESC
-";
-$realisees = $pdo->query($query)->fetchAll();
+$token = $_SESSION['user']['token'] ?? '';
+$realisees = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
+
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/completed-services-admin', 'GET', null, $token);
+    
+    if (!isset($response['error']) && is_array($response)) {
+        $realisees = $response;
+    }
+}
 ?>
 
 <div class="page-title">Prestations réalisées</div>
@@ -50,26 +71,24 @@ $realisees = $pdo->query($query)->fetchAll();
                 <?php else: ?>
                     <?php foreach ($realisees as $realisee): ?>
                         <tr>
-                            <td><?= htmlspecialchars($realisee['prestation_name'] ?: 'Non défini') ?></td>
-                            <td><?= htmlspecialchars($realisee['senior_first'] . ' ' . $realisee['senior_last']) ?></td>
+                            <td><?= htmlspecialchars($realisee['service_name'] ?? 'Non défini') ?></td>
+                            <td><?= htmlspecialchars(($realisee['senior_first'] ?? '') . ' ' . ($realisee['senior_last'] ?? '')) ?></td>
                             <td>Prestataire (Non assigné)</td>
                             <td><?= date('d/m/Y', strtotime($realisee['service_date'])) ?></td>
                             <td>
                                 <?php 
-                                    $start = strtotime($realisee['start_time']);
-                                    $end = strtotime($realisee['end_time']);
-                                    $duration = ($end - $start) / 3600;
-                                    echo round($duration, 1) . 'h';
+                                    $duration = $realisee['duration'] ?? 0;
+                                    echo round($duration / 60, 1) . 'h';
                                 ?>
                             </td>
-                            <td><?= number_format($realisee['senior_amount'], 2) ?>€</td>
+                            <td><?= number_format($realisee['senior_amount'] ?? 0, 2) ?>€</td>
                             <td>
                                 <?php if ($realisee['status'] == 'Complétée'): ?>
                                     <span class="badge bg-success">Complétée</span>
                                 <?php elseif ($realisee['status'] == 'En cours'): ?>
                                     <span class="badge bg-warning">En cours</span>
                                 <?php else: ?>
-                                    <span class="badge bg-secondary"><?= htmlspecialchars($realisee['status']) ?></span>
+                                    <span class="badge bg-secondary"><?= htmlspecialchars($realisee['status'] ?? '') ?></span>
                                 <?php endif; ?>
                             </td>
                             <td>-</td>
@@ -122,17 +141,15 @@ $realisees = $pdo->query($query)->fetchAll();
 <script>
 function viewCompletedService(btn) {
     const service = JSON.parse(btn.getAttribute('data-service'));
-    document.getElementById('viewServiceName').textContent = service.prestation_name || 'Non défini';
-    document.getElementById('viewSeniorName').textContent = service.senior_first + ' ' + service.senior_last;
+    document.getElementById('viewServiceName').textContent = service.service_name || 'Non défini';
+    document.getElementById('viewSeniorName').textContent = (service.senior_first || '') + ' ' + (service.senior_last || '');
     document.getElementById('viewServiceDate').textContent = new Date(service.service_date).toLocaleDateString('fr-FR');
 
-    const start = new Date(service.service_date + ' ' + service.start_time);
-    const end = new Date(service.service_date + ' ' + service.end_time);
-    const duration = (end - start) / (1000 * 60 * 60);
-    document.getElementById('viewServiceDuration').textContent = duration.toFixed(1) + 'h';
+    const duration = service.duration || 0;
+    document.getElementById('viewServiceDuration').textContent = (duration / 60).toFixed(1) + 'h';
 
-    document.getElementById('viewServicePrice').textContent = parseFloat(service.senior_amount).toFixed(2) + '€';
-    document.getElementById('viewServiceStatus').textContent = service.status;
+    document.getElementById('viewServicePrice').textContent = parseFloat(service.senior_amount || 0).toFixed(2) + '€';
+    document.getElementById('viewServiceStatus').textContent = service.status || '';
     openModal('modalViewCompletedService');
 }
 </script>

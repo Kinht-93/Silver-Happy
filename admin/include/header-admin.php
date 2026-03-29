@@ -1,5 +1,10 @@
 <?php
+session_start();
 require_once __DIR__ . '/../../db.php';
+require_once __DIR__ . '/../../active_user.php';
+
+updateUserActivity();
+
 $script = $_SERVER['SCRIPT_NAME'];
 
 $base_url = preg_replace('#/admin(/.*)?$#', '', $script);

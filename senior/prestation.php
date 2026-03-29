@@ -3,11 +3,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-include_once '../db.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $seniorCurrent = 'prestation';
 $serviceCategories = [];
 $loadError = '';
+$token = (string)($_SESSION['user']['token'] ?? '');
 
 $defaultServiceCategories = [
     ['id_service_category' => 'cat_menage', 'name' => 'Menage', 'description' => 'Aide menagere reguliere ou ponctuelle.'],
@@ -18,49 +19,42 @@ $defaultServiceCategories = [
     ['id_service_category' => 'cat_courses', 'name' => 'Courses', 'description' => 'Aide pour les courses et petites commissions.'],
 ];
 
-if ($pdo instanceof PDO) {
-    try {
-        $serviceMap = [];
-        foreach ($defaultServiceCategories as $category) {
-            $serviceMap[strtolower((string)$category['name'])] = $category;
-        }
+if ($token !== '') {
+    $serviceMap = [];
+    foreach ($defaultServiceCategories as $category) {
+        $serviceMap[strtolower((string)$category['name'])] = $category;
+    }
 
-        $categoriesStmt = $pdo->query(
-            "SELECT id_service_category, name, description
-             FROM service_categories
-             WHERE id_service_category <> 'cat_rdv_prestataire'
-             ORDER BY name ASC"
-        );
-        $dbCategories = $categoriesStmt ? $categoriesStmt->fetchAll() : [];
-
-        foreach ($dbCategories as $dbCategory) {
-            $dbName = (string)($dbCategory['name'] ?? '');
-            if ($dbName === '') {
+    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
+    if (is_array($categoriesResponse) && !isset($categoriesResponse['error'])) {
+        foreach ($categoriesResponse as $apiCategory) {
+            $apiName = (string)($apiCategory['name'] ?? '');
+            if ($apiName === '') {
                 continue;
             }
 
-            $key = strtolower($dbName);
-            $dbDescription = trim((string)($dbCategory['description'] ?? ''));
-            if ($dbDescription === '' || strtolower($dbDescription) === 'categorie de service') {
-                $dbDescription = '';
+            $key = strtolower($apiName);
+            $apiDescription = trim((string)($apiCategory['description'] ?? ''));
+            if ($apiDescription === '' || strtolower($apiDescription) === 'categorie de service') {
+                $apiDescription = '';
             }
 
             if (isset($serviceMap[$key])) {
-                $serviceMap[$key]['id_service_category'] = (string)($dbCategory['id_service_category'] ?? $serviceMap[$key]['id_service_category']);
-                if ($dbDescription !== '') {
-                    $serviceMap[$key]['description'] = $dbDescription;
+                $serviceMap[$key]['id_service_category'] = (string)($apiCategory['id_service_category'] ?? $serviceMap[$key]['id_service_category']);
+                if ($apiDescription !== '') {
+                    $serviceMap[$key]['description'] = $apiDescription;
                 }
             } else {
                 $serviceMap[$key] = [
-                    'id_service_category' => (string)($dbCategory['id_service_category'] ?? ''),
-                    'name' => $dbName,
-                    'description' => $dbDescription !== '' ? $dbDescription : 'Service disponible.',
+                    'id_service_category' => (string)($apiCategory['id_service_category'] ?? ''),
+                    'name' => $apiName,
+                    'description' => $apiDescription !== '' ? $apiDescription : 'Service disponible.',
                 ];
             }
         }
 
         $serviceCategories = array_values($serviceMap);
-    } catch (PDOException $e) {
+    } else {
         $loadError = 'Impossible de charger les types de service.';
         $serviceCategories = $defaultServiceCategories;
     }

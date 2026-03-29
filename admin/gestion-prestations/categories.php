@@ -3,52 +3,89 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$categories = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $stmt = $pdo->prepare("INSERT INTO service_categories (id_service_category, name, description) VALUES (?, ?, ?)");
-            $stmt->execute([
-                uniqid('cat_'),
-                $_POST['name'],
-                $_POST['icon'] ?? null
-            ]);
+    
+    if ($action === 'create') {
+        $data = [
+            'name' => $_POST['name'],
+            'description' => $_POST['icon'] ?? ''
+        ];
+        
+        $response = callAPI('http://localhost:8080/api/service-categories', 'POST', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Catégorie ajoutée avec succès.";
             $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE service_categories SET name=?, description=? WHERE id_service_category=?");
-            $stmt->execute([
-                $_POST['name'],
-                $_POST['icon'] ?? null,
-                $_POST['id']
-            ]);
+        } else {
+            $message = "Erreur lors de l'ajout de la catégorie.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'name' => $_POST['name'],
+            'description' => $_POST['icon'] ?? ''
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/service-categories/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Catégorie modifiée avec succès.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmtDb = $pdo->prepare("DELETE FROM service_categories WHERE id_service_category=?");
-            $stmtDb->execute([$_POST['id']]);
-            $message = "Catégorie supprimée.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification.";
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/service-categories/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "Catégorie supprimée.";
+        $messageType = "success";
     }
 }
 
-$query = "
-    SELECT c.id_service_category, c.name, c.description as icon,
-           (SELECT COUNT(*) FROM service_types st WHERE st.id_service_category = c.id_service_category) as prestations
-    FROM service_categories c
-    ORDER BY c.name
-";
-$categories = $pdo->query($query)->fetchAll();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/service-categories-admin', 'GET', null, $token);
+    
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+        $categories = [];
+    } elseif (is_array($response)) {
+        $categories = $response;
+    }
+} else {
+    $message = "Token d'authentification manquant.";
+    $messageType = "danger";
+}
 
 $total_categories = count($categories);
 $total_prestations = 0;
 foreach ($categories as $cat) {
-    $total_prestations += $cat['prestations'];
+    $total_prestations += $cat['prestations'] ?? 0;
 }
 ?>
 
@@ -97,8 +134,8 @@ foreach ($categories as $cat) {
                             <?php foreach ($categories as $categorie): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($categorie['name']) ?></td>
-                                    <td><i class="<?= htmlspecialchars($categorie['icon'] ?: 'bi bi-folder') ?>"></i></td>
-                                    <td><?= (int)$categorie['prestations'] ?></td>
+                                    <td><i class="<?= htmlspecialchars($categorie['description'] ?: 'bi bi-folder') ?>"></i></td>
+                                    <td><?= (int)($categorie['prestations'] ?? 0) ?></td>
                                     <td><span class="badge bg-success">Oui</span></td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-cat="<?= htmlspecialchars(json_encode($categorie)) ?>" onclick="editCategory(this)"><i class="bi bi-pencil"></i></button>
@@ -199,7 +236,7 @@ function editCategory(btn) {
     const category = JSON.parse(btn.getAttribute('data-cat'));
     document.getElementById('editCategoryId').value = category.id_service_category;
     document.getElementById('editCategoryName').value = category.name || '';
-    document.getElementById('editCategoryIcon').value = category.icon || '';
+    document.getElementById('editCategoryIcon').value = category.description || '';
     openModal('modalEditCategory');
 }
 </script>

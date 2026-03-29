@@ -3,6 +3,8 @@ session_start();
 require_once __DIR__ . '/../db.php';
 include './include/header-admin.php';
 
+$token = $_SESSION['user']['token'];
+
 $message = '';
 $messageType = '';
 if (isset($_GET['success'])) {
@@ -12,38 +14,95 @@ if (isset($_GET['success'])) {
     }
 }
 
-try {
-    $stats = [
-        'users_actifs' => (int)$pdo->query("SELECT COUNT(*) FROM users WHERE active = TRUE")->fetchColumn(),
-        'prestations' => (int)$pdo->query("SELECT COUNT(*) FROM completed_services WHERE status = 'Terminé'")->fetchColumn(),
-        'devis' => (int)$pdo->query("SELECT COUNT(*) FROM quotes WHERE status = 'En attente'")->fetchColumn(),
-        'problemes' => 0
+$opts = [
+        "http" => [
+            "method" => "GET",
+            "header" => "X-Token: " . $token . "\r\n",
+            "ignore_errors" => true
+        ]
     ];
 
-    $transactions = $pdo->query("
-        SELECT i.amount_incl_tax, i.invoice_type, i.issue_date, u.first_name, u.last_name 
-        FROM invoices i 
-        JOIN quotes q ON i.id_quote = q.id_quote
-        JOIN service_requests sr ON q.id_request = sr.id_request
-        JOIN users u ON sr.id_user = u.id_user
-        ORDER BY i.issue_date DESC LIMIT 3
-    ")->fetchAll();
+$context = stream_context_create($opts);
+$response_usercount = file_get_contents("http://localhost:8080/api/users/active-count", false, $context);
+$response_prestations = file_get_contents("http://localhost:8080/api/service-completed/count", false, $context);
+$response_devis = file_get_contents("http://localhost:8080/api/quotes/count", false, $context);
+$response_problemes = file_get_contents("http://localhost:8080/api/notifications/probleme/count", false, $context);
+$response_transactions = file_get_contents("http://localhost:8080/api/transactions/last", false, $context);
+$response_events = file_get_contents("http://localhost:8080/api/events", false, $context);
+$response_pending_providers = file_get_contents("http://localhost:8080/api/transactions/pending-providers", false, $context);
+$response_pending_requests = file_get_contents("http://localhost:8080/api/service-requests/pending", false, $context);
 
-    $events = $pdo->query("
-        SELECT title, start_date, event_type FROM events 
-        WHERE start_date >= CURDATE() 
-        ORDER BY start_date ASC LIMIT 5
-    ")->fetchAll();
-
-    $pending_providers = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'prestataire' AND validation_status = 'En attente'")->fetchColumn();
-    $pending_requests = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE status = 'En attente'")->fetchColumn();
-} catch (PDOException $e) {
-    $stats = ['users_actifs' => 0, 'prestations' => 0, 'devis' => 0, 'problemes' => 0];
-    $transactions = [];
-    $events = [];
-    $pending_providers = 0;
-    $pending_requests = 0;
+if ($response_usercount !== false) {
+    $data = json_decode($response_usercount, true);
+    if (isset($data['count'])) {
+        $usercount = $data["count"];
+    }
 }
+
+if ($response_prestations !== false) {
+    $data = json_decode($response_prestations, true);
+    if (isset($data['count'])) {
+        $prestations_count = $data["count"];
+    }
+}
+
+if ($response_devis !== false) {
+    $data = json_decode($response_devis, true);
+    if (isset($data['count'])) {
+        $devis_count = $data["count"];
+    }
+}
+
+if ($response_problemes !== false) {
+    $data = json_decode($response_problemes, true);
+    if (isset($data['count'])) {
+        $problemes_count = $data["count"];
+    }
+}
+
+$transactions = [];
+$events = [];
+$pending_providers = 0;
+$pending_requests = 0;
+
+if ($response_transactions !== false) {
+    $data = json_decode($response_transactions, true);
+    if (is_array($data)) {
+        $transactions = $data;
+    }
+}
+
+if ($response_events !== false) {
+    $data = json_decode($response_events, true);
+    if (is_array($data)) {
+        $today = date('Y-m-d');
+        $events = array_filter($data, function($event) use ($today) {
+            return isset($event['start_date']) && $event['start_date'] >= $today;
+        });
+        $events = array_slice(array_values($events), 0, 5);
+    }
+}
+
+if ($response_pending_providers !== false) {
+    $data = json_decode($response_pending_providers, true);
+    if (isset($data['count'])) {
+        $pending_providers = $data["count"];
+    }
+}
+
+if ($response_pending_requests !== false) {
+    $data = json_decode($response_pending_requests, true);
+    if (isset($data['count'])) {
+        $pending_requests = $data["count"];
+    }
+}
+
+$stats = [
+    'users_actifs' => $usercount ?? 0,
+    'prestations' => $prestations_count ?? 0,
+    'devis' => $devis_count ?? 0,
+    'problemes' => $problemes_count ?? 0
+];
 ?>
 
 <?php if ($message): ?>

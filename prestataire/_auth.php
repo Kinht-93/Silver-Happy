@@ -3,7 +3,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-include_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../include/callapi.php';
+require_once __DIR__ . '/../active_user.php';
 
 if (!isset($_SESSION['user']) || !is_array($_SESSION['user'])) {
     header('Location: ../login.php');
@@ -17,49 +18,41 @@ if (!in_array($role, ['prestataire', 'provider'], true)) {
     exit;
 }
 
+updateUserActivity();
+
 $providerLink = null;
 $providerData = null;
 $providerProfile = null;
 $currentUserData = $user;
 $dbPageError = '';
+$token = (string)($user['token'] ?? '');
 
-if (!$pdo instanceof PDO) {
-    $dbPageError = 'Base de donnees indisponible.';
+if ($token === '') {
+    $dbPageError = 'Connexion API indisponible.';
 } else {
-    try {
-        $userStmt = $pdo->prepare(
-            "SELECT id_user, first_name, last_name, phone, role,
-                    company_name, siret_number, validation_status, average_rating, commission_rate,
-                    zone, iban, provider_description, skills_text, provider_updated_at
-             FROM users
-             WHERE id_user = ?
-             LIMIT 1"
-        );
-        $userStmt->execute([$user['id_user'] ?? '']);
-        $dbUser = $userStmt->fetch();
-        if ($dbUser) {
-            $currentUserData = array_merge($currentUserData, $dbUser);
-            if (($dbUser['role'] ?? '') === 'prestataire') {
-                $providerData = [
-                    'id_user' => $dbUser['id_user'],
-                    'id_provider' => $dbUser['id_user'],
-                    'company_name' => $dbUser['company_name'] ?? null,
-                    'siret_number' => $dbUser['siret_number'] ?? null,
-                    'validation_status' => $dbUser['validation_status'] ?? null,
-                    'average_rating' => $dbUser['average_rating'] ?? null,
-                    'commission_rate' => $dbUser['commission_rate'] ?? null,
-                ];
-                $providerProfile = [
-                    'zone' => $dbUser['zone'] ?? null,
-                    'iban' => $dbUser['iban'] ?? null,
-                    'description' => $dbUser['provider_description'] ?? null,
-                    'skills_text' => $dbUser['skills_text'] ?? null,
-                    'updated_at' => $dbUser['provider_updated_at'] ?? null,
-                ];
-            }
+    $userResponse = callAPI('http://localhost:8080/api/users/' . urlencode((string)($user['id_user'] ?? '')), 'GET', null, $token);
+    if (!is_array($userResponse) || isset($userResponse['error'])) {
+        $dbPageError = 'Erreur API: ' . (string)($userResponse['error'] ?? 'Impossible de charger le profil prestataire.');
+    } else {
+        $currentUserData = array_merge($currentUserData, $userResponse);
+        if (($userResponse['role'] ?? '') === 'prestataire') {
+            $providerData = [
+                'id_user' => $userResponse['id_user'],
+                'id_provider' => $userResponse['id_user'],
+                'company_name' => $userResponse['company_name'] ?? null,
+                'siret_number' => $userResponse['siret_number'] ?? null,
+                'validation_status' => $userResponse['validation_status'] ?? null,
+                'average_rating' => $userResponse['average_rating'] ?? null,
+                'commission_rate' => $userResponse['commission_rate'] ?? null,
+            ];
+            $providerProfile = [
+                'zone' => $userResponse['zone'] ?? null,
+                'iban' => $userResponse['iban'] ?? null,
+                'description' => $userResponse['provider_description'] ?? null,
+                'skills_text' => $userResponse['skills_text'] ?? null,
+                'updated_at' => $userResponse['provider_updated_at'] ?? null,
+            ];
         }
-    } catch (PDOException $e) {
-        $dbPageError = 'Erreur base de donnees: ' . $e->getMessage();
     }
 }
 

@@ -4,7 +4,7 @@ include_once __DIR__ . '/_auth.php';
 $message = '';
 $messageType = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerData) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
     try {
         if (!$isProviderValidated) {
             throw new RuntimeException('Validation administrateur requise pour modifier les disponibilites.');
@@ -48,13 +48,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerDat
                 }
             }
 
-            $stmt = $pdo->prepare('INSERT INTO provider_availabilities (id_user, available_date, start_time, end_time, is_available, created_at) VALUES (?, ?, ?, ?, 1, NOW())');
-            $stmt->execute([$providerData['id_user'], $date, $start, $end]);
+            $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities', 'POST', [
+                'available_date' => $date,
+                'start_time' => $start,
+                'end_time' => $end,
+            ], $token);
+            if (!is_array($response) || isset($response['error'])) {
+                throw new RuntimeException((string)($response['error'] ?? 'Impossible d ajouter la disponibilite.'));
+            }
+
             $message = 'Disponibilite ajoutee.';
             $messageType = 'success';
         } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare('DELETE FROM provider_availabilities WHERE id_availability = ? AND id_user = ?');
-            $stmt->execute([(int)($_POST['id_availability'] ?? 0), $providerData['id_user']]);
+            $availabilityId = (int)($_POST['id_availability'] ?? 0);
+            $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities/' . urlencode((string)$availabilityId), 'DELETE', null, $token);
+            if (is_array($response) && isset($response['error'])) {
+                throw new RuntimeException((string)$response['error']);
+            }
             $message = 'Disponibilite supprimee.';
             $messageType = 'success';
         }
@@ -65,13 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerDat
 }
 
 $availabilities = [];
-if ($pdo instanceof PDO && $providerData) {
-    try {
-        $stmt = $pdo->prepare('SELECT id_availability, available_date, start_time, end_time FROM provider_availabilities WHERE id_user = ? ORDER BY available_date DESC, start_time DESC');
-        $stmt->execute([$providerData['id_user']]);
-        $availabilities = $stmt->fetchAll();
-    } catch (PDOException $e) {
-        $message = 'Erreur: ' . $e->getMessage();
+if ($providerData && $token !== '') {
+    $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities', 'GET', null, $token);
+    if (is_array($response) && !isset($response['error'])) {
+        $availabilities = $response;
+    } else {
+        $message = 'Erreur: ' . (string)($response['error'] ?? 'Impossible de charger les disponibilites.');
         $messageType = 'danger';
     }
 }

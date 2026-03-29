@@ -3,50 +3,86 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$produits = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $stmt = $pdo->prepare("INSERT INTO products (id_product, name, category, price, stock, sales, status) VALUES (?, ?, ?, ?, ?, 0, 'En stock')");
-            $stmt->execute([
-                uniqid('prd_'),
-                $_POST['name'],
-                $_POST['category'],
-                $_POST['price'],
-                $_POST['stock']
-            ]);
+    
+    if ($action === 'create') {
+        $data = [
+            'name' => $_POST['name'],
+            'category' => $_POST['category'],
+            'price' => (float)($_POST['price'] ?? 0),
+            'stock' => (int)($_POST['stock'] ?? 0)
+        ];
+        
+        $response = callAPI('http://localhost:8080/api/products', 'POST', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Produit ajouté avec succès.";
             $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE products SET name=?, price=?, stock=? WHERE id_product=?");
-            $stmt->execute([
-                $_POST['name'],
-                $_POST['price'],
-                $_POST['stock'],
-                $_POST['id']
-            ]);
+        } else {
+            $message = "Erreur lors de l'ajout.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'name' => $_POST['name'],
+            'price' => (float)($_POST['price'] ?? 0),
+            'stock' => (int)($_POST['stock'] ?? 0)
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/products/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Produit modifié avec succès.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmtDb = $pdo->prepare("DELETE FROM products WHERE id_product=?");
-            $stmtDb->execute([$_POST['id']]);
-            $message = "Produit supprimé.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification.";
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/products/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "Produit supprimé.";
+        $messageType = "success";
     }
 }
 
-$query = "SELECT id_product, name, category, price, stock, sales, status FROM products ORDER BY name ASC";
-try {
-    $produits = $pdo ? $pdo->query($query)->fetchAll() : [];
-} catch (PDOException $e) {
-    $message = "Erreur: " . $e->getMessage();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/products', 'GET', null, $token);
+    
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+        $produits = [];
+    } elseif (is_array($response)) {
+        $produits = $response;
+    }
+} else {
+    $message = "Token d'authentification manquant.";
     $messageType = "danger";
-    $produits = [];
 }
 ?>
 
@@ -105,7 +141,7 @@ try {
                                     <span class="badge bg-danger">0</span>
                                 <?php endif; ?>
                             </td>
-                            <td><?= (int)$produit['sales'] ?></td>
+                            <td><?= (int)($produit['sales'] ?? 0) ?></td>
                             <td>
                                 <?php if ($produit['stock'] > 10): ?>
                                     <span class="badge bg-success">En stock</span>
@@ -217,10 +253,10 @@ function viewProduct(btn) {
 
 function editProduct(btn) {
     const productData = JSON.parse(btn.getAttribute('data-product'));
-    document.getElementById('editProductId').value = productData.id_product;
-    document.getElementById('editArticleName').value = productData.name;
-    document.getElementById('editArticlePrice').value = parseFloat(productData.price);
-    document.getElementById('editArticleStock').value = parseInt(productData.stock);
+    document.getElementById('editProductId').value = productData.id_product || '';
+    document.getElementById('editArticleName').value = productData.name || '';
+    document.getElementById('editArticlePrice').value = parseFloat(productData.price) || 0;
+    document.getElementById('editArticleStock').value = parseInt(productData.stock) || 0;
     openModal('modalEditProduct');
 }
 </script>

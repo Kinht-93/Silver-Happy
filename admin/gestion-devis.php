@@ -1,142 +1,83 @@
 <?php
 include './include/header-admin.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+
+$devis = [];
+$seniors = [];
+$serviceTypes = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
+    if (!empty($token)) {
         if ($action === 'create') {
-            if (empty($_POST['id_user']) || empty($_POST['id_service_type']) || empty($_POST['amount'])) {
-                throw new InvalidArgumentException('Merci de renseigner le senior, la prestation et le montant.');
+            $response = callAPI('http://localhost:8080/api/admin-quotes', 'POST', [
+                'id_user' => $_POST['id_user'] ?? '',
+                'id_service_type' => $_POST['id_service_type'] ?? '',
+                'amount' => isset($_POST['amount']) ? (float) $_POST['amount'] : 0,
+            ], $token);
+
+            if (is_array($response) && !isset($response['error'])) {
+                $message = "Devis créé avec succès.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur sur la gestion du devis: ' . ($response['error'] ?? 'Création impossible.');
+                $messageType = 'danger';
             }
+        } elseif ($action === 'update' && !empty($_POST['id'])) {
+            $response = callAPI('http://localhost:8080/api/admin-quotes/' . urlencode($_POST['id']), 'PATCH', [
+                'amount' => isset($_POST['amount']) ? (float) $_POST['amount'] : 0,
+                'status' => $_POST['status'] ?? 'En attente',
+            ], $token);
 
-            $pdo->beginTransaction();
-
-            $stmt = $pdo->prepare("SELECT id_service_category FROM service_types WHERE id_service_type = ?");
-            $stmt->execute([$_POST['id_service_type']]);
-            $serviceType = $stmt->fetch();
-            if (!$serviceType) {
-                throw new RuntimeException("Type de prestation introuvable.");
+            if (is_array($response) && !isset($response['error'])) {
+                $message = "Devis mis à jour.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur sur la gestion du devis: ' . ($response['error'] ?? 'Mise à jour impossible.');
+                $messageType = 'danger';
             }
-
-            $id_request = uniqid('req_');
-
-            $stmt = $pdo->prepare("
-                INSERT INTO service_requests (
-                    id_request, desired_date, start_time, estimated_duration,
-                    intervention_address, status, created_at, id_user, id_service_category
-                ) VALUES (?, CURDATE(), '09:00:00', 1, ?, 'En attente', NOW(), ?, ?)
-            ");
-            $stmt->execute([
-                $id_request,
-                'Adresse à définir',
-                $_POST['id_user'],
-                $serviceType['id_service_category']
-            ]);
-
-            $year = date('Y');
-            $lastNumber = $pdo->prepare("SELECT quote_number FROM quotes WHERE quote_number LIKE ? ORDER BY quote_number DESC LIMIT 1");
-            $like = "DV-$year-%";
-            $lastNumber->execute([$like]);
-            $last = $lastNumber->fetchColumn();
-            $seq = 1;
-            if ($last && preg_match('#DV-' . $year . '-(\d{3})#', $last, $m)) {
-                $seq = (int)$m[1] + 1;
+        } elseif ($action === 'delete' && !empty($_POST['id'])) {
+            $response = callAPI('http://localhost:8080/api/admin-quotes/' . urlencode($_POST['id']), 'DELETE', null, $token);
+            if (!is_array($response) || !isset($response['error'])) {
+                $message = "Devis supprimé.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur sur la gestion du devis: ' . $response['error'];
+                $messageType = 'danger';
             }
-            $quoteNumber = sprintf('DV-%s-%03d', $year, $seq);
-
-            $id_quote = uniqid('quo_');
-            $amountIncl = (float)$_POST['amount'];
-            $taxRate = 20.0;
-            $amountExcl = $amountIncl > 0 ? round($amountIncl / (1 + $taxRate / 100), 2) : 0;
-
-            $stmt = $pdo->prepare("
-                INSERT INTO quotes (
-                    id_quote, quote_number, amount_excl_tax, tax_rate, amount_incl_tax,
-                    status, created_at, id_request
-                ) VALUES (?, ?, ?, ?, ?, 'En attente', NOW(), ?)
-            ");
-            $stmt->execute([
-                $id_quote,
-                $quoteNumber,
-                $amountExcl,
-                $taxRate,
-                $amountIncl,
-                $id_request
-            ]);
-
-            $pdo->commit();
-            $message = "Devis créé avec succès.";
-            $messageType = "success";
-        } elseif ($action === 'update') {
-            if (empty($_POST['id'])) {
-                throw new InvalidArgumentException('Identifiant devis manquant.');
-            }
-            $amountIncl = isset($_POST['amount']) ? (float)$_POST['amount'] : 0;
-            $status = $_POST['status'] ?? 'En attente';
-            $taxRate = 20.0;
-            $amountExcl = $amountIncl > 0 ? round($amountIncl / (1 + $taxRate / 100), 2) : 0;
-
-            $stmt = $pdo->prepare("
-                UPDATE quotes
-                SET amount_excl_tax = ?, tax_rate = ?, amount_incl_tax = ?, status = ?
-                WHERE id_quote = ?
-            ");
-            $stmt->execute([
-                $amountExcl,
-                $taxRate,
-                $amountIncl,
-                $status,
-                $_POST['id']
-            ]);
-
-            $message = "Devis mis à jour.";
-            $messageType = "success";
-        } elseif ($action === 'delete') {
-            if (empty($_POST['id'])) {
-                throw new InvalidArgumentException('Identifiant devis manquant.');
-            }
-            $stmt = $pdo->prepare("DELETE FROM quotes WHERE id_quote = ?");
-            $stmt->execute([$_POST['id']]);
-            $message = "Devis supprimé.";
-            $messageType = "success";
         }
-    } catch (Throwable $e) {
-        if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        $message = "Erreur sur la gestion du devis: " . $e->getMessage();
-        $messageType = "danger";
     }
 }
 
-$query = "
-    SELECT q.id_quote, q.quote_number, q.amount_incl_tax as amount, q.created_at, q.status,
-           u.first_name, u.last_name,
-           st.name as prestation_name
-    FROM quotes q
-    JOIN service_requests sr ON q.id_request = sr.id_request
-    JOIN users u ON sr.id_user = u.id_user
-    LEFT JOIN show_type sht ON sr.id_request = sht.id_request
-    LEFT JOIN service_types st ON sht.id_service_type = st.id_service_type
-    ORDER BY q.created_at DESC
-";
-$devis = $pdo->query($query)->fetchAll();
+if (!empty($token)) {
+    $devisResponse = callAPI('http://localhost:8080/api/admin-quotes', 'GET', null, $token);
+    $seniorsResponse = callAPI('http://localhost:8080/api/users-summary?roles=senior', 'GET', null, $token);
+    $serviceTypesResponse = callAPI('http://localhost:8080/api/service-types', 'GET', null, $token);
 
-$seniors = $pdo->query("
-    SELECT id_user, first_name, last_name 
-    FROM users 
-    WHERE LOWER(role) = 'senior'
-    ORDER BY last_name, first_name
-")->fetchAll();
+    if (is_array($devisResponse) && !isset($devisResponse['error'])) {
+        $devis = $devisResponse;
+    } elseif ($message === '') {
+        $message = 'Erreur lors du chargement des devis.';
+        $messageType = 'danger';
+    }
 
-$serviceTypes = $pdo->query("
-    SELECT id_service_type, name 
-    FROM service_types
-    ORDER BY name
-")->fetchAll();
+    if (is_array($seniorsResponse) && !isset($seniorsResponse['error'])) {
+        $seniors = array_values(array_filter($seniorsResponse, static function ($user) {
+            return !empty($user['active']);
+        }));
+    }
+
+    if (is_array($serviceTypesResponse) && !isset($serviceTypesResponse['error'])) {
+        $serviceTypes = $serviceTypesResponse;
+    }
+} elseif ($message === '') {
+    $message = 'Token d\'authentification manquant.';
+    $messageType = 'danger';
+}
 ?>
 
 <?php if ($message): ?>

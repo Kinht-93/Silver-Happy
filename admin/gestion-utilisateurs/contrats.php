@@ -3,108 +3,107 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$contrats = [];
+$users = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $checkStmt = $pdo->prepare("SELECT COUNT(*) as count FROM contracts WHERE id_user = ? AND status = 'Actif'");
-            $checkStmt->execute([$_POST['id_user']]);
-            $checkResult = $checkStmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($checkResult['count'] > 0) {
-                throw new Exception("Cet utilisateur possède déjà un contrat actif. Un seul contrat par utilisateur autorisé.");
-            }
-            
-            $id_contract = uniqid('ctr_');
-            $stmt = $pdo->prepare("
-                INSERT INTO contracts (id_contract, id_user, start_date, end_date, amount, payment_method, status, auto_renew, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
-            $stmt->execute([
-                $id_contract,
-                $_POST['id_user'],
-                $_POST['start_date'],
-                $_POST['end_date'],
-                (float)$_POST['amount'],
-                $_POST['payment_method'],
-                'Actif',
-                isset($_POST['auto_renew']) ? 1 : 0
-            ]);
+    
+    if ($action === 'create') {
+        $data = [
+            'id_user' => $_POST['id_user'],
+            'start_date' => $_POST['start_date'],
+            'end_date' => $_POST['end_date'],
+            'amount' => (float)$_POST['amount'],
+            'payment_method' => $_POST['payment_method'],
+            'auto_renew' => isset($_POST['auto_renew']) ? true : false
+        ];
+        
+        $response = callAPI('http://localhost:8080/api/contracts', 'POST', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Contrat créé avec succès.";
             $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("
-                UPDATE contracts 
-                SET start_date=?, end_date=?, amount=?, payment_method=?, status=?, auto_renew=?, updated_at=NOW()
-                WHERE id_contract=?
-            ");
-            $stmt->execute([
-                $_POST['start_date'],
-                $_POST['end_date'],
-                (float)$_POST['amount'],
-                $_POST['payment_method'],
-                $_POST['status'],
-                isset($_POST['auto_renew']) ? 1 : 0,
-                $_POST['id']
-            ]);
+        } else {
+            $message = $response['error'] ?? "Erreur lors de la création du contrat.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'start_date' => $_POST['start_date'],
+            'end_date' => $_POST['end_date'],
+            'amount' => (float)$_POST['amount'],
+            'payment_method' => $_POST['payment_method'],
+            'status' => $_POST['status'],
+            'auto_renew' => isset($_POST['auto_renew']) ? true : false
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/contracts/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Contrat modifié avec succès.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM contracts WHERE id_contract=?");
-            $stmt->execute([$_POST['id']]);
-            $message = "Contrat supprimé.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification du contrat.";
+            $messageType = "danger";
         }
-    } catch (Exception $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
-    } catch (PDOException $e) {
-        $message = "Erreur BD: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/contracts/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "Contrat supprimé.";
+        $messageType = "success";
     }
 }
 
 $filter = $_GET['filter'] ?? 'tous';
-$whereClause = '';
-if ($filter === 'actifs') {
-    $whereClause = "WHERE c.status = 'Actif'";
-} elseif ($filter === 'expires') {
-    $whereClause = "WHERE c.end_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND c.status = 'Actif'";
-} elseif ($filter === 'expired') {
-    $whereClause = "WHERE c.end_date < CURDATE()";
-}
 
-$query = "
-    SELECT c.id_contract, c.id_user, c.start_date, c.end_date, c.amount, c.payment_method, c.status, c.auto_renew,
-           u.first_name, u.last_name, u.email, u.role,
-           DATEDIFF(c.end_date, CURDATE()) as jours_restants
-    FROM contracts c
-    INNER JOIN users u ON c.id_user = u.id_user
-    $whereClause
-    ORDER BY c.end_date ASC
-";
-try {
-    $contrats = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $contrats = [];
-    $message = "Erreur BD: " . $e->getMessage();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/contracts', 'GET', null, $token);
+    
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+        $contrats = [];
+    } elseif (is_array($response)) {
+        $contrats = $response;
+        
+        if ($filter === 'actifs') {
+            $contrats = array_filter($contrats, fn($c) => $c['status'] === 'Actif');
+        } elseif ($filter === 'expires') {
+            $contrats = array_filter($contrats, fn($c) => $c['jours_restants'] <= 30 && $c['jours_restants'] > 0 && $c['status'] === 'Actif');
+        } elseif ($filter === 'expired') {
+            $contrats = array_filter($contrats, fn($c) => $c['jours_restants'] < 0);
+        }
+    }
+
+    $usersResponse = callAPI('http://localhost:8080/api/users-without-contract', 'GET', null, $token);
+    if (is_array($usersResponse) && !isset($usersResponse['error'])) {
+        $users = $usersResponse;
+    }
+} else {
+    $message = "Token d'authentification manquant.";
     $messageType = "danger";
-}
-
-try {
-    $users = $pdo->query("
-        SELECT u.id_user, u.first_name, u.last_name, u.role
-        FROM users u
-        WHERE u.active = TRUE
-        AND NOT EXISTS (
-            SELECT 1 FROM contracts c 
-            WHERE c.id_user = u.id_user AND c.status = 'Actif'
-        )
-        ORDER BY u.last_name ASC
-    ")->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $users = [];
 }
 ?>
 
@@ -279,6 +278,10 @@ try {
                             <option value="Suspendu">Suspendu</option>
                         </select>
                     </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="editAutoRenew" name="auto_renew">
+                        <label class="form-check-label" for="editAutoRenew">Renouvellement automatique</label>
+                    </div>
                     <button type="submit" class="btn btn-primary w-100">Mettre à jour</button>
                 </form>
             </div>
@@ -294,6 +297,7 @@ function editContract(contract) {
     document.getElementById('editAmount').value = contract.amount;
     document.getElementById('editPaymentMethod').value = contract.payment_method;
     document.getElementById('editStatus').value = contract.status;
+    document.getElementById('editAutoRenew').checked = contract.auto_renew === true || contract.auto_renew === 1;
     new bootstrap.Modal(document.getElementById('modalEditContract')).show();
 }
 </script>

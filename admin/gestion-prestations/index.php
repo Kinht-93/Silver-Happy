@@ -3,53 +3,95 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$prestations = [];
+$categories = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $stmt = $pdo->prepare("INSERT INTO service_types (id_service_type, name, description, hourly_rate, certification_required, id_service_category) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([
-                uniqid('styp_'),
-                $_POST['name'],
-                $_POST['description'] ?? null,
-                $_POST['hourly_rate'] ?? 0,
-                $_POST['certification_required'] ?? 0,
-                $_POST['id_service_category']
-            ]);
+    
+    if ($action === 'create') {
+        $data = [
+            'name' => $_POST['name'],
+            'description' => $_POST['description'] ?? null,
+            'hourly_rate' => (float)($_POST['hourly_rate'] ?? 0),
+            'certification_required' => isset($_POST['certification_required']) ? true : false,
+            'id_service_category' => $_POST['id_service_category']
+        ];
+        
+        $response = callAPI('http://localhost:8080/api/service-types', 'POST', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Prestation ajoutée avec succès.";
             $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE service_types SET name=?, description=?, hourly_rate=? WHERE id_service_type=?");
-            $stmt->execute([
-                $_POST['name'],
-                $_POST['description'] ?? null,
-                $_POST['hourly_rate'] ?? 0,
-                $_POST['id']
-            ]);
+        } else {
+            $message = "Erreur lors de l'ajout.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'name' => $_POST['name'],
+            'description' => $_POST['description'] ?? null,
+            'hourly_rate' => (float)($_POST['hourly_rate'] ?? 0),
+            'id_service_category' => $_POST['id_service_category'] ?? ''
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/service-types/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Prestation modifiée avec succès.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmtDb = $pdo->prepare("DELETE FROM service_types WHERE id_service_type=?");
-            $stmtDb->execute([$_POST['id']]);
-            $message = "Prestation supprimée.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification.";
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/service-types/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "Prestation supprimée.";
+        $messageType = "success";
     }
 }
 
-$query = "
-    SELECT st.id_service_type, st.name as titre, st.hourly_rate as prix, st.description, st.id_service_category,
-           sc.name as categorie,
-           (SELECT COUNT(*) FROM show_type s WHERE s.id_service_type = st.id_service_type) as reservations
-    FROM service_types st
-    LEFT JOIN service_categories sc ON st.id_service_category = sc.id_service_category
-    ORDER BY sc.name, st.name
-";
-$prestations = $pdo->query($query)->fetchAll();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/service-types-admin', 'GET', null, $token);
+    
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+        $prestations = [];
+    } elseif (is_array($response)) {
+        $prestations = $response;
+    }
+    
+    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories-admin', 'GET', null, $token);
+    if (is_array($categoriesResponse) && !isset($categoriesResponse['error'])) {
+        $categories = $categoriesResponse;
+    }
+} else {
+    $message = "Token d'authentification manquant.";
+    $messageType = "danger";
+}
 ?>
 
 <?php if ($message): ?>
@@ -97,12 +139,12 @@ $prestations = $pdo->query($query)->fetchAll();
                 <?php else: ?>
                     <?php foreach ($prestations as $prestation): ?>
                         <tr>
-                            <td><?= htmlspecialchars($prestation['titre']) ?></td>
-                            <td><span class="badge bg-light text-dark"><?= htmlspecialchars($prestation['categorie']) ?></span></td>
-                            <td><?= htmlspecialchars($prestation['titre']) ?></td>
+                            <td><?= htmlspecialchars($prestation['name']) ?></td>
+                            <td><span class="badge bg-light text-dark"><?= htmlspecialchars($prestation['category_name'] ?? 'N/A') ?></span></td>
+                            <td><?= htmlspecialchars($prestation['name']) ?></td>
                             <td>Générique</td>
-                            <td><?= number_format($prestation['prix'], 2) ?>€</td>
-                            <td><?= (int)$prestation['reservations'] ?></td>
+                            <td><?= number_format($prestation['hourly_rate'] ?? 0, 2) ?>€</td>
+                            <td><?= (int)($prestation['prestations_count'] ?? 0) ?></td>
                             <td><span class="badge bg-success">Validé</span></td>
                                 <td>
                                     <button type="button" class="btn btn-sm btn-outline-primary" data-type="<?= htmlspecialchars(json_encode($prestation)) ?>" onclick="viewServiceDetails(this)"><i class="bi bi-eye"></i></button>
@@ -145,7 +187,6 @@ $prestations = $pdo->query($query)->fetchAll();
                         <select class="form-control" id="serviceCategory" name="id_service_category" required>
                             <option value="">Sélectionner une catégorie</option>
 <?php
-                            $categories = $pdo->query("SELECT id_service_category, name FROM service_categories")->fetchAll();
                             foreach ($categories as $cat): ?>
                                 <option value="<?= htmlspecialchars($cat['id_service_category']) ?>"><?= htmlspecialchars($cat['name']) ?></option>
 <?php endforeach; ?>
@@ -189,6 +230,16 @@ $prestations = $pdo->query($query)->fetchAll();
                         <textarea class="form-control" id="editServiceDescription" name="description" rows="3"></textarea>
                     </div>
                     <div class="mb-3">
+                        <label for="editServiceCategory" class="form-label">Catégorie *</label>
+                        <select class="form-control" id="editServiceCategory" name="id_service_category" required>
+                            <option value="">Sélectionner une catégorie</option>
+<?php
+                            foreach ($categories as $cat): ?>
+                                <option value="<?= htmlspecialchars($cat['id_service_category']) ?>"><?= htmlspecialchars($cat['name']) ?></option>
+<?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label for="editServicePrice" class="form-label">Prix horaire (€) *</label>
                         <input type="number" class="form-control" id="editServicePrice" name="hourly_rate" step="0.01" required>
                     </div>
@@ -206,15 +257,16 @@ $prestations = $pdo->query($query)->fetchAll();
 function editService(btn) {
     const type = JSON.parse(btn.getAttribute('data-type'));
     document.getElementById('editServiceId').value = type.id_service_type;
-    document.getElementById('editServiceTitle').value = type.titre || '';
+    document.getElementById('editServiceTitle').value = type.name || '';
     document.getElementById('editServiceDescription').value = type.description || '';
-    document.getElementById('editServicePrice').value = parseFloat(type.prix) || 0;
+    document.getElementById('editServiceCategory').value = type.id_service_category || '';
+    document.getElementById('editServicePrice').value = parseFloat(type.hourly_rate) || 0;
     openModal('modalEditService');
 }
 
 function viewServiceDetails(btn) {
     const type = JSON.parse(btn.getAttribute('data-type'));
-    alert('Détails de la prestation: ' + type.titre + '\nCatégorie: ' + type.categorie + '\nPrix horaire: ' + type.prix + ' €\nDescription: ' + (type.description || 'Aucune description'));
+    alert('Détails de la prestation: ' + type.name + '\nCatégorie: ' + (type.category_name || 'N/A') + '\nPrix horaire: ' + type.hourly_rate + ' €\nDescription: ' + (type.description || 'Aucune description'));
 }
 </script>
 

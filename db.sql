@@ -39,6 +39,12 @@ CREATE TABLE users (
     INDEX idx_users_role_validation (role, validation_status)
 );
 
+CREATE TABLE `active_users` (
+  `id_user` varchar(255) NOT NULL,
+  `last_activity` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_user) REFERENCES users(id_user)
+)
+
 CREATE TABLE subscription_types (
     id_subscription_type VARCHAR(255) PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,

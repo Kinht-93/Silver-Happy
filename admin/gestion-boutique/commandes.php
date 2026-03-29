@@ -1,23 +1,58 @@
 <?php
 include '../include/header-admin.php';
 
-$query = "
-    SELECT o.id_order, o.order_number, o.amount, o.order_date, o.delivery_method, o.status,
-           u.first_name, u.last_name,
-           (SELECT GROUP_CONCAT(CONCAT(p.name, ' (x', oi.quantity, ')') SEPARATOR ' + ') 
-            FROM order_items oi 
-            JOIN products p ON oi.id_product = p.id_product 
-            WHERE oi.id_order = o.id_order) as items
-    FROM orders o
-    JOIN users u ON o.id_user = u.id_user
-    ORDER BY o.order_date DESC
-";
-$commandes = $pdo->query($query)->fetchAll();
+$token = $_SESSION['user']['token'] ?? '';
+$commandes = [];
+$stats = ['total_commandes' => 0, 'en_attente' => 0, 'livrees' => 0, 'retours' => 0];
 
-$total_commandes = $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn();
-$en_attente = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'En attente'")->fetchColumn();
-$livrees = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'Livrée'")->fetchColumn();
-$retours = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'Retour demandé'")->fetchColumn();
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    
+    if ($action === 'update_status') {
+        $data = ['status' => $_POST['status']];
+        $response = callAPI("http://localhost:8080/api/orders/{$_POST['id']}", 'PATCH', $data, $token);
+    }
+}
+
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/orders', 'GET', null, $token);
+    if (is_array($response) && !isset($response['error'])) {
+        $commandes = $response;
+    }
+    
+    $statsResponse = callAPI('http://localhost:8080/api/orders/stats', 'GET', null, $token);
+    if (is_array($statsResponse) && !isset($statsResponse['error'])) {
+        $stats = $statsResponse;
+    }
+}
+
+$total_commandes = $stats['total_commandes'] ?? 0;
+$en_attente = $stats['en_attente'] ?? 0;
+$livrees = $stats['livrees'] ?? 0;
+$retours = $stats['retours'] ?? 0;
 ?>
 
 <?php if ($message): ?>
@@ -89,7 +124,7 @@ $retours = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'Retour deman
                         <tr>
                             <td><strong><?= htmlspecialchars($commande['order_number']) ?></strong></td>
                             <td><?= htmlspecialchars($commande['first_name'] . ' ' . $commande['last_name']) ?></td>
-                            <td><?= htmlspecialchars($commande['items']) ?: 'Aucun article' ?></td>
+                            <td><?= htmlspecialchars($commande['items'] ?? 'Aucun article') ?></td>
                             <td><?= number_format($commande['amount'], 2) ?>€</td>
                             <td><?= date('d/m/Y', strtotime($commande['order_date'])) ?></td>
                             <td><?= htmlspecialchars($commande['delivery_method']) ?></td>
@@ -197,7 +232,7 @@ function viewOrder(btn) {
 
 function editOrder(btn) {
     const order = JSON.parse(btn.getAttribute('data-order'));
-    document.getElementById('editOrderId').value = order.id_order;
+    document.getElementById('editOrderId').value = order.id_order || '';
     document.getElementById('editOrderStatus').value = order.status || '';
     openModal('modalEditOrder');
 }

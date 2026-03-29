@@ -4,6 +4,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 include_once __DIR__ . '/role_redirect.php';
+require_once __DIR__ . '/../active_user.php';
 
 $basePath = isset($basePath) ? rtrim($basePath, '/') . '/' : '';
 $isLoggedIn = isset($_SESSION['user']) && is_array($_SESSION['user']);

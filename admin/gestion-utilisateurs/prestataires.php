@@ -3,67 +3,95 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$prestataires = [];
 
-if (!isset($pdo)) {
-    die('Erreur: Connexion à la base de données non disponible');
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $pdo->beginTransaction();
-            $id_user = uniqid('usr_');
-            $password = password_hash('default123', PASSWORD_DEFAULT);
-            $siret = substr(md5(uniqid()), 0, 14);
-            
-            $stmt = $pdo->prepare("INSERT INTO users (id_user, first_name, last_name, email, role, phone, active, created_at, password, siret_number, company_name, validation_status) VALUES (?, ?, ?, ?, 'prestataire', ?, 1, NOW(), ?, ?, ?, 'En attente')");
-            $companyName = !empty($_POST['company_name']) ? $_POST['company_name'] : 'Entreprise ' . substr($id_user, 4, 6);
-            $stmt->execute([$id_user, $_POST['first_name'], $_POST['last_name'], $_POST['email'], $_POST['phone'] ?: null, $password, $siret, $companyName]);
-            
-            $pdo->commit();
+    
+    if ($action === 'create') {
+        $data = [
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'email' => $_POST['email'],
+            'role' => 'prestataire',
+            'phone' => $_POST['phone'] ?? null,
+            'company_name' => $_POST['company_name'] ?? null,
+            'active' => 1
+        ];
+        
+        $response = callAPI('http://localhost:8080/api/users', 'POST', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Prestataire ajouté avec succès.";
             $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=?, phone=?, validation_status=? WHERE id_user=?");
-            $stmt->execute([
-                $_POST['first_name'],
-                $_POST['last_name'],
-                $_POST['email'],
-                $_POST['phone'] ?: null,
-                $_POST['validation_status'] ?? 'En attente',
-                $_POST['id']
-            ]);
+        } else {
+            $message = "Erreur lors de l'ajout.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'email' => $_POST['email'],
+            'phone' => $_POST['phone'] ?? null,
+            'company_name' => $_POST['company_name'] ?? null
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Prestataire modifié avec succès.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $pdo->prepare("DELETE FROM users WHERE id_user=?")->execute([$_POST['id']]);
-            $message = "Prestataire supprimé.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification.";
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "Prestataire supprimé.";
+        $messageType = "success";
     }
 }
 
-try {
-    $query = "
-        SELECT u.id_user, u.last_name, u.first_name, u.email, u.phone, u.active, 
-               u.company_name, u.siret_number, u.validation_status,
-               (SELECT COUNT(*) FROM contracts c WHERE c.id_user = u.id_user) as prestations_count
-        FROM users u
-        WHERE u.role = 'prestataire'
-        ORDER BY u.created_at DESC
-    ";
-    $prestataires = $pdo->query($query)->fetchAll();
-} catch (PDOException $e) {
-    $message = "Erreur de requête: " . $e->getMessage();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/users', 'GET', null, $token);
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+    } elseif (is_array($response)) {
+        $prestataires = array_filter($response, function($user) {
+            return isset($user['role']) && $user['role'] === 'prestataire';
+        });
+        $prestataires = array_values($prestataires);
+    } else {
+        $message = "Format de réponse invalide de l'API.";
+        $messageType = "warning";
+    }
+} else {
+    $message = "Token d'authentification manquant.";
     $messageType = "danger";
-    $prestataires = [];
 }
 ?>
 

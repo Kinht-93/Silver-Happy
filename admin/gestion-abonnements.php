@@ -1,86 +1,77 @@
 <?php
 include './include/header-admin.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+
+$subscriptions = [];
+$total_actifs = 0;
+$revenus = 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
+    if (!empty($token)) {
         if ($action === 'create') {
-            $stmt = $pdo->prepare("
-                INSERT INTO subscription_types (id_subscription_type, name, user_type, monthly_price, yearly_price)
-                VALUES (?, ?, ?, ?, ?)
-            ");
-            $monthly = isset($_POST['monthly_price']) ? (float)$_POST['monthly_price'] : 0;
-            $yearly = $monthly > 0 ? $monthly * 12 : 0;
-            $stmt->execute([
-                uniqid('sub_'),
-                $_POST['name'],
-                $_POST['user_type'],
-                $monthly,
-                $yearly
-            ]);
-            $message = "Nouvelle formule d'abonnement créée avec succès.";
-            $messageType = "success";
-        } elseif ($action === 'update') {
-            $monthly = isset($_POST['monthly_price']) ? (float)$_POST['monthly_price'] : 0;
-            $yearly = $monthly > 0 ? $monthly * 12 : 0;
-            $stmt = $pdo->prepare("
-                UPDATE subscription_types
-                SET name = ?, user_type = ?, monthly_price = ?, yearly_price = ?
-                WHERE id_subscription_type = ?
-            ");
-            $stmt->execute([
-                $_POST['name'],
-                $_POST['user_type'],
-                $monthly,
-                $yearly,
-                $_POST['id']
-            ]);
-            $message = "Formule d'abonnement mise à jour.";
-            $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM subscription_types WHERE id_subscription_type = ?");
-            $stmt->execute([$_POST['id']]);
-            $message = "Formule d'abonnement supprimée avec succès.";
-            $messageType = "success";
+            $response = callAPI('http://localhost:8080/api/subscription-types-admin', 'POST', [
+                'name' => $_POST['name'] ?? '',
+                'user_type' => $_POST['user_type'] ?? '',
+                'monthly_price' => isset($_POST['monthly_price']) ? (float) $_POST['monthly_price'] : 0,
+            ], $token);
+
+            if (is_array($response) && !isset($response['error'])) {
+                $message = "Nouvelle formule d'abonnement créée avec succès.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . ($response['error'] ?? 'Création impossible.');
+                $messageType = 'danger';
+            }
+        } elseif ($action === 'update' && !empty($_POST['id'])) {
+            $response = callAPI('http://localhost:8080/api/subscription-types-admin/' . urlencode($_POST['id']), 'PATCH', [
+                'name' => $_POST['name'] ?? '',
+                'user_type' => $_POST['user_type'] ?? '',
+                'monthly_price' => isset($_POST['monthly_price']) ? (float) $_POST['monthly_price'] : 0,
+            ], $token);
+
+            if (is_array($response) && !isset($response['error'])) {
+                $message = "Formule d'abonnement mise à jour.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . ($response['error'] ?? 'Mise à jour impossible.');
+                $messageType = 'danger';
+            }
+        } elseif ($action === 'delete' && !empty($_POST['id'])) {
+            $response = callAPI('http://localhost:8080/api/subscription-types-admin/' . urlencode($_POST['id']), 'DELETE', null, $token);
+            if (!is_array($response) || !isset($response['error'])) {
+                $message = "Formule d'abonnement supprimée avec succès.";
+                $messageType = "success";
+            } else {
+                $message = 'Erreur: ' . $response['error'];
+                $messageType = 'danger';
+            }
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
     }
 }
 
-$query = "
-    SELECT st.id_subscription_type, st.name, st.user_type, st.monthly_price,
-           (SELECT COUNT(*) FROM subscribed s WHERE s.id_subscription_type = st.id_subscription_type) as abonnes
-    FROM subscription_types st
-    ORDER BY st.monthly_price ASC
-";
-try {
-    $subscriptions = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $message = "Erreur lors du chargement des abonnements: " . $e->getMessage();
-    $messageType = "danger";
-    $subscriptions = [];
-}
+if (!empty($token)) {
+    $subscriptionsResponse = callAPI('http://localhost:8080/api/subscription-types-admin', 'GET', null, $token);
+    $statsResponse = callAPI('http://localhost:8080/api/subscription-types-admin/stats', 'GET', null, $token);
 
-try {
-    $total_actifs = $pdo->query("SELECT COUNT(DISTINCT id_user) FROM subscribed")->fetchColumn();
-} catch (PDOException $e) {
-    $total_actifs = 0;
-}
+    if (is_array($subscriptionsResponse) && !isset($subscriptionsResponse['error'])) {
+        $subscriptions = $subscriptionsResponse;
+    } elseif ($message === '') {
+        $message = 'Erreur lors du chargement des abonnements.';
+        $messageType = 'danger';
+    }
 
-$query_revenus = "
-    SELECT SUM(st.monthly_price)
-    FROM subscribed s
-    JOIN subscription_types st ON s.id_subscription_type = st.id_subscription_type
-";
-try {
-    $revenus = $pdo->query($query_revenus)->fetchColumn();
-} catch (PDOException $e) {
-    $revenus = 0;
+    if (is_array($statsResponse) && !isset($statsResponse['error'])) {
+        $total_actifs = (int) ($statsResponse['total_actifs'] ?? 0);
+        $revenus = (float) ($statsResponse['revenus'] ?? 0);
+    }
+} elseif ($message === '') {
+    $message = 'Token d\'authentification manquant.';
+    $messageType = 'danger';
 }
 ?>
 

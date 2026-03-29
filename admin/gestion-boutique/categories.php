@@ -3,41 +3,61 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$categories = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $message = "Les catégories sont créées dynamiquement lors de l'ajout d'un produit.";
-            $messageType = "info";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE products SET category=? WHERE category=?");
-            $stmt->execute([
-                $_POST['category'],
-                $_POST['old_category']
-            ]);
-            $message = "Catégorie modifiée avec succès.";
-            $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmtDb = $pdo->prepare("UPDATE products SET category='' WHERE category=?");
-            $stmtDb->execute([$_POST['id']]);
-            $message = "Catégorie supprimée (les produits sont désormais sans catégorie).";
-            $messageType = "success";
-        }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    
+    if ($action === 'create') {
+        $message = "Les catégories sont créées dynamiquement lors de l'ajout d'un produit.";
+        $messageType = "info";
+    } elseif ($action === 'update') {
+        $message = "Les catégories ne peuvent pas être modifiées directement. Mettez à jour les produits individuellement.";
+        $messageType = "info";
+    } elseif ($action === 'delete') {
+        $message = "Les catégories ne peuvent pas être supprimées. Mettez à jour les produits individuellement.";
+        $messageType = "info";
     }
 }
 
-$query = "
-    SELECT category as name, COUNT(*) as articles 
-    FROM products 
-    WHERE category IS NOT NULL AND category != ''
-    GROUP BY category
-    ORDER BY category
-";
-$categories = $pdo->query($query)->fetchAll();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/product-categories', 'GET', null, $token);
+    
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+        $categories = [];
+    } elseif (is_array($response)) {
+        $categories = $response;
+    }
+} else {
+    $message = "Token d'authentification manquant.";
+    $messageType = "danger";
+}
 ?>
 
 <?php if ($message): ?>
@@ -82,9 +102,9 @@ $categories = $pdo->query($query)->fetchAll();
                 <?php else: ?>
                     <?php foreach ($categories as $categorie): ?>
                         <tr>
-                            <td><strong><?= htmlspecialchars($categorie['name'] ?: 'Sans catégorie') ?></strong></td>
+                            <td><strong><?= htmlspecialchars($categorie['name'] ?? 'Sans catégorie') ?></strong></td>
                             <td>Catégorie de produits</td>
-                            <td><?= (int)$categorie['articles'] ?></td>
+                            <td><?= (int)($categorie['articles'] ?? 0) ?></td>
                             <td>Affichée</td>
                             <td><span class="badge bg-success">Actif</span></td>
                             <td>

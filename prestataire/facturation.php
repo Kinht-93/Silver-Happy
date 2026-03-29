@@ -4,7 +4,7 @@ include_once __DIR__ . '/_auth.php';
 $message = '';
 $messageType = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerData) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
     $action = $_POST['action'] ?? '';
     try {
         if (!$isProviderValidated) {
@@ -12,65 +12,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerDat
         }
 
         if ($action === 'generate') {
-            $monthLabel = date('Y-m');
-            $invoiceId = uniqid('pinv_');
-
-            $countStmt = $pdo->prepare(
-                "SELECT COUNT(*)
-                 FROM provider_missions
-                                 WHERE id_user = ?
-                   AND status = 'Acceptee'
-                   AND DATE_FORMAT(COALESCE(accepted_at, created_at), '%Y-%m') = ?"
-            );
-                        $countStmt->execute([$providerData['id_user'], $monthLabel]);
-            $missionsCount = (int)$countStmt->fetchColumn();
-
-            $amount = $missionsCount * 25.00;
-
-            $insertInvoice = $pdo->prepare(
-                "INSERT INTO provider_invoices (id_invoice, id_user, month_label, amount, status, generated_at)
-                 VALUES (?, ?, ?, ?, 'Generee', NOW())"
-            );
-            $insertInvoice->execute([$invoiceId, $providerData['id_user'], $monthLabel, $amount]);
-
-            $insertPayment = $pdo->prepare(
-                "INSERT INTO provider_payments (id_payment, id_invoice, id_user, amount, paid_at, status)
-                 VALUES (?, ?, ?, ?, NULL, 'En attente')"
-            );
-            $insertPayment->execute([uniqid('ppay_'), $invoiceId, $providerData['id_user'], $amount]);
+            $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-invoices/generate', 'POST', null, $token);
+            if (!is_array($response) || isset($response['error'])) {
+                throw new RuntimeException((string)($response['error'] ?? 'Impossible de generer la facture.'));
+            }
 
             $message = 'Facture mensuelle generee.';
             $messageType = 'success';
         }
-    } catch (PDOException $e) {
-        if ((int)$e->getCode() === 23000) {
-            $message = 'Facture deja generee pour ce mois.';
-            $messageType = 'warning';
-        } else {
-            $message = 'Erreur: ' . $e->getMessage();
-            $messageType = 'danger';
-        }
     } catch (Exception $e) {
         $message = 'Erreur: ' . $e->getMessage();
-        $messageType = 'danger';
+        $messageType = strpos($message, 'deja generee') !== false ? 'warning' : 'danger';
     }
 }
 
 $rows = [];
-if ($pdo instanceof PDO && $providerData) {
-    try {
-        $stmt = $pdo->prepare(
-            "SELECT i.id_invoice, i.month_label, i.amount, i.status AS invoice_status, i.generated_at,
-                    p.status AS payment_status, p.paid_at
-             FROM provider_invoices i
-             LEFT JOIN provider_payments p ON p.id_invoice = i.id_invoice
-               WHERE i.id_user = ?
-             ORDER BY i.generated_at DESC"
-        );
-           $stmt->execute([$providerData['id_user']]);
-        $rows = $stmt->fetchAll();
-    } catch (PDOException $e) {
-        $message = 'Erreur: ' . $e->getMessage();
+if ($providerData && $token !== '') {
+    $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-billing', 'GET', null, $token);
+    if (is_array($response) && !isset($response['error'])) {
+        $rows = $response;
+    } else {
+        $message = 'Erreur: ' . (string)($response['error'] ?? 'Impossible de charger la facturation.');
         $messageType = 'danger';
     }
 }

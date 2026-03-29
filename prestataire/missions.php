@@ -4,7 +4,7 @@ include_once __DIR__ . '/_auth.php';
 $message = '';
 $messageType = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerData) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
     $action = $_POST['action'] ?? '';
     try {
         if (!$isProviderValidated) {
@@ -13,21 +13,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerDat
 
         if ($action === 'accept') {
             $idMission = trim((string)($_POST['id_mission'] ?? ''));
-            $stmt = $pdo->prepare(
-                "UPDATE provider_missions
-                                 SET status = 'Acceptee', id_user = ?, accepted_at = NOW()
-                 WHERE id_mission = ?
-                                     AND (id_user IS NULL OR id_user = ?)
-                   AND status = 'Proposee'"
-            );
-                        $stmt->execute([$providerData['id_user'], $idMission, $providerData['id_user']]);
+            $response = callAPI('http://localhost:8080/api/provider-missions/' . urlencode($idMission) . '/accept', 'POST', [
+                'id_user' => $providerData['id_user'],
+            ], $token);
 
-            if ($stmt->rowCount() > 0) {
+            if (is_array($response) && !isset($response['error'])) {
                 $message = 'Mission acceptee.';
                 $messageType = 'success';
             } else {
-                $message = 'Mission indisponible ou deja acceptee.';
-                $messageType = 'warning';
+                throw new RuntimeException((string)($response['error'] ?? 'Mission indisponible ou deja acceptee.'));
             }
         }
     } catch (Exception $e) {
@@ -37,18 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerDat
 }
 
 $missions = [];
-if ($pdo instanceof PDO && $providerData) {
-    try {
-        $stmt = $pdo->prepare(
-            "SELECT id_mission, mission_title, mission_description, mission_date, status, id_user
-             FROM provider_missions
-             WHERE id_user IS NULL OR id_user = ?
-             ORDER BY created_at DESC"
-        );
-        $stmt->execute([$providerData['id_user']]);
-        $missions = $stmt->fetchAll();
-    } catch (PDOException $e) {
-        $message = 'Erreur: ' . $e->getMessage();
+if ($providerData && $token !== '') {
+    $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-missions', 'GET', null, $token);
+    if (is_array($response) && !isset($response['error'])) {
+        $missions = $response;
+    } else {
+        $message = 'Erreur: ' . (string)($response['error'] ?? 'Impossible de charger les missions.');
         $messageType = 'danger';
     }
 }

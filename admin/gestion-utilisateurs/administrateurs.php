@@ -3,53 +3,94 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$administrateurs = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $stmt = $pdo->prepare("INSERT INTO users (id_user, first_name, last_name, email, role, active, created_at, password) VALUES (?, ?, ?, ?, ?, 1, NOW(), ?)");
-            $password = password_hash('default123', PASSWORD_DEFAULT);
-            $stmt->execute([
-                uniqid('usr_'),
-                $_POST['first_name'],
-                $_POST['last_name'],
-                $_POST['email'],
-                $_POST['role'],
-                $password
-            ]);
+    
+    if ($action === 'create') {
+        $data = [
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'email' => $_POST['email'],
+            'role' => $_POST['role'],
+            'active' => 1
+        ];
+        
+        $response = callAPI('http://localhost:8080/api/users', 'POST', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Administrateur ajouté avec succès.";
             $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=?, role=? WHERE id_user=?");
-            $stmt->execute([
-                $_POST['first_name'],
-                $_POST['last_name'],
-                $_POST['email'],
-                $_POST['role'],
-                $_POST['id']
-            ]);
+        } else {
+            $message = "Erreur lors de l'ajout.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'email' => $_POST['email'],
+            'role' => $_POST['role']
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Administrateur modifié avec succès.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM users WHERE id_user=?");
-            $stmt->execute([$_POST['id']]);
-            $message = "Administrateur supprimé.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification.";
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "Administrateur supprimé.";
+        $messageType = "success";
     }
 }
 
-$query = "
-    SELECT id_user, last_name, first_name, email, active, created_at, role
-    FROM users 
-    WHERE role IN ('admin', 'superadmin', 'manager', 'moderateur', 'administrateur')
-    ORDER BY created_at DESC
-";
-$administrateurs = $pdo->query($query)->fetchAll();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/users', 'GET', null, $token);
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+    } elseif (is_array($response)) {
+        $adminRoles = ['admin', 'superadmin', 'manager', 'moderateur', 'administrateur'];
+        $administrateurs = array_filter($response, function($user) use ($adminRoles) {
+            return isset($user['role']) && in_array(strtolower($user['role']), $adminRoles);
+        });
+        $administrateurs = array_values($administrateurs);
+    } else {
+        $message = "Format de réponse invalide de l'API.";
+        $messageType = "warning";
+    }
+} else {
+    $message = "Token d'authentification manquant.";
+    $messageType = "danger";
+}
 ?>
 
 <?php if ($message): ?>

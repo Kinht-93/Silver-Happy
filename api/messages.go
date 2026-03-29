@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -8,15 +9,17 @@ import (
 
 // MESSAGES tous
 func handleGetMessages(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("id_user")
 	receiver := r.URL.Query().Get("receiver")
-	if receiver == "" {
-		jsonError(w, "Paramètre receiver requis", http.StatusBadRequest)
+	if userID == "" {
+		userID = receiver
+	}
+	if userID == "" {
+		jsonError(w, "Paramètre id_user ou receiver requis", http.StatusBadRequest)
 		return
 	}
 
-	rows, err := db.Query(`
-		SELECT id_message, content, sent_at, receiver, sender FROM messages WHERE receiver = ? ORDER BY sent_at DESC
-	`, receiver)
+	rows, err := queryMessagesByUser(userID)
 	if err != nil {
 		jsonError(w, "Erreur lors de la récupération des messages", http.StatusInternalServerError)
 		return
@@ -34,6 +37,43 @@ func handleGetMessages(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(messages)
+}
+
+// Get Message avec userid
+func handleGetUserMessages(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+	if userID == "" {
+		jsonError(w, "ID utilisateur manquant", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := queryMessagesByUser(userID)
+	if err != nil {
+		jsonError(w, "Erreur lors de la récupération des messages", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	messages := []Message{}
+	for rows.Next() {
+		var m Message
+		if err := rows.Scan(&m.ID, &m.Content, &m.SentAt, &m.Receiver, &m.Sender); err != nil {
+			continue
+		}
+		messages = append(messages, m)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(messages)
+}
+
+func queryMessagesByUser(userID string) (*sql.Rows, error) {
+	return db.Query(`
+		SELECT id_message, content, sent_at, receiver, sender
+		FROM messages
+		WHERE receiver = ? OR sender = ?
+		ORDER BY sent_at DESC
+	`, userID, userID)
 }
 
 // MESSAGES SEND

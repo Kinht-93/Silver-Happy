@@ -3,56 +3,70 @@ include './include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $stmt = $pdo->prepare("
-                INSERT INTO notifications (id_notification, type, title, message, created_at, is_read, id_user)
-                VALUES (?, ?, ?, ?, NOW(), 0, ?)
-            ");
-
-            $recipientType = $_POST['recipients'] ?? 'all';
-            $details = $_POST['message'];
-            if ($recipientType !== 'all') {
-                $details .= "\n\n[Destinataires: " . $recipientType . "]";
-            }
-
-            $stmt->execute([
-                uniqid('not_'),
-                $_POST['type'],
-                $_POST['title'],
-                $details,
-                null
-            ]);
-
+    if ($action === 'create') {
+        $recipientType = $_POST['recipients'] ?? 'all';
+        $details = $_POST['message'];
+        if ($recipientType !== 'all') {
+            $details .= "\n\n[Destinataires: " . $recipientType . "]";
+        }
+        $data = [
+            'type' => $_POST['type'],
+            'title' => $_POST['title'],
+            'message' => $details,
+            'recipients' => $recipientType
+        ];
+        $response = callAPI('http://localhost:8080/api/notifications', 'POST', $data, $token);
+        if ($response && !isset($response['error'])) {
             $message = "Notification créée et enregistrée.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM notifications WHERE id_notification = ?");
-            $stmt->execute([$_POST['id'] ?? '']);
+        } else {
+            $message = "Erreur lors de la création: " . ($response['error'] ?? json_encode($response));
+            $messageType = "danger";
+        }
+    } elseif ($action === 'delete') {
+        $id = $_POST['id'] ?? '';
+        $response = callAPI("http://localhost:8080/api/notifications/{$id}", 'DELETE', null, $token);
+        if ($response && !isset($response['error'])) {
             $message = "Notification supprimée.";
             $messageType = "success";
+        } else {
+            $message = "Erreur lors de la suppression: " . ($response['error'] ?? json_encode($response));
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
     }
 }
 
-$query = "
-    SELECT n.id_notification, n.type, n.title, n.message, n.created_at, n.is_read,
-           u.first_name, u.last_name
-    FROM notifications n
-    LEFT JOIN users u ON n.id_user = u.id_user
-    ORDER BY n.created_at DESC
-";
-try {
-    $notifications = $pdo ? $pdo->query($query)->fetchAll() : [];
-} catch (PDOException $e) {
-    $message = "Erreur: " . $e->getMessage();
+$notifications = callAPI('http://localhost:8080/api/notifications', 'GET', null, $token);
+if (isset($notifications['error'])) {
+    $message = "Erreur API: " . $notifications['error'];
     $messageType = "danger";
+    $notifications = [];
+} elseif (!is_array($notifications)) {
+    $message = "Format de réponse invalide de l'API: " . gettype($notifications);
+    $messageType = "warning";
     $notifications = [];
 }
 ?>

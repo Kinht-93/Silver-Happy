@@ -3,85 +3,95 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$user_id = $_SESSION['user']['id_user'] ?? '';
+$appointments = [];
+$users = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $id_appointment = uniqid('apt_');
-            $stmt = $pdo->prepare("
-                INSERT INTO medical_appointments 
-                (id_appointment, id_user, appointment_date, appointment_type, doctor_name, 
-                 medical_reason_anonymized, notes_internal, status, created_at, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
-            ");
-            $created_by = isset($_SESSION['user']['id_user']) ? $_SESSION['user']['id_user'] : null;
-            $stmt->execute([
-                $id_appointment,
-                $_POST['id_user'],
-                $_POST['appointment_date'],
-                $_POST['appointment_type'] ?? 'Visite médicale',
-                $_POST['doctor_name'] ?? '',
-                'Visite médicale',
-                $_POST['notes_internal'] ?? '',
-                'Programmé',
-                $created_by
-            ]);
+    
+    if ($action === 'create') {
+        $data = [
+            'id_user' => $_POST['id_user'],
+            'appointment_date' => $_POST['appointment_date'],
+            'appointment_type' => $_POST['appointment_type'] ?? 'Visite médicale',
+            'doctor_name' => $_POST['doctor_name'] ?? '',
+            'notes_internal' => $_POST['notes_internal'] ?? '',
+            'created_by' => $user_id
+        ];
+        
+        $response = callAPI('http://localhost:8080/api/medical-appointments', 'POST', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "RDV médical créé avec succès.";
             $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("
-                UPDATE medical_appointments 
-                SET appointment_date=?, appointment_type=?, status=?, updated_at=NOW()
-                WHERE id_appointment=?
-            ");
-            $stmt->execute([
-                $_POST['appointment_date'],
-                $_POST['appointment_type'],
-                $_POST['status'],
-                $_POST['id']
-            ]);
+        } else {
+            $message = $response['error'] ?? "Erreur lors de la création du RDV.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'appointment_date' => $_POST['appointment_date'],
+            'appointment_type' => $_POST['appointment_type'],
+            'status' => $_POST['status']
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/medical-appointments/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "RDV médical modifié.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM medical_appointments WHERE id_appointment=?");
-            $stmt->execute([$_POST['id']]);
-            $message = "RDV médical supprimé.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification du RDV.";
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/medical-appointments/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "RDV médical supprimé.";
+        $messageType = "success";
     }
 }
 
-$query = "
-    SELECT ma.id_appointment, ma.id_user, ma.appointment_date, ma.appointment_type, ma.doctor_name, 
-           ma.medical_reason_anonymized, ma.notes_internal, ma.status, ma.created_at, ma.updated_at, ma.created_by,
-           u.first_name, u.last_name, u.email,
-           ca.first_name as creator_first, ca.last_name as creator_last
-    FROM medical_appointments ma
-    INNER JOIN users u ON ma.id_user = u.id_user
-    LEFT JOIN users ca ON ma.created_by = ca.id_user
-    ORDER BY ma.appointment_date DESC
-";
-try {
-    $appointments = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $appointments = [];
-    $message = "Erreur BD: " . $e->getMessage();
-    $messageType = "danger";
-}
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/medical-appointments', 'GET', null, $token);
+    
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+        $appointments = [];
+    } elseif (is_array($response)) {
+        $appointments = $response;
+    }
 
-try {
-    $users = $pdo->query("
-        SELECT id_user, first_name, last_name 
-        FROM users 
-        WHERE role IN ('senior', 'prestataire', 'employe') AND active = TRUE
-        ORDER BY last_name ASC
-    ")->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $users = [];
+    $usersResponse = callAPI('http://localhost:8080/api/users-for-appointments', 'GET', null, $token);
+    if (is_array($usersResponse) && !isset($usersResponse['error'])) {
+        $users = $usersResponse;
+    }
+} else {
+    $message = "Token d'authentification manquant.";
+    $messageType = "danger";
 }
 ?>
 
@@ -131,7 +141,7 @@ try {
                             <td><?= htmlspecialchars($apt['appointment_type'] ?? 'Visite médicale') ?></td>
                             <td><?= htmlspecialchars($apt['doctor_name'] ?? '-') ?></td>
                             <td><span class="badge bg-<?= $apt['status'] === 'Programmé' ? 'info' : 'success' ?>"><?= htmlspecialchars($apt['status']) ?></span></td>
-                            <td><?= htmlspecialchars(($apt['creator_first'] ?? 'Admin') . ' ' . ($apt['creator_last'] ?? '')) ?></td>
+                            <td><?= htmlspecialchars(($apt['creator_first_name'] ?? 'Admin') . ' ' . ($apt['creator_last_name'] ?? '')) ?></td>
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-info" onclick="viewAppointment(<?= htmlspecialchars(json_encode($apt)) ?>)" title="Voir détails">
                                     <i class="bi bi-eye"></i>
@@ -264,8 +274,13 @@ function viewAppointment(apt) {
 
 function editAppointment(apt) {
     document.getElementById('editAptId').value = apt.id_appointment;
-    const dtStr = apt.appointment_date.replace(' ', 'T');
-    document.getElementById('editAptDate').value = dtStr.substring(0, 16);
+    const date = new Date(apt.appointment_date);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    document.getElementById('editAptDate').value = `${year}-${month}-${day}T${hours}:${minutes}`;
     document.getElementById('editAptType').value = apt.appointment_type || '';
     document.getElementById('editAptStatus').value = apt.status;
     new bootstrap.Modal(document.getElementById('modalEditAppointment')).show();

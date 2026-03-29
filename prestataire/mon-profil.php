@@ -4,10 +4,8 @@ include_once __DIR__ . '/_auth.php';
 $message = '';
 $messageType = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerData) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
     try {
-        $pdo->beginTransaction();
-
         $firstName = trim((string)($_POST['first_name'] ?? ''));
         $lastName = trim((string)($_POST['last_name'] ?? ''));
         $phone = trim((string)($_POST['phone'] ?? ''));
@@ -17,34 +15,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerDat
         $description = trim((string)($_POST['description'] ?? ''));
         $skills = trim((string)($_POST['skills_text'] ?? ''));
 
-        $updateUser = $pdo->prepare('UPDATE users SET first_name = ?, last_name = ?, phone = ? WHERE id_user = ?');
-        $updateUser->execute([
-            $firstName,
-            $lastName,
-            $phone !== '' ? $phone : null,
-            $user['id_user'] ?? ''
-        ]);
-
-        $updateProvider = $pdo->prepare(
-            'UPDATE users
-             SET company_name = ?,
-                 zone = ?,
-                 iban = ?,
-                 provider_description = ?,
-                 skills_text = ?,
-                 provider_updated_at = NOW()
-             WHERE id_user = ?'
-        );
-        $updateProvider->execute([
-            $companyName !== '' ? $companyName : null,
-            $zone !== '' ? $zone : null,
-            $iban !== '' ? $iban : null,
-            $description !== '' ? $description : null,
-            $skills !== '' ? $skills : null,
-            $providerData['id_user']
-        ]);
-
-        $pdo->commit();
+        $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']), 'PATCH', [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'phone' => $phone !== '' ? $phone : null,
+            'company_name' => $companyName !== '' ? $companyName : null,
+            'zone' => $zone !== '' ? $zone : null,
+            'iban' => $iban !== '' ? $iban : null,
+            'provider_description' => $description !== '' ? $description : null,
+            'skills_text' => $skills !== '' ? $skills : null,
+            'provider_updated_at' => date('Y-m-d H:i:s'),
+        ], $token);
+        if (!is_array($response) || isset($response['error'])) {
+            throw new RuntimeException((string)($response['error'] ?? 'Impossible de mettre a jour le profil.'));
+        }
 
         $message = 'Profil mis a jour.';
         $messageType = 'success';
@@ -67,10 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO && $providerDat
             'skills_text' => $skills,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
-    } catch (PDOException $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
+    } catch (Exception $e) {
         $message = 'Erreur: ' . $e->getMessage();
         $messageType = 'danger';
     }

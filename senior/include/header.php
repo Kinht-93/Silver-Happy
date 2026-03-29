@@ -3,6 +3,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+require_once __DIR__ . '/../../active_user.php';
+
 include_once __DIR__ . '/../../include/role_redirect.php';
 
 if (!isset($_SESSION['user']) || !is_array($_SESSION['user'])) {
@@ -15,6 +17,8 @@ if (strtolower($userRole) !== 'senior') {
     header('Location: ../' . sh_get_role_home($userRole));
     exit;
 }
+
+updateUserActivity();
 
 $currentPage = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
 if (!isset($seniorCurrent) || $seniorCurrent === '') {

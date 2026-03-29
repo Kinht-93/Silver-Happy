@@ -3,53 +3,91 @@ include '../include/header-admin.php';
 
 $message = '';
 $messageType = '';
+$token = $_SESSION['user']['token'] ?? '';
+$employes = [];
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    try {
-        if ($action === 'create') {
-            $stmt = $pdo->prepare("INSERT INTO users (id_user, first_name, last_name, email, role, phone, active, created_at, password) VALUES (?, ?, ?, ?, 'employee', ?, 1, NOW(), ?)");
-            $password = password_hash('default123', PASSWORD_DEFAULT);
-            $stmt->execute([
-                uniqid('usr_'),
-                $_POST['first_name'],
-                $_POST['last_name'],
-                $_POST['email'],
-                $_POST['phone'] ?? null,
-                $password
-            ]);
+    
+    if ($action === 'create') {
+        $data = [
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'email' => $_POST['email'],
+            'phone' => $_POST['phone'] ?? null,
+            'role' => 'employee',
+            'password' => password_hash('default123', PASSWORD_DEFAULT),
+            'active' => 1
+        ];
+        
+        $response = callAPI('http://localhost:8080/api/users', 'POST', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Employé ajouté avec succès.";
             $messageType = "success";
-        } elseif ($action === 'update') {
-            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, email=?, phone=? WHERE id_user=?");
-            $stmt->execute([
-                $_POST['first_name'],
-                $_POST['last_name'],
-                $_POST['email'],
-                $_POST['phone'] ?? null,
-                $_POST['id']
-            ]);
+        } else {
+            $message = "Erreur lors de l'ajout.";
+            $messageType = "danger";
+        }
+    } elseif ($action === 'update') {
+        $data = [
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'email' => $_POST['email'],
+            'phone' => $_POST['phone'] ?? null
+        ];
+        
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
+        if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Employé modifié avec succès.";
             $messageType = "success";
-        } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM users WHERE id_user=?");
-            $stmt->execute([$_POST['id']]);
-            $message = "Employé supprimé.";
-            $messageType = "success";
+        } else {
+            $message = "Erreur lors de la modification.";
+            $messageType = "danger";
         }
-    } catch (PDOException $e) {
-        $message = "Erreur: " . $e->getMessage();
-        $messageType = "danger";
+    } elseif ($action === 'delete') {
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
+        $message = "Employé supprimé.";
+        $messageType = "success";
     }
 }
 
-$query = "
-    SELECT id_user, last_name, first_name, email, phone, active, created_at
-    FROM users 
-    WHERE role = 'employee' OR role = 'employe'
-    ORDER BY created_at DESC
-";
-$employes = $pdo->query($query)->fetchAll();
+if (!empty($token)) {
+    $response = callAPI('http://localhost:8080/api/employees', 'GET', null, $token);
+    
+    if (isset($response['error'])) {
+        $message = "Erreur API: " . $response['error'];
+        $messageType = "danger";
+        $employes = [];
+    } elseif (is_array($response)) {
+        $employes = $response;
+    }
+} else {
+    $message = "Token d'authentification manquant.";
+    $messageType = "danger";
+}
 ?>
 
 <?php if ($message): ?>
@@ -218,10 +256,10 @@ function viewEmployee(btn) {
 
 function editEmployee(btn) {
     const user = JSON.parse(btn.getAttribute('data-user'));
-    document.getElementById('editEmployeeId').value = user.id_user;
-    document.getElementById('editEmployeeFirstName').value = user.first_name;
-    document.getElementById('editEmployeeLastName').value = user.last_name;
-    document.getElementById('editEmployeeEmail').value = user.email;
+    document.getElementById('editEmployeeId').value = user.id_user || '';
+    document.getElementById('editEmployeeFirstName').value = user.first_name || '';
+    document.getElementById('editEmployeeLastName').value = user.last_name || '';
+    document.getElementById('editEmployeeEmail').value = user.email || '';
     document.getElementById('editEmployeePhone').value = user.phone || '';
     openModal('modalEditEmployee');
 }
