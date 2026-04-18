@@ -1,5 +1,6 @@
 <?php
 include '../include/header-admin.php';
+require_once __DIR__ . '/../../include/callapi.php';
 ?>
 
 <div class="page-title">Traductions et langues</div>

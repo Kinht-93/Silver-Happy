@@ -1,32 +1,11 @@
 <?php
 include '../include/header-admin.php';
+require_once __DIR__ . '/../../include/callapi.php';
 
 $token = $_SESSION['user']['token'] ?? '';
 $commandes = [];
 $stats = ['total_commandes' => 0, 'en_attente' => 0, 'livrees' => 0, 'retours' => 0];
 
-function callAPI($url, $method = 'GET', $data = null, $token = '') {
-    $opts = [
-        'http' => [
-            'method' => $method,
-            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
-            'ignore_errors' => true
-        ]
-    ];
-    
-    if ($data) {
-        $opts['http']['content'] = json_encode($data);
-    }
-    
-    $context = stream_context_create($opts);
-    $response = file_get_contents($url, false, $context);
-    
-    if ($response === false) {
-        return ['error' => 'Impossible de se connecter à l\'API'];
-    }
-    
-    return json_decode($response, true);
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
