@@ -3,10 +3,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-require_once __DIR__ . '/../include/callapi.php';
+include_once '../db.php';
 
 $seniorCurrent = 'messagerie';
-$token = (string)($_SESSION['user']['token'] ?? '');
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
 
 $errors = [];
@@ -20,11 +19,11 @@ $newContent = trim((string)($_POST['content'] ?? ''));
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $selectedPeerId = trim((string)($_POST['receiver'] ?? ''));
 
+    if (!$pdo instanceof PDO) {
+        $errors[] = 'Base de donnees indisponible.';
+    }
     if ($userId === '') {
         $errors[] = 'Session utilisateur invalide.';
-    }
-    if ($token === '') {
-        $errors[] = 'Authentification API indisponible.';
     }
     if ($selectedPeerId === '') {
         $errors[] = 'Veuillez selectionner un destinataire.';
@@ -34,16 +33,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $response = callAPI('http://localhost:8080/api/messages', 'POST', [
-            'content' => mb_substr($newContent, 0, 5000),
-            'receiver' => $selectedPeerId,
-            'sender' => $userId,
-        ], $token);
+        try {
+            $insertStmt = $pdo->prepare(
+                'INSERT INTO messages (id_message, content, sent_at, receiver, sender)
+                 VALUES (?, ?, NOW(), ?, ?)'
+            );
+            $insertStmt->execute([
+                'msg_' . bin2hex(random_bytes(8)),
+                mb_substr($newContent, 0, 5000),
+                $selectedPeerId,
+                $userId,
+            ]);
 
-        if (is_array($response) && !isset($response['error'])) {
             header('Location: messagerie.php?with=' . urlencode($selectedPeerId) . '&sent=1');
             exit;
-        } else {
+        } catch (Throwable $e) {
             $errors[] = 'Impossible d envoyer le message pour le moment.';
         }
     }
@@ -53,34 +57,27 @@ if (isset($_GET['sent']) && $_GET['sent'] === '1') {
     $success = 'Message envoye.';
 }
 
-if ($token !== '' && $userId !== '') {
-    $providersResponse = callAPI('http://localhost:8080/api/users-summary?roles=prestataire', 'GET', null, $token);
-    $usersResponse = callAPI('http://localhost:8080/api/users-summary', 'GET', null, $token);
-    $messagesResponse = callAPI('http://localhost:8080/api/messages?id_user=' . urlencode($userId), 'GET', null, $token);
+if ($pdo instanceof PDO && $userId !== '') {
+    try {
+        $providersStmt = $pdo->query(
+              "SELECT id_user, first_name, last_name
+             FROM users
+             WHERE role = 'prestataire'
+               ORDER BY last_name ASC, first_name ASC"
+        );
+        $providerOptions = $providersStmt ? $providersStmt->fetchAll() : [];
 
-    if (
-        !is_array($providersResponse) || isset($providersResponse['error']) ||
-        !is_array($usersResponse) || isset($usersResponse['error']) ||
-        !is_array($messagesResponse) || isset($messagesResponse['error'])
-    ) {
-        $errors[] = 'Impossible de charger la messagerie.';
-    } else {
-        $providerOptions = array_values(array_filter($providersResponse, static function ($provider) {
-            return !empty($provider['active']);
-        }));
-
-        $userMap = [];
-        foreach ($usersResponse as $user) {
-            $id = (string)($user['id_user'] ?? '');
-            if ($id === '') {
-                continue;
-            }
-            $fullName = trim((string)(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')));
-            $userMap[$id] = $fullName !== '' ? $fullName : $id;
-        }
+        $convStmt = $pdo->prepare(
+            "SELECT sender, receiver, content, sent_at
+             FROM messages
+             WHERE sender = ? OR receiver = ?
+             ORDER BY sent_at DESC"
+        );
+        $convStmt->execute([$userId, $userId]);
+        $conversationRows = $convStmt->fetchAll();
 
         $conversationMap = [];
-        foreach ($messagesResponse as $row) {
+        foreach ($conversationRows as $row) {
             $sender = (string)($row['sender'] ?? '');
             $receiver = (string)($row['receiver'] ?? '');
             $peerId = $sender === $userId ? $receiver : $sender;
@@ -97,38 +94,29 @@ if ($token !== '' && $userId !== '') {
                 ];
             }
         }
-
         $conversationList = array_values($conversationMap);
-
-        usort($conversationList, static function ($left, $right) {
-            return strcmp((string)($right['last_sent_at'] ?? ''), (string)($left['last_sent_at'] ?? ''));
-        });
 
         if ($selectedPeerId === '' && !empty($conversationList)) {
             $selectedPeerId = (string)$conversationList[0]['peer_id'];
         }
 
         if ($selectedPeerId !== '') {
-            $thread = [];
-            foreach ($messagesResponse as $row) {
-                $sender = (string)($row['sender'] ?? '');
-                $receiver = (string)($row['receiver'] ?? '');
-                if (!(($sender === $userId && $receiver === $selectedPeerId) || ($sender === $selectedPeerId && $receiver === $userId))) {
-                    continue;
-                }
-                $row['sender_first_name'] = $sender !== '' && isset($userMap[$sender]) ? $userMap[$sender] : $sender;
-                $row['sender_last_name'] = '';
-                $row['receiver_first_name'] = $receiver !== '' && isset($userMap[$receiver]) ? $userMap[$receiver] : $receiver;
-                $row['receiver_last_name'] = '';
-                $thread[] = $row;
-            }
-
-            usort($thread, static function ($left, $right) {
-                return strcmp((string)($left['sent_at'] ?? ''), (string)($right['sent_at'] ?? ''));
-            });
-
-            $currentMessages = $thread;
+            $threadStmt = $pdo->prepare(
+                "SELECT m.content, m.sent_at, m.sender, m.receiver,
+                        us.first_name AS sender_first_name, us.last_name AS sender_last_name,
+                        ur.first_name AS receiver_first_name, ur.last_name AS receiver_last_name
+                 FROM messages m
+                 LEFT JOIN users us ON us.id_user = m.sender
+                 LEFT JOIN users ur ON ur.id_user = m.receiver
+                 WHERE (m.sender = ? AND m.receiver = ?)
+                    OR (m.sender = ? AND m.receiver = ?)
+                 ORDER BY m.sent_at ASC"
+            );
+            $threadStmt->execute([$userId, $selectedPeerId, $selectedPeerId, $userId]);
+            $currentMessages = $threadStmt->fetchAll();
         }
+    } catch (Throwable $e) {
+        $errors[] = 'Impossible de charger la messagerie.';
     }
 }
 
@@ -169,15 +157,9 @@ include './include/header.php';
                         <?php
                         $peerId = (string)$conversation['peer_id'];
                         $isActive = ($selectedPeerId === $peerId);
-                        $label = '';
-                        foreach ($providerOptions as $provider) {
-                            if ((string)($provider['id_user'] ?? '') === $peerId) {
-                                $label = trim((string)(($provider['first_name'] ?? '') . ' ' . ($provider['last_name'] ?? '')));
-                                break;
-                            }
-                        }
-                        if ($label === '') {
-                            $label = $peerId;
+                        $label = $nameMap[$peerId] ?? $peerId;
+                        if (strpos($peerId, 'usr_') === 0) {
+                            $label = strtoupper(str_replace('usr_', '', $peerId));
                         }
                         ?>
                         <a

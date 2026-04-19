@@ -3,31 +3,26 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-require_once __DIR__ . '/../include/callapi.php';
+include_once '../db.php';
 
 $seniorCurrent = 'prestations';
-$token = (string)($_SESSION['user']['token'] ?? '');
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $requests = [];
 $loadError = '';
 
-if ($token !== '' && $userId !== '') {
-    $requestsResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/service-requests', 'GET', null, $token);
-    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
-
-    if (
-        is_array($requestsResponse) && !isset($requestsResponse['error']) &&
-        is_array($categoriesResponse) && !isset($categoriesResponse['error'])
-    ) {
-        $categoriesById = [];
-        foreach ($categoriesResponse as $category) {
-            $categoriesById[(string)($category['id_service_category'] ?? '')] = (string)($category['name'] ?? 'Prestation');
-        }
-        foreach ($requestsResponse as $request) {
-            $request['category_name'] = $categoriesById[(string)($request['id_service_category'] ?? '')] ?? 'Prestation';
-            $requests[] = $request;
-        }
-    } else {
+if ($pdo instanceof PDO && $userId !== '') {
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT sr.id_request, sr.desired_date, sr.start_time, sr.estimated_duration, sr.intervention_address, sr.status, sr.created_at,
+                    sc.name AS category_name
+             FROM service_requests sr
+             INNER JOIN service_categories sc ON sc.id_service_category = sr.id_service_category
+             WHERE sr.id_user = ?
+             ORDER BY sr.created_at DESC"
+        );
+        $stmt->execute([$userId]);
+        $requests = $stmt->fetchAll();
+    } catch (PDOException $e) {
         $loadError = 'Impossible de charger vos demandes.';
     }
 }

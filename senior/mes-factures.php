@@ -3,19 +3,29 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-require_once __DIR__ . '/../include/callapi.php';
+include_once '../db.php';
 
 $seniorCurrent = 'factures';
-$token = (string)($_SESSION['user']['token'] ?? '');
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $invoices = [];
 $loadError = '';
 
-if ($token !== '' && $userId !== '') {
-    $response = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/invoices', 'GET', null, $token);
-    if (is_array($response) && !isset($response['error'])) {
-        $invoices = $response;
-    } else {
+if ($pdo instanceof PDO && $userId !== '') {
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT i.invoice_number, i.invoice_type, i.amount_excl_tax, i.tax_rate, i.amount_incl_tax,
+                    i.issue_date, i.due_date, i.status,
+                    sr.desired_date, sc.name AS category_name
+             FROM invoices i
+             INNER JOIN quotes q ON q.id_quote = i.id_quote
+             INNER JOIN service_requests sr ON sr.id_request = q.id_request
+             INNER JOIN service_categories sc ON sc.id_service_category = sr.id_service_category
+             WHERE sr.id_user = ?
+             ORDER BY i.issue_date DESC, i.invoice_number DESC"
+        );
+        $stmt->execute([$userId]);
+        $invoices = $stmt->fetchAll();
+    } catch (Throwable $e) {
         $loadError = 'Impossible de charger vos factures.';
     }
 }

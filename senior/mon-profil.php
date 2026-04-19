@@ -13,6 +13,10 @@ include './include/header.php';
                 <h2>Informations personnelles</h2>
                 <p>Nom, prénom, email, téléphone et adresse.</p>
             </a>
+            <a class="senior-card" href="abonnements.php">
+                <h2>Mon abonnement</h2>
+                <p>Voir les formules et activer votre abonnement.</p>
+            </a>
             <a class="senior-card" href="profil-preferences.php">
                 <h2>Préférences / langue</h2>
                 <p>Langue d’affichage et préférences générales.</p>
