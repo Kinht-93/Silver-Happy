@@ -10,6 +10,34 @@ $token = (string)($_SESSION['user']['token'] ?? '');
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $message = '';
 $messageType = '';
+
+if (isset($_GET['payment'])) {
+    if ($_GET['payment'] === 'success') {
+        $sessionId = (string)($_GET['session_id'] ?? '');
+        if ($sessionId !== '' && $token !== '' && $userId !== '') {
+            $confirm = callAPI(
+                'http://localhost:8080/api/events/checkout-confirm?session_id=' . urlencode($sessionId),
+                'GET',
+                null,
+                $token
+            );
+
+            if (is_array($confirm) && isset($confirm['success']) && $confirm['success'] === true) {
+                $message = 'Paiement réussi, inscription confirmée.';
+                $messageType = 'success';
+            } else {
+                $message = 'Paiement réussi, mais impossible de valider l\'inscription. Veuillez contacter le support.';
+                $messageType = 'warning';
+            }
+        } else {
+            $message = 'Paiement réussi, votre inscription est en cours de validation.';
+            $messageType = 'success';
+        }
+    } elseif ($_GET['payment'] === 'cancelled') {
+        $message = 'Paiement annulé.';
+        $messageType = 'warning';
+    }
+}
 $upcomingRegistrations = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel' && $token !== '') {

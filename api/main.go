@@ -3,10 +3,21 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+
+	"github.com/joho/godotenv"
+	"github.com/stripe/stripe-go/v76"
 )
 
 func main() {
 	initDB()
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Erreur lors du chargement du fichier .env")
+	}
+
+	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
 
 	// AUTH
 	http.HandleFunc("POST /api/signup", handleSignup)
@@ -160,7 +171,16 @@ func main() {
 	http.HandleFunc("GET /api/orders/stats", authMiddleware(handleGetOrderStats))
 	http.HandleFunc("PATCH /api/orders/{id}", authMiddleware(handleUpdateOrderStatus))
 
+	//STRIPE
+	http.HandleFunc("POST /api/events/{id}/checkout", authMiddleware(handleCreateEventCheckout))
+	http.HandleFunc("GET /api/events/checkout-confirm", authMiddleware(handleConfirmEventCheckout))
+	http.HandleFunc("POST /api/stripe/webhook", handleStripeWebhook)
+
 	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal("Erreur démarrage serveur :", err)
+		log.Printf("Erreur démarrage serveur sur port 8080, essai sur port 5555")
+		if err := http.ListenAndServe(":5555", nil); err != nil {
+			log.Fatal("Erreur démarrage serveur sur port 5555:", err)
+		}
 	}
+
 }

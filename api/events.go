@@ -5,7 +5,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/stripe/stripe-go/v76"
+	"github.com/stripe/stripe-go/v76/checkout/session"
+	"github.com/stripe/stripe-go/v76/refund"
+	"github.com/stripe/stripe-go/v76/webhook"
 )
 
 // EVENTS tous
@@ -293,13 +299,248 @@ func handleCreateEventRegistration(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "Inscription créée avec succès"})
 }
 
-// DELERE INSCRIPTION FROM ID
+// STRIPE PAY
+func handleCreateEventCheckout(w http.ResponseWriter, r *http.Request) {
+	idEvent := r.PathValue("id")
+	if idEvent == "" {
+		jsonError(w, "ID événement manquant", http.StatusBadRequest)
+		return
+	}
 
+	var body struct {
+		UserID string `json:"id_user"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.UserID == "" {
+		jsonError(w, "JSON invalide ou id_user manquant", http.StatusBadRequest)
+		return
+	}
+
+	var e Event
+	err := db.QueryRow(`
+		SELECT id_event, title, event_type, start_date, end_date, max_places, price
+		FROM events WHERE id_event = ?
+	`, idEvent).Scan(&e.ID, &e.Title, &e.EventType, &e.StartDate, &e.EndDate, &e.MaxPlaces, &e.Price)
+	if err != nil {
+		jsonError(w, "Événement introuvable", http.StatusNotFound)
+		return
+	}
+
+	var existing int
+	db.QueryRow(`
+		SELECT COUNT(*) FROM event_registrations WHERE id_user = ? AND id_event = ?
+	`, body.UserID, idEvent).Scan(&existing)
+	if existing > 0 {
+		jsonError(w, "Vous êtes déjà inscrit à cet événement", http.StatusConflict)
+		return
+	}
+
+	var registrationCount int
+	db.QueryRow(`SELECT COUNT(*) FROM event_registrations WHERE id_event = ?`, idEvent).Scan(&registrationCount)
+	if registrationCount >= e.MaxPlaces {
+		jsonError(w, "Plus de places disponibles pour cet événement", http.StatusConflict)
+		return
+	}
+
+	baseURL := os.Getenv("APP_BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost/Silver-Happy"
+	}
+
+	if e.Price == 0 {
+		_, err := db.Exec(`
+			INSERT INTO event_registrations (id_registration, registration_date, status, paid, stripe_payment_intent_id, id_user, id_event)
+			VALUES (UUID(), NOW(), 'confirmed', 1, NULL, ?, ?)
+		`, body.UserID, idEvent)
+		if err != nil {
+			jsonError(w, "Erreur lors de l'inscription", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message":      "Inscription confirmée (événement gratuit)",
+			"checkout_url": "",
+		})
+		return
+	}
+
+	params := &stripe.CheckoutSessionParams{
+		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Currency: stripe.String("eur"),
+					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+						Name: stripe.String(e.Title),
+					},
+					UnitAmount: stripe.Int64(int64(e.Price * 100)),
+				},
+				Quantity: stripe.Int64(1),
+			},
+		},
+		Metadata: map[string]string{
+			"id_event": idEvent,
+			"id_user":  body.UserID,
+		},
+		SuccessURL: stripe.String(baseURL + "/senior/evenements-inscriptions.php?payment=success&session_id={CHECKOUT_SESSION_ID}"),
+		CancelURL:  stripe.String(baseURL + "/senior/evenements.php?payment=cancelled"),
+	}
+
+	s, err := session.New(params)
+	if err != nil {
+		jsonError(w, "Erreur lors de la création de la session Stripe : "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"checkout_url": s.URL,
+	})
+}
+
+func handleConfirmEventCheckout(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.URL.Query().Get("session_id")
+	if sessionID == "" {
+		jsonError(w, "session_id manquant", http.StatusBadRequest)
+		return
+	}
+
+	s, err := session.Get(sessionID, nil)
+	if err != nil {
+		jsonError(w, "Impossible de récupérer la session Stripe : "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if s.PaymentStatus != stripe.CheckoutSessionPaymentStatusPaid {
+		jsonError(w, "Paiement Stripe non confirmé", http.StatusConflict)
+		return
+	}
+
+	idEvent := s.Metadata["id_event"]
+	idUser := s.Metadata["id_user"]
+	if idEvent == "" || idUser == "" {
+		jsonError(w, "Metadata Stripe manquante", http.StatusBadRequest)
+		return
+	}
+
+	var existing int
+	db.QueryRow(`
+		SELECT COUNT(*) FROM event_registrations WHERE id_user = ? AND id_event = ?
+	`, idUser, idEvent).Scan(&existing)
+	if existing > 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Inscription déjà confirmée",
+		})
+		return
+	}
+
+	paymentIntentID := ""
+	if s.PaymentIntent.ID != "" {
+		paymentIntentID = s.PaymentIntent.ID
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO event_registrations (id_registration, registration_date, status, paid, stripe_payment_intent_id, id_user, id_event)
+		VALUES (UUID(), NOW(), 'confirmed', 1, ?, ?, ?)
+	`, paymentIntentID, idUser, idEvent)
+	if err != nil {
+		jsonError(w, "Erreur lors de la validation de l'inscription : "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Inscription confirmée",
+	})
+}
+
+// STRIPE CONFIRM
+func handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
+	const maxBodyBytes = int64(65536)
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	payload, err := io.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "Erreur lecture body", http.StatusBadRequest)
+		return
+	}
+
+	webhookSecret := os.Getenv("STRIPE_WEBHOOK_SECRET")
+	event, err := webhook.ConstructEvent(payload, r.Header.Get("Stripe-Signature"), webhookSecret)
+	if err != nil {
+		jsonError(w, "Signature Stripe invalide : "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if event.Type == "checkout.session.completed" {
+		var checkoutSession stripe.CheckoutSession
+		if err := json.Unmarshal(event.Data.Raw, &checkoutSession); err != nil {
+			jsonError(w, "Erreur parsing session", http.StatusBadRequest)
+			return
+		}
+
+		idEvent := checkoutSession.Metadata["id_event"]
+		idUser := checkoutSession.Metadata["id_user"]
+
+		if idEvent == "" || idUser == "" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		var existing int
+		db.QueryRow(`
+			SELECT COUNT(*) FROM event_registrations WHERE id_user = ? AND id_event = ?
+		`, idUser, idEvent).Scan(&existing)
+
+		if existing == 0 {
+			paymentIntentID := checkoutSession.PaymentIntent.ID
+			_, err = db.Exec(`
+				INSERT INTO event_registrations (id_registration, registration_date, status, paid, stripe_payment_intent_id, id_user, id_event)
+				VALUES (UUID(), NOW(), 'confirmed', 1, ?, ?, ?)
+			`, paymentIntentID, idUser, idEvent)
+			if err != nil {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// DELETE INSCRIPTION EVENT
 func handleDeleteEventRegistration(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		jsonError(w, "ID inscription manquant", http.StatusBadRequest)
 		return
+	}
+
+	var paid bool
+	var stripePaymentIntentID *string
+	err := db.QueryRow(`
+		SELECT paid, stripe_payment_intent_id FROM event_registrations WHERE id_registration = ?
+	`, id).Scan(&paid, &stripePaymentIntentID)
+	if err != nil {
+		jsonError(w, "Inscription introuvable", http.StatusNotFound)
+		return
+	}
+
+	if paid && stripePaymentIntentID != nil && *stripePaymentIntentID != "" {
+		refundParams := &stripe.RefundParams{
+			PaymentIntent: stripe.String(*stripePaymentIntentID),
+		}
+		_, err := refund.New(refundParams)
+		if err != nil {
+			stripeErr, ok := err.(*stripe.Error)
+			if ok && stripeErr.Code == "charge_already_refunded" {
+			} else {
+				jsonError(w, "Erreur lors du remboursement : "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 	}
 
 	result, err := db.Exec("DELETE FROM event_registrations WHERE id_registration = ?", id)

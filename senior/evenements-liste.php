@@ -13,19 +13,23 @@ $messageType = '';
 $availableEvents = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'register' && $token !== '' && $userId !== '') {
-    $response = callAPI('http://localhost:8080/api/event-registrations', 'POST', [
-        'status' => 'Inscrit',
-        'paid' => false,
-        'id_user' => $userId,
-        'id_event' => $_POST['id_event'] ?? '',
-    ], $token);
+    $idEvent  = $_POST['id_event'] ?? '';
+    $response = callAPI(
+        'http://localhost:8080/api/events/' . urlencode($idEvent) . '/checkout',
+        'POST',
+        ['id_user' => $userId],
+        $token
+    );
 
-    if (is_array($response) && !isset($response['error'])) {
-        $message = 'Inscription enregistrée avec succès.';
-        $messageType = 'success';
-    } else {
-        $message = 'Impossible de vous inscrire à cet événement.';
+    if (isset($response['error'])) {
+        $message     = htmlspecialchars($response['error']);
         $messageType = 'danger';
+    } elseif (!empty($response['checkout_url'])) {
+        header('Location: ' . $response['checkout_url']);
+        exit;
+    } else {
+        $message     = 'Inscription enregistrée avec succès.';
+        $messageType = 'success';
     }
 }
 

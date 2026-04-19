@@ -10,20 +10,9 @@ $serviceCategories = [];
 $loadError = '';
 $token = (string)($_SESSION['user']['token'] ?? '');
 
-$defaultServiceCategories = [
-    ['id_service_category' => 'cat_menage', 'name' => 'Menage', 'description' => 'Aide menagere reguliere ou ponctuelle.'],
-    ['id_service_category' => 'cat_assistance', 'name' => 'Assistance', 'description' => 'Aide quotidienne et accompagnement a domicile.'],
-    ['id_service_category' => 'cat_transport', 'name' => 'Transport', 'description' => 'Accompagnement pour deplacements et rendez-vous.'],
-    ['id_service_category' => 'cat_informatique', 'name' => 'Informatique', 'description' => 'Aide pour ordinateur, smartphone et internet.'],
-    ['id_service_category' => 'cat_sante', 'name' => 'Sante', 'description' => 'Accompagnement pour besoins lies a la sante.'],
-    ['id_service_category' => 'cat_courses', 'name' => 'Courses', 'description' => 'Aide pour les courses et petites commissions.'],
-];
 
 if ($token !== '') {
     $serviceMap = [];
-    foreach ($defaultServiceCategories as $category) {
-        $serviceMap[strtolower((string)$category['name'])] = $category;
-    }
 
     $categoriesResponse = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
     if (is_array($categoriesResponse) && !isset($categoriesResponse['error'])) {

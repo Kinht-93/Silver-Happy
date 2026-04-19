@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // SERVICE CATEGORIES tous
@@ -326,7 +327,7 @@ func handleReserveProviderAvailability(w http.ResponseWriter, r *http.Request) {
 
 	var slot struct {
 		ProviderID   string
-		AvailableDay string
+		AvailableDay time.Time
 		StartTime    string
 		EndTime      string
 		CompanyName  sql.NullString
@@ -381,20 +382,21 @@ func handleReserveProviderAvailability(w http.ResponseWriter, r *http.Request) {
 	}
 
 	requestAddress := "Service: " + payload.CategoryName + " | Prestataire: " + providerLabel
+	formattedDate := slot.AvailableDay.Format("2006-01-02")
 	if _, err := tx.Exec(`
 		INSERT INTO service_requests (id_request, desired_date, start_time, estimated_duration, intervention_address, status, created_at, id_user, id_service_category)
 		VALUES (CONCAT('req_', UUID()), ?, ?, ?, ?, 'En attente', NOW(), ?, ?)
-	`, slot.AvailableDay, slot.StartTime, durationHours, requestAddress, payload.UserID, payload.ServiceCategoryID); err != nil {
-		jsonError(w, "Erreur lors de la création de la demande", http.StatusInternalServerError)
+	`, formattedDate, slot.StartTime, durationHours, requestAddress, payload.UserID, payload.ServiceCategoryID); err != nil {
+		jsonError(w, "Erreur lors de la création de la demande : "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	missionDescription := "Senior: " + payload.SeniorName + " | Service: " + payload.CategoryName + " | Créneau: " + slot.AvailableDay + " " + slot.StartTime + "-" + slot.EndTime
+	missionDescription := "Senior: " + payload.SeniorName + " | Service: " + payload.CategoryName + " | Créneau: " + formattedDate + " " + slot.StartTime + "-" + slot.EndTime
 	if _, err := tx.Exec(`
 		INSERT INTO provider_missions (id_mission, mission_title, mission_description, mission_date, status, id_user, accepted_at, created_at)
 		VALUES (CONCAT('mis_', UUID()), ?, ?, ?, 'Acceptee', ?, NOW(), NOW())
 	`, "Demande senior - "+payload.CategoryName, missionDescription, slot.AvailableDay, slot.ProviderID); err != nil {
-		jsonError(w, "Erreur lors de la création de la mission", http.StatusInternalServerError)
+		jsonError(w, "Erreur lors de la création de la mission : "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

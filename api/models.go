@@ -167,6 +167,7 @@ type EventRegistration struct {
 	RegistrationDate time.Time `json:"registration_date"`
 	Status           string    `json:"status"`
 	Paid             bool      `json:"paid"`
+	StripePaymentIntentID *string `json:"stripe_payment_intent_id,omitempty"`
 	UserID           string    `json:"id_user"`
 	EventID          string    `json:"id_event"`
 }
