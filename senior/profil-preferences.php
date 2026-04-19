@@ -3,11 +3,32 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-require_once __DIR__ . '/../include/callapi.php';
+include_once '../db.php';
+
+if (!function_exists('sh_ensure_senior_settings_table')) {
+    function sh_ensure_senior_settings_table($pdo)
+    {
+        if (!$pdo instanceof PDO) {
+            return;
+        }
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS senior_settings (
+                id_user VARCHAR(255) PRIMARY KEY,
+                language VARCHAR(10) NOT NULL DEFAULT 'fr',
+                font_size VARCHAR(30) NOT NULL DEFAULT 'Normale',
+                email_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+                emergency_relation VARCHAR(120) DEFAULT NULL,
+                updated_at DATETIME NOT NULL,
+                INDEX idx_senior_settings_updated_at (updated_at),
+                FOREIGN KEY (id_user) REFERENCES users(id_user)
+            )"
+        );
+    }
+}
 
 $seniorCurrent = 'profil';
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
-$token = (string)($_SESSION['user']['token'] ?? '');
 
 $errors = [];
 $success = '';
@@ -16,13 +37,19 @@ $language = 'fr';
 $fontSize = 'Normale';
 $emailNotifications = true;
 
-if ($token !== '' && $userId !== '') {
-    $settingsResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/senior-settings', 'GET', null, $token);
-    if (is_array($settingsResponse) && !isset($settingsResponse['error'])) {
-        $language = in_array((string)($settingsResponse['language'] ?? 'fr'), ['fr', 'en', 'es', 'de', 'it'], true) ? (string)$settingsResponse['language'] : 'fr';
-        $fontSize = in_array((string)($settingsResponse['font_size'] ?? 'Normale'), ['Normale', 'Grande', 'Tres grande'], true) ? (string)$settingsResponse['font_size'] : 'Normale';
-        $emailNotifications = (bool)($settingsResponse['email_notifications'] ?? true);
-    } else {
+if ($pdo instanceof PDO && $userId !== '') {
+    try {
+        sh_ensure_senior_settings_table($pdo);
+
+        $loadStmt = $pdo->prepare('SELECT language, font_size, email_notifications FROM senior_settings WHERE id_user = ? LIMIT 1');
+        $loadStmt->execute([$userId]);
+        $row = $loadStmt->fetch();
+        if ($row) {
+            $language = in_array((string)$row['language'], ['fr', 'en', 'es', 'de', 'it'], true) ? (string)$row['language'] : 'fr';
+            $fontSize = in_array((string)$row['font_size'], ['Normale', 'Grande', 'Tres grande'], true) ? (string)$row['font_size'] : 'Normale';
+            $emailNotifications = (bool)($row['email_notifications'] ?? true);
+        }
+    } catch (Throwable $e) {
         $errors[] = 'Impossible de charger vos preferences.';
     }
 }
@@ -32,11 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fontSize = trim((string)($_POST['font_size'] ?? 'Normale'));
     $emailNotifications = isset($_POST['email_notifications']);
 
+    if (!$pdo instanceof PDO) {
+        $errors[] = 'Base de donnees indisponible.';
+    }
     if ($userId === '') {
         $errors[] = 'Session utilisateur invalide.';
-    }
-    if ($token === '') {
-        $errors[] = 'Connexion API indisponible.';
     }
     if (!in_array($language, ['fr', 'en', 'es', 'de', 'it'], true)) {
         $errors[] = 'Langue invalide.';
@@ -46,16 +73,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $response = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/senior-settings', 'PATCH', [
-            'language' => $language,
-            'font_size' => $fontSize,
-            'email_notifications' => $emailNotifications,
-        ], $token);
+        try {
+            sh_ensure_senior_settings_table($pdo);
 
-        if (is_array($response) && !isset($response['error'])) {
+            $updateStmt = $pdo->prepare(
+                'INSERT INTO senior_settings (id_user, language, font_size, email_notifications, updated_at)
+                 VALUES (?, ?, ?, ?, NOW())
+                 ON DUPLICATE KEY UPDATE
+                    language = VALUES(language),
+                    font_size = VALUES(font_size),
+                    email_notifications = VALUES(email_notifications),
+                    updated_at = NOW()'
+            );
+            $updateStmt->execute([
+                $userId,
+                $language,
+                $fontSize,
+                $emailNotifications ? 1 : 0,
+            ]);
+
             $success = 'Preferences mises a jour avec succes.';
-        } else {
-            $errors[] = $response['error'] ?? 'Impossible d enregistrer vos preferences.';
+        } catch (Throwable $e) {
+            $errors[] = 'Impossible d enregistrer vos preferences.';
         }
     }
 }

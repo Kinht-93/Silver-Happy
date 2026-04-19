@@ -63,45 +63,8 @@ include './include/header.php';
 <section class="senior-shell">
     <div class="senior-content">
         <h1 class="senior-title">Liste des événements</h1>
-        <p class="senior-subtitle">Inscrivez-vous aux prochains événements disponibles.</p>
-
-        <?php if ($message): ?>
-            <div class="alert alert-<?= $messageType ?>" role="alert">
-                <?= htmlspecialchars($message) ?>
-            </div>
-        <?php endif; ?>
-
         <div class="senior-panel">
-            <?php if (empty($availableEvents)): ?>
-                <p class="mb-0">Aucun événement disponible pour le moment.</p>
-            <?php else: ?>
-                <div class="row g-3">
-                    <?php foreach ($availableEvents as $event): ?>
-                        <div class="col-md-6">
-                            <div class="border rounded p-3 h-100 bg-white">
-                                <div class="d-flex justify-content-between gap-3 align-items-start mb-2">
-                                    <h2 class="h5 mb-0"><?= htmlspecialchars($event['title'] ?? 'Événement') ?></h2>
-                                    <span class="badge text-bg-light"><?= htmlspecialchars($event['event_type'] ?? 'Événement') ?></span>
-                                </div>
-                                <p class="text-muted mb-2">
-                                    <i class="bi bi-calendar-event"></i>
-                                    <?= htmlspecialchars(date('d/m/Y H:i', strtotime((string)($event['start_date'] ?? 'now')))) ?>
-                                </p>
-                                <p class="mb-3">
-                                    <strong>Places :</strong> <?= (int)($event['max_places'] ?? 0) ?>
-                                    <br>
-                                    <strong>Prix :</strong> <?= number_format((float)($event['price'] ?? 0), 2) ?> €
-                                </p>
-                                <form method="POST" class="mt-auto">
-                                    <input type="hidden" name="action" value="register">
-                                    <input type="hidden" name="id_event" value="<?= htmlspecialchars($event['id_event'] ?? '') ?>">
-                                    <button type="submit" class="btn btn-primary btn-sm">S'inscrire</button>
-                                </form>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+            <p class="mb-0">Aucun événement disponible pour le moment.</p>
         </div>
     </div>
 </section>

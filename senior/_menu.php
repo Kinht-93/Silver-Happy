@@ -7,6 +7,7 @@ $menuItems = [
     ['key' => 'messagerie', 'label' => 'Messagerie', 'href' => 'messagerie.php', 'icon' => 'bi-chat-dots-fill'],
     ['key' => 'prestation', 'label' => 'Prestations', 'href' => 'prestations.php', 'icon' => 'bi-briefcase'],
     ['key' => 'evenements', 'label' => 'Evenements', 'href' => 'evenements.php', 'icon' => 'bi-briefcase'],
+    ['key' => 'abonnements', 'label' => 'Abonnements', 'href' => 'abonnements.php', 'icon' => 'bi-credit-card-2-front'],
     ['key' => 'factures', 'label' => 'Mes factures', 'href' => 'mes-factures.php', 'icon' => 'bi-receipt'],
     ['key' => 'profil', 'label' => 'Mon profil', 'href' => 'mon-profil.php', 'icon' => 'bi-person-fill'],
     ['key' => 'contact', 'label' => 'Contact', 'href' => 'contact.php', 'icon' => 'bi-envelope'],
@@ -16,6 +17,7 @@ $menuItems = [
 $activeAliases = [
     'prestation' => ['prestation', 'prestations'],
     'evenement' => ['evenements'],
+    'abonnements' => ['abonnements'],
     'dashboard' => ['dashboard'],
     'planning' => ['planning'],
     'messagerie' => ['messagerie'],
