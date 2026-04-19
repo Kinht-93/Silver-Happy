@@ -5,7 +5,8 @@ $menuItems = [
     ['key' => 'dashboard', 'label' => 'Tableau de bord', 'href' => 'index.php', 'icon' => 'bi-grid-1x2-fill'],
     ['key' => 'planning', 'label' => 'Mon planning', 'href' => 'planning.php', 'icon' => 'bi-calendar3'],
     ['key' => 'messagerie', 'label' => 'Messagerie', 'href' => 'messagerie.php', 'icon' => 'bi-chat-dots-fill'],
-    ['key' => 'prestation', 'label' => 'Prestations', 'href' => 'prestation.php', 'icon' => 'bi-briefcase'],
+    ['key' => 'prestation', 'label' => 'Prestations', 'href' => 'prestations.php', 'icon' => 'bi-briefcase'],
+    ['key' => 'evenements', 'label' => 'Evenements', 'href' => 'evenements.php', 'icon' => 'bi-briefcase'],
     ['key' => 'factures', 'label' => 'Mes factures', 'href' => 'mes-factures.php', 'icon' => 'bi-receipt'],
     ['key' => 'profil', 'label' => 'Mon profil', 'href' => 'mon-profil.php', 'icon' => 'bi-person-fill'],
     ['key' => 'contact', 'label' => 'Contact', 'href' => 'contact.php', 'icon' => 'bi-envelope'],
@@ -13,7 +14,8 @@ $menuItems = [
 ];
 
 $activeAliases = [
-    'prestation' => ['prestation', 'prestations', 'evenements'],
+    'prestation' => ['prestation', 'prestations'],
+    'evenement' => ['evenements'],
     'dashboard' => ['dashboard'],
     'planning' => ['planning'],
     'messagerie' => ['messagerie'],
