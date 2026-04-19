@@ -5,7 +5,7 @@ $menuItems = [
     ['key' => 'dashboard', 'label' => 'Tableau de bord', 'href' => 'index.php', 'icon' => 'bi-grid-1x2-fill'],
     ['key' => 'planning', 'label' => 'Mon planning', 'href' => 'planning.php', 'icon' => 'bi-calendar3'],
     ['key' => 'messagerie', 'label' => 'Messagerie', 'href' => 'messagerie.php', 'icon' => 'bi-chat-dots-fill'],
-    ['key' => 'prestation', 'label' => 'Prestations', 'href' => 'prestations.php', 'icon' => 'bi-briefcase'],
+    ['key' => 'prestation', 'label' => 'Prestations', 'href' => 'prestations.php', 'icon' => 'bi-calendar-event'],
     ['key' => 'evenements', 'label' => 'Evenements', 'href' => 'evenements.php', 'icon' => 'bi-briefcase'],
     ['key' => 'abonnements', 'label' => 'Abonnements', 'href' => 'abonnements.php', 'icon' => 'bi-credit-card-2-front'],
     ['key' => 'factures', 'label' => 'Mes factures', 'href' => 'mes-factures.php', 'icon' => 'bi-receipt'],
