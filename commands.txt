@@ -1,0 +1,26 @@
+# Réseau
+docker network create silverhappy_net
+
+# Volume
+docker volume create silverhappy_db_data
+
+# Conteneur MySQL
+docker run -d --name silverhappy_db --network silverhappy_net -v silverhappy_db_data:/var/lib/mysql -v "${PWD}/db.sql:/docker-entrypoint-initdb.d/init.sql:ro" -p 3306:3306 -e MYSQL_ROOT_PASSWORD=rootpassword -e MYSQL_DATABASE=silverhappy -e MYSQL_USER=silverhappy -e MYSQL_PASSWORD=silverhappypass --restart always mysql:8.0
+
+# Build image API Go
+docker build -t silver-happy-api:latest -f api/Dockerfile ./api
+
+# Suppression ancien conteneur API (conflit de nom)
+docker rm -f silverhappy_api
+
+# Conteneur API Go
+docker run -d --name silverhappy_api --network silverhappy_net -p 8080:8080 -e DB_HOST=silverhappy_db -e DB_PORT=3306 -e DB_NAME=silverhappy -e DB_USER=silverhappy -e DB_PASS=silverhappypass --restart always silver-happy-api:latest
+
+# Build image PHP
+docker build -t silver-happy-php:latest -f Dockerfile.php .
+
+# Conteneur PHP/Apache
+docker run -d --name silverhappy_php --network silverhappy_net -p 80:80 -v "${PWD}:/var/www/html" -e DB_HOST=silverhappy_db -e API_URL=http://silverhappy_api:8080 --restart always silver-happy-php:latest
+
+# Vérification
+docker ps
