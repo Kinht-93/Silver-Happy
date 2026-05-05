@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -114,10 +115,12 @@ func handleCreateProduct(w http.ResponseWriter, r *http.Request) {
 	defer stmt.Close()
 
 	if _, err := stmt.Exec(req.Name, req.Category, req.Price, req.Stock); err != nil {
+		createLog("système", "Création de produit", "CREATE", "Erreur lors de la création du produit "+req.Name+": "+err.Error(), false)
 		jsonError(w, "Failed to create product", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Création de produit", "CREATE", "Produit créé: "+req.Name+" (Catégorie: "+req.Category+", Prix: "+fmt.Sprintf("%.2f", req.Price)+"€)", true)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"Message": "Product created successfully"})
@@ -153,10 +156,12 @@ func handleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	defer stmt.Close()
 
 	if _, err := stmt.Exec(req.Name, req.Price, req.Stock, id); err != nil {
+		createLog("système", "Mise à jour de produit", "UPDATE", "Erreur lors de la mise à jour du produit "+id+": "+err.Error(), false)
 		jsonError(w, "Failed to update product", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Mise à jour de produit", "UPDATE", "Produit mis à jour: "+req.Name+" (Nouveau prix: "+fmt.Sprintf("%.2f", req.Price)+"€, Stock: "+fmt.Sprintf("%d", req.Stock)+")", true)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"Message": "Product updated successfully"})
 }
@@ -185,10 +190,12 @@ func handleDeleteProduct(w http.ResponseWriter, r *http.Request) {
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil || rowsAffected == 0 {
+		createLog("système", "Suppression de produit", "DELETE", "Produit non trouvé: "+id, false)
 		jsonError(w, "Product not found", http.StatusNotFound)
 		return
 	}
 
+	createLog("système", "Suppression de produit", "DELETE", "Produit supprimé: "+id, true)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"Message": "Product deleted successfully"})
 }

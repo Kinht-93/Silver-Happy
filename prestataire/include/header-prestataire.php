@@ -39,6 +39,11 @@ if ($userName === '') {
         </button>
 
         <div class="collapse navbar-collapse" id="navbarProvider">
+            <div class="d-flex align-items-center me-2">
+                <a class="btn btn-outline-secondary btn-sm" href="<?= $base_url ?>/notifications.php">
+                    <i class="bi bi-bell"></i>
+                </a>
+            </div>
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

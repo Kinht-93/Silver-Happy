@@ -276,7 +276,10 @@ CREATE TABLE notifications (
     title VARCHAR(255),
     message TEXT,
     created_at DATETIME NOT NULL,
+    scheduled_at DATETIME NULL,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    limited_at DATETIME NULL,
+    recipients VARCHAR(255),
     id_user VARCHAR(255),
     INDEX idx_notifications_user_read_created (id_user, is_read, created_at),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
@@ -386,6 +389,16 @@ CREATE TABLE IF NOT EXISTS support_tickets (
     INDEX idx_support_tickets_user (id_user),
     CONSTRAINT fk_support_tickets_user FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE,
     CONSTRAINT fk_support_tickets_assigned FOREIGN KEY (assigned_to) REFERENCES users(id_user) ON DELETE SET NULL
+);
+
+CREATE TABLE logs (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    utilisateur VARCHAR(255),
+    action      VARCHAR(255) NOT NULL,
+    type        VARCHAR(30) NOT NULL,
+    details     TEXT,
+    statut      BOOLEAN
 );
 
 INSERT INTO users (id_user,email,password,role,last_name,first_name,phone,address,city,postal_code,birth_date,active,verified_email,tutorial_seen,created_at) VALUES ('usr_admin_default','admin@silverhappy.fr','Admin123!','admin','Administrateur','Super',NULL,NULL,NULL,NULL,NULL,TRUE,TRUE,TRUE,NOW())ON DUPLICATE KEY UPDATE id_user = id_user;

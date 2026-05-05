@@ -67,10 +67,12 @@ func handleUpdateServiceCategory(w http.ResponseWriter, r *http.Request) {
 
 	_, err := stmt.Exec(payload["name"], payload["description"], id)
 	if err != nil {
+		createLog("système", "Mise à jour de catégorie de service", "UPDATE", "Erreur lors de la mise à jour de la catégorie "+id+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la mise à jour", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Mise à jour de catégorie de service", "UPDATE", "Catégorie mise à jour: "+payload["name"].(string), true)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "Catégorie mise à jour"})
 }
@@ -85,20 +87,21 @@ func handleDeleteServiceCategory(w http.ResponseWriter, r *http.Request) {
 
 	result, err := db.Exec("DELETE FROM service_categories WHERE id_service_category = ?", id)
 	if err != nil {
+		createLog("système", "Suppression de catégorie de service", "DELETE", "Erreur lors de la suppression de la catégorie "+id+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la suppression", http.StatusInternalServerError)
 		return
 	}
 
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
+		createLog("système", "Suppression de catégorie de service", "DELETE", "Catégorie non trouvée: "+id, false)
 		jsonError(w, "Catégorie introuvable", http.StatusNotFound)
 		return
 	}
 
+	createLog("système", "Suppression de catégorie de service", "DELETE", "Catégorie supprimée: "+id, true)
 	w.WriteHeader(http.StatusNoContent)
 }
-
-// SERVICE TYPES CRUD
 
 // GET Tous les types de services
 func handleGetAllServiceTypes(w http.ResponseWriter, r *http.Request) {
@@ -167,10 +170,12 @@ func handleUpdateServiceType(w http.ResponseWriter, r *http.Request) {
 	_, err := stmt.Exec(payload["name"], payload["description"], payload["hourly_rate"],
 		payload["id_service_category"], id)
 	if err != nil {
+		createLog("système", "Mise à jour de type de service", "UPDATE", "Erreur lors de la mise à jour du type "+id+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la mise à jour", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Mise à jour de type de service", "UPDATE", "Type de service mis à jour: "+payload["name"].(string), true)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "Type mis à jour"})
 }
@@ -185,16 +190,19 @@ func handleDeleteServiceType(w http.ResponseWriter, r *http.Request) {
 
 	result, err := db.Exec("DELETE FROM service_types WHERE id_service_type = ?", id)
 	if err != nil {
+		createLog("système", "Suppression de type de service", "DELETE", "Erreur lors de la suppression du type "+id+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la suppression", http.StatusInternalServerError)
 		return
 	}
 
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
+		createLog("système", "Suppression de type de service", "DELETE", "Type non trouvé: "+id, false)
 		jsonError(w, "Type introuvable", http.StatusNotFound)
 		return
 	}
 
+	createLog("système", "Suppression de type de service", "DELETE", "Type de service supprimé: "+id, true)
 	w.WriteHeader(http.StatusNoContent)
 }
 

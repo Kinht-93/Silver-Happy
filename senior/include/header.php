@@ -94,6 +94,9 @@ $menuItems = [
             </ul>
 
             <div class="d-flex align-items-center gap-2">
+                <a href="../notifications.php" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-bell"></i>
+                </a>
                 <a href="../<?php echo ltrim($roleHome, '/'); ?>" class="btn btn-outline-primary">
                     <?php echo $firstName !== '' ? 'Bonjour ' . htmlspecialchars($firstName) : 'Espace senior'; ?>
                 </a>

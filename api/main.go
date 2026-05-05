@@ -101,7 +101,14 @@ func main() {
 	http.HandleFunc("DELETE /api/admin-quotes/{id}", authMiddleware(handleDeleteAdminQuote))
 
 	// NOTIFICATIONS
+	http.HandleFunc("GET /api/notifications", authMiddleware(handleGetNotifications))
+	http.HandleFunc("GET /api/notifications/{id}", authMiddleware(handleGetUserNotifications))
+	http.HandleFunc("POST /api/notifications", authMiddleware(handleCreateNotification))
+	http.HandleFunc("DELETE /api/notifications/{id}", authMiddleware(handleDeleteNotification))
 	http.HandleFunc("POST /api/notifications/probleme/count", authMiddleware(handleGetProblemeCount))
+
+	// LOGS
+	http.HandleFunc("GET /api/logs", authMiddleware(handleGetLogs))
 
 	// EVENTS
 	http.HandleFunc("GET /api/events", handleGetEvents)

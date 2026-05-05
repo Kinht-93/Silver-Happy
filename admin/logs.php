@@ -1,259 +1,175 @@
 <?php
 include './include/header-admin.php';
+require_once __DIR__ . '/../include/callapi.php';
+
+$token = $_SESSION['user']['token'] ?? '';
+$filterType = $_GET['type'] ?? '';
+$search = $_GET['search'] ?? '';
+$sort = $_GET['sort'] ?? 'created_at';
+$order = $_GET['order'] ?? 'desc';
+
+function getSortUrl($column, $currentSort, $currentOrder) {
+    $params = $_GET;
+    $params['sort'] = $column;
+    $params['order'] = ($currentSort === $column && $currentOrder === 'asc') ? 'desc' : 'asc';
+    return '?' . http_build_query($params);
+}
+
+$queryParams = [];
+if ($filterType) $queryParams[] = 'type=' . urlencode($filterType);
+if ($search) $queryParams[] = 'search=' . urlencode($search);
+if ($sort) $queryParams[] = 'sort=' . urlencode($sort);
+if ($order) $queryParams[] = 'order=' . urlencode($order);
+$queryString = !empty($queryParams) ? '?' . implode('&', $queryParams) : '';
+
+$response = callAPI('http://localhost:8080/api/logs' . $queryString, 'GET', null, $token);
+$logs = is_array($response) && !isset($response['error']) ? $response : [];
+
+$stats = [
+    'total' => count($logs),
+    'success' => count(array_filter($logs, fn($l) => $l['statut'] === true)),
+    'errors' => count(array_filter($logs, fn($l) => $l['statut'] === false)),
+];
 ?>
 
 <div class="page-title">Logs & supervision</div>
 
+<!-- Barre de recherche -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <form method="GET" class="d-flex">
+            <input type="text" name="search" class="form-control me-2" placeholder="Rechercher dans les logs..." value="<?= htmlspecialchars($search) ?>">
+            <?php if ($filterType): ?>
+                <input type="hidden" name="type" value="<?= htmlspecialchars($filterType) ?>">
+            <?php endif; ?>
+            <button type="submit" class="btn btn-primary me-2">
+                <i class="bi bi-search"></i> Rechercher
+            </button>
+            <?php if ($search || $filterType): ?>
+                <a href="logs.php" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Effacer
+                </a>
+            <?php endif; ?>
+        </form>
+    </div>
+    <div class="col-md-4 text-end">
+        <small class="text-muted">
+            <?= count($logs) ?> résultat<?= count($logs) > 1 ? 's' : '' ?> trouvé<?= count($logs) > 1 ? 's' : '' ?>
+            <?php if ($search): ?>
+                pour "<strong><?= htmlspecialchars($search) ?></strong>"
+            <?php endif; ?>
+        </small>
+    </div>
+</div>
+
 <ul class="nav nav-tabs mb-4" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="tous-tab" data-bs-toggle="tab" data-bs-target="#tous" type="button" role="tab">Tous les logs</button>
+        <a class="nav-link <?= $filterType === '' ? 'active' : '' ?>" href="?<?= $search ? 'search=' . urlencode($search) : '' ?><?= $search && ($sort !== 'created_at' || $order !== 'desc') ? '&' : '' ?><?= $sort !== 'created_at' || $order !== 'desc' ? 'sort=' . urlencode($sort) . '&order=' . urlencode($order) : '' ?>">Tous les logs</a>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="erreurs-tab" data-bs-toggle="tab" data-bs-target="#erreurs" type="button" role="tab">Erreurs</button>
+        <a class="nav-link <?= $filterType === 'ERROR' ? 'active' : '' ?>" href="?type=ERROR<?= $search ? '&search=' . urlencode($search) : '' ?><?= ($search || $sort !== 'created_at' || $order !== 'desc') ? '&' : '' ?><?= $sort !== 'created_at' || $order !== 'desc' ? 'sort=' . urlencode($sort) . '&order=' . urlencode($order) : '' ?>">Erreurs</a>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="acces-tab" data-bs-toggle="tab" data-bs-target="#acces" type="button" role="tab">Accès</button>
+        <a class="nav-link <?= $filterType === 'LOGIN' ? 'active' : '' ?>" href="?type=LOGIN<?= $search ? '&search=' . urlencode($search) : '' ?><?= ($search || $sort !== 'created_at' || $order !== 'desc') ? '&' : '' ?><?= $sort !== 'created_at' || $order !== 'desc' ? 'sort=' . urlencode($sort) . '&order=' . urlencode($order) : '' ?>">Accès</a>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="modif-tab" data-bs-toggle="tab" data-bs-target="#modif" type="button" role="tab">Modifications</button>
+        <a class="nav-link <?= in_array($filterType, ['CREATE', 'UPDATE', 'DELETE']) ? 'active' : '' ?>" href="?type=UPDATE<?= $search ? '&search=' . urlencode($search) : '' ?><?= ($search || $sort !== 'created_at' || $order !== 'desc') ? '&' : '' ?><?= $sort !== 'created_at' || $order !== 'desc' ? 'sort=' . urlencode($sort) . '&order=' . urlencode($order) : '' ?>">Modifications</a>
     </li>
 </ul>
 
 <div class="row mb-4">
-    <div class="col text-end">
-        <input type="date" class="form-control" style="max-width: 150px;">
-    </div>
-</div>
-
-<div class="tab-content">
-    <div class="tab-pane fade show active" id="tous" role="tabpanel">
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="stat-card primary">
-                    <div class="stat-label">Requêtes/jour</div>
-                    <div class="stat-value">1,245</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card success">
-                    <div class="stat-label">Taux succès</div>
-                    <div class="stat-value">97,7%</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card warning">
-                    <div class="stat-label">Erreurs 4xx</div>
-                    <div class="stat-value">42</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card danger">
-                    <div class="stat-label">Erreurs 5xx</div>
-                    <div class="stat-value">6</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="admin-card">
-            <h5 class="mb-3">Historique des activités</h5>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>Utilisateur</th>
-                            <th>Action</th>
-                            <th>Type</th>
-                            <th>Détails</th>
-                            <th>Statut</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>19/02/2026 15:32:11</td>
-                            <td>admin@silverhappy.fr</td>
-                            <td>Création de devis</td>
-                            <td><span class="badge bg-info">Create</span></td>
-                            <td>Devis #DV-2026-001</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                        <tr>
-                            <td>19/02/2026 14:45:22</td>
-                            <td>sophie.dubois@email.com</td>
-                            <td>Connexion utilisateur</td>
-                            <td><span class="badge bg-light text-dark">Login</span></td>
-                            <td>IP: 192.168.1.45</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                        <tr>
-                            <td>19/02/2026 13:20:44</td>
-                            <td>content@silverhappy.fr</td>
-                            <td>Modification d'article</td>
-                            <td><span class="badge bg-warning">Update</span></td>
-                            <td>Article #APP-001</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                        <tr>
-                            <td>19/02/2026 12:15:33</td>
-                            <td>marie.dupont@email.com</td>
-                            <td>Erreur d'accès</td>
-                            <td><span class="badge bg-danger">Error</span></td>
-                            <td>Accès refusé à la ressource</td>
-                            <td><span class="badge bg-danger">Échoué</span></td>
-                        </tr>
-                        <tr>
-                            <td>19/02/2026 11:08:15</td>
-                            <td>admin@silverhappy.fr</td>
-                            <td>Suppression de contenu</td>
-                            <td><span class="badge bg-danger">Delete</span></td>
-                            <td>Conseil #CONS-1234</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                        <tr>
-                            <td>19/02/2026 10:42:09</td>
-                            <td>finance@silverhappy.fr</td>
-                            <td>Export de rapport</td>
-                            <td><span class="badge bg-light text-dark">Export</span></td>
-                            <td>Rapport facturation février</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                        <tr>
-                            <td>19/02/2026 09:19:47</td>
-                            <td>système</td>
-                            <td>Sauvegarde programmée</td>
-                            <td><span class="badge bg-light text-dark">System</span></td>
-                            <td>Sauvegarde complète base de données</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                        <tr>
-                            <td>18/02/2026 23:55:32</td>
-                            <td>jean.martin@email.com</td>
-                            <td>Déconnexion</td>
-                            <td><span class="badge bg-light text-dark">Logout</span></td>
-                            <td>Session fermée normalement</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <div class="col-md-3">
+        <div class="stat-card primary">
+            <div class="stat-label">Total</div>
+            <div class="stat-value"><?= $stats['total'] ?></div>
         </div>
     </div>
-
-    <div class="tab-pane fade" id="erreurs" role="tabpanel">
-        <div class="admin-card">
-            <h5 class="mb-3">Logs - Erreurs</h5>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>Utilisateur</th>
-                            <th>Action</th>
-                            <th>Type</th>
-                            <th>Détails</th>
-                            <th>Statut</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>19/02/2026 12:15:33</td>
-                            <td>marie.dupont@email.com</td>
-                            <td>Erreur d'accès</td>
-                            <td><span class="badge bg-danger">Error</span></td>
-                            <td>Accès refusé à la ressource</td>
-                            <td><span class="badge bg-danger">Échoué</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <div class="col-md-3">
+        <div class="stat-card success">
+            <div class="stat-label">Succès</div>
+            <div class="stat-value"><?= $stats['success'] ?></div>
         </div>
     </div>
-
-    <div class="tab-pane fade" id="acces" role="tabpanel">
-        <div class="admin-card">
-            <h5 class="mb-3">Logs - Accès</h5>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>Utilisateur</th>
-                            <th>Action</th>
-                            <th>Type</th>
-                            <th>Détails</th>
-                            <th>Statut</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>19/02/2026 14:45:22</td>
-                            <td>sophie.dubois@email.com</td>
-                            <td>Connexion utilisateur</td>
-                            <td><span class="badge bg-light text-dark">Login</span></td>
-                            <td>IP: 192.168.1.45</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                        <tr>
-                            <td>18/02/2026 23:55:32</td>
-                            <td>jean.martin@email.com</td>
-                            <td>Déconnexion</td>
-                            <td><span class="badge bg-light text-dark">Logout</span></td>
-                            <td>Session fermée normalement</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="tab-pane fade" id="modif" role="tabpanel">
-        <div class="admin-card">
-            <h5 class="mb-3">Logs - Modifications</h5>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>Utilisateur</th>
-                            <th>Action</th>
-                            <th>Type</th>
-                            <th>Détails</th>
-                            <th>Statut</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>19/02/2026 15:32:11</td>
-                            <td>admin@silverhappy.fr</td>
-                            <td>Création de devis</td>
-                            <td><span class="badge bg-info">Create</span></td>
-                            <td>Devis #DV-2026-001</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                        <tr>
-                            <td>19/02/2026 13:20:44</td>
-                            <td>content@silverhappy.fr</td>
-                            <td>Modification d'article</td>
-                            <td><span class="badge bg-warning">Update</span></td>
-                            <td>Article #APP-001</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                        <tr>
-                            <td>19/02/2026 11:08:15</td>
-                            <td>admin@silverhappy.fr</td>
-                            <td>Suppression de contenu</td>
-                            <td><span class="badge bg-danger">Delete</span></td>
-                            <td>Conseil #CONS-1234</td>
-                            <td><span class="badge bg-success">Succès</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <div class="col-md-3">
+        <div class="stat-card danger">
+            <div class="stat-label">Erreurs</div>
+            <div class="stat-value"><?= $stats['errors'] ?></div>
         </div>
     </div>
 </div>
 
-<?php
-include './include/footer-admin.php';
-?>
+<div class="admin-card">
+    <h5 class="mb-3">Historique des activités</h5>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>
+                        <a href="<?= getSortUrl('created_at', $sort, $order) ?>" class="text-decoration-none text-dark">
+                            Timestamp
+                        </a>
+                    </th>
+                    <th>
+                        <a href="<?= getSortUrl('utilisateur', $sort, $order) ?>" class="text-decoration-none text-dark">
+                            Utilisateur
+                        </a>
+                    </th>
+                    <th>
+                        <a href="<?= getSortUrl('action', $sort, $order) ?>" class="text-decoration-none text-dark">
+                            Action
+                        </a>
+                    </th>
+                    <th>
+                        <a href="<?= getSortUrl('type', $sort, $order) ?>" class="text-decoration-none text-dark">
+                            Type
+                        </a>
+                    </th>
+                    <th>Détails</th>
+                    <th>
+                        <a href="<?= getSortUrl('statut', $sort, $order) ?>" class="text-decoration-none text-dark">
+                            Statut 
+                        </a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($logs)): ?>
+                    <tr><td colspan="6" class="text-center text-muted">Aucun log disponible.</td></tr>
+                <?php else: ?>
+                    <?php foreach ($logs as $log): ?>
+                        <tr>
+                            <td><?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?></td>
+                            <td><?= htmlspecialchars($log['utilisateur'] ?? 'Système') ?></td>
+                            <td><?= htmlspecialchars($log['action']) ?></td>
+                            <td>
+                                <?php
+                                    $type = htmlspecialchars($log['type']);
+                                    $badgeClass = match($type) {
+                                        'CREATE' => 'bg-info',
+                                        'UPDATE' => 'bg-warning',
+                                        'DELETE' => 'bg-danger',
+                                        'LOGIN' => 'bg-light text-dark',
+                                        'LOGOUT' => 'bg-light text-dark',
+                                        'ERROR' => 'bg-danger',
+                                        default => 'bg-secondary'
+                                    };
+                                ?>
+                                <span class="badge <?= $badgeClass ?>"><?= $type ?></span>
+                            </td>
+                            <td><?= htmlspecialchars($log['details'] ?? '-') ?></td>
+                            <td>
+                                <?php if ($log['statut']): ?>
+                                    <span class="badge bg-success">Succès</span>
+                                <?php else: ?>
+                                    <span class="badge bg-danger">Échoué</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<?php include './include/footer-admin.php'; ?>

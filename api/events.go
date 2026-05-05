@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -72,10 +73,12 @@ func handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 
 	_, err := stmt.Exec(e.Title, e.EventType, e.StartDate, e.EndDate, e.MaxPlaces, e.Price)
 	if err != nil {
+		createLog("système", "Création d'événement", "CREATE", "Erreur lors de la création de l'événement "+e.Title+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la création", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Création d'événement", "CREATE", "Événement créé: "+e.Title+" ("+e.StartDate+")", true)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "Événement créé avec succès"})
@@ -144,10 +147,12 @@ func handleCreateAdminEvent(w http.ResponseWriter, r *http.Request) {
 		VALUES (CONCAT('evt_', UUID()), ?, ?, ?, DATE_ADD(?, INTERVAL 2 HOUR), ?, ?)
 	`, payload.Title, payload.EventType, payload.StartDate, payload.StartDate, payload.MaxPlaces, payload.Price)
 	if err != nil {
+		createLog("système", "Création d'événement", "CREATE", "Erreur lors de la création de l'événement "+payload.Title+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la création", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Création d'événement", "CREATE", "Événement créé: "+payload.Title+" ("+payload.StartDate+", Places: "+fmt.Sprintf("%d", payload.MaxPlaces)+")", true)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "Événement créé avec succès"})
@@ -184,10 +189,12 @@ func handleUpdateAdminEvent(w http.ResponseWriter, r *http.Request) {
 		WHERE id_event = ?
 	`, payload.Title, payload.StartDate, payload.StartDate, payload.MaxPlaces, payload.Price, id)
 	if err != nil {
+		createLog("système", "Mise à jour d'événement", "UPDATE", "Erreur lors de la mise à jour de l'événement "+id+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la mise à jour", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Mise à jour d'événement", "UPDATE", "Événement mis à jour: "+payload.Title+" ("+payload.StartDate+", Places: "+fmt.Sprintf("%d", payload.MaxPlaces)+")", true)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "Événement mis à jour avec succès"})
 }
@@ -201,10 +208,12 @@ func handleDeleteAdminEvent(w http.ResponseWriter, r *http.Request) {
 
 	_, err := db.Exec("DELETE FROM events WHERE id_event = ?", id)
 	if err != nil {
+		createLog("système", "Suppression d'événement", "DELETE", "Erreur lors de la suppression de l'événement "+id+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la suppression", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Suppression d'événement", "DELETE", "Événement supprimé: "+id, true)
 	w.WriteHeader(http.StatusNoContent)
 }
 

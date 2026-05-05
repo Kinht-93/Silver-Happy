@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -15,23 +18,30 @@ func jsonError(w http.ResponseWriter, msg string, code int) {
 	json.NewEncoder(w).Encode(ErrorResponse{Error: msg})
 }
 
+var jwtSecret = os.Getenv("JWT_SECRET")
+
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(response http.ResponseWriter, request *http.Request) {
-		token := request.Header.Get("X-Token")
+	return func(w http.ResponseWriter, r *http.Request) {
+		tokenString := r.Header.Get("X-Token")
 
-		if token == "" {
-			response.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprintln(response, "Token required")
+		if tokenString == "" {
+			jsonError(w, "Token required", http.StatusUnauthorized)
 			return
 		}
 
-		if len(token) < 7 || token[:6] != "token_" {
-			response.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprintln(response, "Invalid token")
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(jwtSecret), nil
+		})
+
+		if err != nil || !token.Valid {
+			jsonError(w, "Invalid token", http.StatusUnauthorized)
 			return
 		}
 
-		next(response, request)
+		next(w, r)
 	}
 }
 
@@ -108,16 +118,39 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	row := db.QueryRow("SELECT id_user, password, email, role, first_name, last_name FROM users WHERE email = ?", payload.Email)
 
 	if err := row.Scan(&id, &hashedPassword, &email, &role, &firstName, &lastName); err != nil {
+		createLog(payload.Email, "Tentative de connexion", "LOGIN", "Email non trouvé", false)
 		jsonError(w, "Identifiants invalides", http.StatusUnauthorized)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(payload.Password)); err != nil {
+		createLog(email, "Tentative de connexion", "LOGIN", "Mot de passe incorrect", false)
 		jsonError(w, "Identifiants invalides", http.StatusUnauthorized)
 		return
 	}
 
-	token := "token_" + id
+	claims := jwt.MapClaims{
+		"id_user":    id,
+		"email":      email,
+		"role":       role,
+		"first_name": firstName,
+		"last_name":  lastName,
+	}
+
+	exp := time.Now().Add(time.Hour * 24).Unix()
+	if role == "admin" {
+		exp = time.Now().Add(time.Hour * 72).Unix()
+	}
+	claims["exp"] = exp
+
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwtSecret))
+	if err != nil {
+		jsonError(w, "Erreur lors de la génération du token", http.StatusInternalServerError)
+		return
+	}
+
+	// Log de connexion réussie
+	createLog(email, "Connexion utilisateur", "LOGIN", "Connexion réussie", true)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
