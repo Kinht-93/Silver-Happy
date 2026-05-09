@@ -106,10 +106,12 @@ func handleUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	defer stmt.Close()
 
 	if _, err := stmt.Exec(req.Status, id); err != nil {
+		createLog("système", "Mise à jour de commande", "UPDATE", "Erreur lors de la mise à jour du statut de la commande "+id+": "+err.Error(), false)
 		jsonError(w, "Failed to update order", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Mise à jour de commande", "UPDATE", "Statut de la commande "+id+" changé en: "+req.Status, true)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"Message": "Order updated successfully"})
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -144,10 +145,12 @@ func handleCreateInvoice(w http.ResponseWriter, r *http.Request) {
 	_, err := stmt.Exec(inv.InvoiceNumber, inv.InvoiceType, inv.AmountExclTax, inv.TaxRate, inv.AmountInclTax,
 		inv.IssueDate, inv.DueDate, inv.Status, inv.QuoteID)
 	if err != nil {
+		createLog("système", "Création de facture", "CREATE", "Erreur lors de la création de la facture "+inv.InvoiceNumber+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la création", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Création de facture", "CREATE", "Facture créée: "+inv.InvoiceNumber+" (Montant: "+fmt.Sprintf("%.2f", inv.AmountInclTax)+"€, Statut: "+inv.Status+")", true)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "Facture créée avec succès"})

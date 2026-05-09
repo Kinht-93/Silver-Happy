@@ -90,15 +90,6 @@ if ($userId === '') {
             </div>
         </div>
     </div>
-
-    <div class="col-lg-4">
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Conseil</h5>
-                <p class="card-text">Consultez régulièrement vos notifications pour ne manquer aucune information importante de Silver Happy.</p>
-            </div>
-        </div>
-    </div>
 </div>
 
 <?php include './include/footer.php'; ?>

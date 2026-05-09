@@ -147,10 +147,12 @@ func handleCreateMedicalAppointment(w http.ResponseWriter, r *http.Request) {
 		payload["created_by"],
 	)
 	if err != nil {
+		createLog("système", "Création de RDV médical", "CREATE", "Erreur lors de la création du RDV: "+err.Error(), false)
 		jsonError(w, "Erreur lors de la création du RDV", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Création de RDV médical", "CREATE", "RDV créé pour la date: "+payload["appointment_date"].(string)+", Docteur: "+payload["doctor_name"].(string), true)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "RDV créé avec succès"})
@@ -185,10 +187,12 @@ func handleUpdateMedicalAppointment(w http.ResponseWriter, r *http.Request) {
 		id,
 	)
 	if err != nil {
+		createLog("système", "Mise à jour de RDV médical", "UPDATE", "Erreur lors de la mise à jour du RDV "+id+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la mise à jour", http.StatusInternalServerError)
 		return
 	}
 
+	createLog("système", "Mise à jour de RDV médical", "UPDATE", "RDV mis à jour: "+id+", Nouveau statut: "+payload["status"].(string), true)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "RDV mis à jour"})
 }
@@ -203,16 +207,19 @@ func handleDeleteMedicalAppointment(w http.ResponseWriter, r *http.Request) {
 
 	result, err := db.Exec("DELETE FROM medical_appointments WHERE id_appointment = ?", id)
 	if err != nil {
+		createLog("système", "Suppression de RDV médical", "DELETE", "Erreur lors de la suppression du RDV "+id+": "+err.Error(), false)
 		jsonError(w, "Erreur lors de la suppression", http.StatusInternalServerError)
 		return
 	}
 
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
+		createLog("système", "Suppression de RDV médical", "DELETE", "RDV non trouvé: "+id, false)
 		jsonError(w, "RDV introuvable", http.StatusNotFound)
 		return
 	}
 
+	createLog("système", "Suppression de RDV médical", "DELETE", "RDV supprimé: "+id, true)
 	w.WriteHeader(http.StatusNoContent)
 }
 

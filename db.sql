@@ -289,7 +289,10 @@ CREATE TABLE notifications (
     title VARCHAR(255),
     message TEXT,
     created_at DATETIME NOT NULL,
+    scheduled_at DATETIME NULL,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    limited_at DATETIME NULL,
+    recipients VARCHAR(255),
     id_user VARCHAR(255),
     INDEX idx_notifications_user_read_created (id_user, is_read, created_at),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
