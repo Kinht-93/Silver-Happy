@@ -106,11 +106,11 @@ if (empty($testimonials)) {
 <section id="presentation" class="hero-section mb-5">
     <div class="row align-items-center">
         <div class="col-md-7">
-            <h1 class="hero-title mb-3">Vivez pleinement votre retraite avec Silver Happy</h1>
-            <p class="hero-text mb-4">Services, loisirs, conseils et produits pensés pour les seniors de plus de 60 ans, afin de rester actifs, entourés et sereins au quotidien.</p>
+            <h1 class="hero-title mb-3"><?= t('home_hero_title') ?></h1>
+            <p class="hero-text mb-4"><?= t('home_hero_text') ?></p>
             <div class="d-flex flex-wrap gap-2">
-                <a href="#prestations" class="btn btn-primary">Découvrir nos prestations</a>
-                <a href="#" class="btn btn-outline-secondary">Devenir adhérent</a>
+                <a href="#prestations" class="btn btn-primary"><?= t('home_hero_cta_services') ?></a>
+                <a href="#" class="btn btn-outline-secondary"><?= t('home_hero_cta_member') ?></a>
             </div>
         </div>
         <div class="col-md-5 text-center mt-4 mt-md-0">
@@ -121,110 +121,47 @@ if (empty($testimonials)) {
     </div>
 </section>
 
-<section class="mb-5" aria-label="Les points forts de Silver Happy">
+<section class="mb-5" aria-label="<?= t('home_advantages_aria') ?>">
     <div class="row text-center g-3">
         <div class="col-md-4">
             <div class="advantage-card h-100 p-4">
                 <div class="advantage-icon mb-3"><i class="bi bi-people"></i></div>
-                <h3 class="h5 mb-2">Accompagnement humain</h3>
-                <p class="mb-0">Une équipe à l’écoute pour vous proposer des solutions adaptées à votre rythme de vie.</p>
+                <h3 class="h5 mb-2"><?= t('home_adv_1_title') ?></h3>
+                <p class="mb-0"><?= t('home_adv_1_text') ?></p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="advantage-card h-100 p-4">
                 <div class="advantage-icon mb-3"><i class="bi bi-heart-pulse"></i></div>
-                <h3 class="h5 mb-2">Bien-être & santé</h3>
-                <p class="mb-0">Des activités et conseils pour rester en forme, physiquement et moralement.</p>
+                <h3 class="h5 mb-2"><?= t('home_adv_2_title') ?></h3>
+                <p class="mb-0"><?= t('home_adv_2_text') ?></p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="advantage-card h-100 p-4">
                 <div class="advantage-icon mb-3"><i class="bi bi-calendar-event"></i></div>
-                <h3 class="h5 mb-2">Loisirs sur-mesure</h3>
-                <p class="mb-0">Des sorties, ateliers et événements pour créer du lien et partager de bons moments.</p>
+                <h3 class="h5 mb-2"><?= t('home_adv_3_title') ?></h3>
+                <p class="mb-0"><?= t('home_adv_3_text') ?></p>
             </div>
         </div>
-    </div>
-</section>
-
-<section id="prestations" class="mb-5">
-    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <h2 class="section-title mb-0">Nos prestations</h2>
-        <a href="#" class="btn btn-link p-0">Voir toutes les prestations</a>
-    </div>
-    <div class="row g-3">
-        <?php foreach ($prestations as $prestation): ?>
-            <div class="col-6 col-md-3">
-                <div class="card h-100 prestation-card">
-                    <div class="card-body">
-                        <h3 class="h6 card-title mb-1"><?php echo htmlspecialchars($prestation['title']); ?></h3>
-                        <?php if (!empty($prestation['category'])): ?>
-                            <span class="badge bg-primary-subtle text-primary small"><?php echo htmlspecialchars($prestation['category']); ?></span>
-                        <?php endif; ?>
-                        <?php if (!empty($prestation['description'])):
-                            $desc = $prestation['description'];
-                            if (strlen($desc) > 90) {
-                                $desc = substr($desc, 0, 87) . '...';
-                            }
-                        ?>
-                            <p class="card-text mt-2 small"><?php echo htmlspecialchars($desc); ?></p>
-                        <?php endif; ?>
-                        <?php if (isset($prestation['price']) && $prestation['price'] > 0): ?>
-                            <div class="mt-2 fw-semibold text-primary">
-                                <?php echo number_format((float)$prestation['price'], 2, ',', ' '); ?> €
-                            </div>
-                        <?php else: ?>
-                            <div class="mt-2 text-muted small">Sur devis</div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-</section>
-
-<section id="evenements" class="mb-5">
-    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <h2 class="section-title mb-0">Prochains événements</h2>
-        <a href="#" class="btn btn-link p-0">Voir tout le calendrier</a>
-    </div>
-    <div class="row g-3">
-        <?php foreach ($events as $event): ?>
-            <div class="col-md-4">
-                <div class="card h-100 event-card">
-                    <div class="card-body">
-                        <h3 class="h6 card-title mb-1"><?php echo htmlspecialchars($event['title']); ?></h3>
-                        <div class="small text-muted mb-2">
-                            <i class="bi bi-calendar me-1"></i><?php echo htmlspecialchars($event['date']); ?>
-                            <?php if (!empty($event['location'])): ?>
-                                &nbsp;&middot; <i class="bi bi-geo-alt me-1"></i><?php echo htmlspecialchars($event['location']); ?>
-                            <?php endif; ?>
-                        </div>
-                        <?php if (!empty($event['description'])): ?>
-                            <p class="card-text small mb-0"><?php echo htmlspecialchars($event['description']); ?></p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        <?php endforeach; ?>
     </div>
 </section>
 
 <section class="callout-prestataire mb-5">
     <div class="row align-items-center">
         <div class="col-md-8 mb-3 mb-md-0">
-            <h2 class="section-title text-white mb-2">Devenir prestataire Silver Happy</h2>
-            <p class="mb-0 text-white-50">Vous proposez des services adaptés aux seniors ? Rejoignez notre réseau de partenaires de confiance et développez votre activité en toute sérénité.</p>
+            <h2 class="section-title text-white mb-2"><?= t('home_provider_title') ?></h2>
+            <p class="mb-0 text-white-50"><?= t('home_provider_text') ?></p>
         </div>
         <div class="col-md-4 text-md-end">
-            <a href="#" class="btn btn-light">Je deviens prestataire</a>
+            <a href="#" class="btn btn-light"><?= t('home_provider_cta') ?></a>
         </div>
     </div>
 </section>
 
 <section id="temoignages" class="mb-4">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <h2 class="section-title mb-0">Ils parlent de nous</h2>
+        <h2 class="section-title mb-0"><?= t('home_testimonials_title') ?></h2>
     </div>
     <div class="row g-3">
         <?php foreach ($testimonials as $testimonial): ?>

@@ -15,7 +15,7 @@ if (!function_exists('sh_get_role_home')) {
 
             case 'prestataire':
             case 'provider':
-                return 'index.php';
+                return 'prestataire/index.php';
 
             default:
                 return 'index.php';

@@ -255,17 +255,30 @@ func handleCreateServiceRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetProviderAvailabilities(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query(`
+	categoryID := strings.TrimSpace(r.URL.Query().Get("id_service_category"))
+	query := `
 		SELECT pa.id_availability, pa.available_date, pa.start_time, pa.end_time,
+		       pa.id_service_category, COALESCE(sc.name, '') AS category_name,
 		       u.id_user, u.first_name, u.last_name,
-		       COALESCE(u.company_name, '') as company_name
+		       COALESCE(u.company_name, '') as company_name,
+		       COALESCE(u.average_rating, 0) as average_rating
 		FROM provider_availabilities pa
 		INNER JOIN users u ON u.id_user = pa.id_user
+		INNER JOIN provider_service_categories psc ON psc.id_user = pa.id_user AND psc.id_service_category = pa.id_service_category
+		INNER JOIN service_categories sc ON sc.id_service_category = pa.id_service_category
 		WHERE pa.is_available = 1
 		  AND LOWER(u.role) = 'prestataire'
+		  AND LOWER(COALESCE(u.validation_status, '')) IN ('valide', 'validé')
 		  AND (pa.available_date > CURDATE() OR (pa.available_date = CURDATE() AND pa.start_time > CURTIME()))
-		ORDER BY pa.available_date ASC, pa.start_time ASC
-	`)
+	`
+	args := []interface{}{}
+	if categoryID != "" {
+		query += " AND pa.id_service_category = ?"
+		args = append(args, categoryID)
+	}
+	query += " ORDER BY pa.available_date ASC, pa.start_time ASC"
+
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		jsonError(w, "Erreur lors de la récupération des disponibilités", http.StatusInternalServerError)
 		return
@@ -273,20 +286,23 @@ func handleGetProviderAvailabilities(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type availabilityData struct {
-		ID          int    `json:"id_availability"`
-		AvailableAt string `json:"available_date"`
-		StartTime   string `json:"start_time"`
-		EndTime     string `json:"end_time"`
-		ProviderID  string `json:"id_user"`
-		FirstName   string `json:"first_name"`
-		LastName    string `json:"last_name"`
-		CompanyName string `json:"company_name"`
+		ID                int     `json:"id_availability"`
+		AvailableAt       string  `json:"available_date"`
+		StartTime         string  `json:"start_time"`
+		EndTime           string  `json:"end_time"`
+		ServiceCategoryID string  `json:"id_service_category"`
+		CategoryName      string  `json:"category_name"`
+		ProviderID        string  `json:"id_user"`
+		FirstName         string  `json:"first_name"`
+		LastName          string  `json:"last_name"`
+		CompanyName       string  `json:"company_name"`
+		AverageRating     float64 `json:"average_rating"`
 	}
 
 	items := []availabilityData{}
 	for rows.Next() {
 		var item availabilityData
-		if err := rows.Scan(&item.ID, &item.AvailableAt, &item.StartTime, &item.EndTime, &item.ProviderID, &item.FirstName, &item.LastName, &item.CompanyName); err != nil {
+		if err := rows.Scan(&item.ID, &item.AvailableAt, &item.StartTime, &item.EndTime, &item.ServiceCategoryID, &item.CategoryName, &item.ProviderID, &item.FirstName, &item.LastName, &item.CompanyName, &item.AverageRating); err != nil {
 			continue
 		}
 		items = append(items, item)
@@ -326,27 +342,38 @@ func handleReserveProviderAvailability(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 
 	var slot struct {
-		ProviderID   string
-		AvailableDay time.Time
-		StartTime    string
-		EndTime      string
-		CompanyName  sql.NullString
-		FirstName    sql.NullString
-		LastName     sql.NullString
+		ProviderID          string
+		AvailableDay        time.Time
+		StartTime           string
+		EndTime             string
+		ServiceCategoryID   string
+		ServiceCategoryName string
+		CompanyName         sql.NullString
+		FirstName           sql.NullString
+		LastName            sql.NullString
 	}
 	err = tx.QueryRow(`
 		SELECT pa.id_user, pa.available_date, pa.start_time, pa.end_time,
+		       pa.id_service_category, COALESCE(sc.name, ''),
 		       u.company_name, u.first_name, u.last_name
 		FROM provider_availabilities pa
 		INNER JOIN users u ON u.id_user = pa.id_user
+		INNER JOIN provider_service_categories psc ON psc.id_user = pa.id_user AND psc.id_service_category = pa.id_service_category
+		INNER JOIN service_categories sc ON sc.id_service_category = pa.id_service_category
 		WHERE pa.id_availability = ?
 		  AND pa.is_available = 1
 		  AND LOWER(u.role) = 'prestataire'
+		  AND LOWER(COALESCE(u.validation_status, '')) IN ('valide', 'validé')
 		  AND (pa.available_date > CURDATE() OR (pa.available_date = CURDATE() AND pa.start_time > CURTIME()))
 		LIMIT 1
-	`, availabilityID).Scan(&slot.ProviderID, &slot.AvailableDay, &slot.StartTime, &slot.EndTime, &slot.CompanyName, &slot.FirstName, &slot.LastName)
+	`, availabilityID).Scan(&slot.ProviderID, &slot.AvailableDay, &slot.StartTime, &slot.EndTime, &slot.ServiceCategoryID, &slot.ServiceCategoryName, &slot.CompanyName, &slot.FirstName, &slot.LastName)
 	if err != nil {
 		jsonError(w, "Ce créneau n'est plus disponible", http.StatusConflict)
+		return
+	}
+
+	if payload.ServiceCategoryID != "" && payload.ServiceCategoryID != slot.ServiceCategoryID {
+		jsonError(w, "Ce créneau ne correspond pas à la catégorie demandée", http.StatusConflict)
 		return
 	}
 
@@ -381,21 +408,25 @@ func handleReserveProviderAvailability(w http.ResponseWriter, r *http.Request) {
 		providerLabel = slot.CompanyName.String
 	}
 
-	requestAddress := "Service: " + payload.CategoryName + " | Prestataire: " + providerLabel
+	categoryLabel := payload.CategoryName
+	if strings.TrimSpace(categoryLabel) == "" {
+		categoryLabel = slot.ServiceCategoryName
+	}
+	requestAddress := "Service: " + categoryLabel + " | Prestataire: " + providerLabel
 	formattedDate := slot.AvailableDay.Format("2006-01-02")
 	if _, err := tx.Exec(`
 		INSERT INTO service_requests (id_request, desired_date, start_time, estimated_duration, intervention_address, status, created_at, id_user, id_service_category)
 		VALUES (CONCAT('req_', UUID()), ?, ?, ?, ?, 'En attente', NOW(), ?, ?)
-	`, formattedDate, slot.StartTime, durationHours, requestAddress, payload.UserID, payload.ServiceCategoryID); err != nil {
+	`, formattedDate, slot.StartTime, durationHours, requestAddress, payload.UserID, slot.ServiceCategoryID); err != nil {
 		jsonError(w, "Erreur lors de la création de la demande : "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	missionDescription := "Senior: " + payload.SeniorName + " | Service: " + payload.CategoryName + " | Créneau: " + formattedDate + " " + slot.StartTime + "-" + slot.EndTime
+	missionDescription := "Senior: " + payload.SeniorName + " | Service: " + categoryLabel + " | Créneau: " + formattedDate + " " + slot.StartTime + "-" + slot.EndTime
 	if _, err := tx.Exec(`
 		INSERT INTO provider_missions (id_mission, mission_title, mission_description, mission_date, status, id_user, accepted_at, created_at)
 		VALUES (CONCAT('mis_', UUID()), ?, ?, ?, 'Acceptee', ?, NOW(), NOW())
-	`, "Demande senior - "+payload.CategoryName, missionDescription, slot.AvailableDay, slot.ProviderID); err != nil {
+	`, "Demande senior - "+categoryLabel, missionDescription, slot.AvailableDay, slot.ProviderID); err != nil {
 		jsonError(w, "Erreur lors de la création de la mission : "+err.Error(), http.StatusInternalServerError)
 		return
 	}

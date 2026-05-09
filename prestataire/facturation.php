@@ -73,10 +73,10 @@ include '../include/header.php';
             <h5 class="mb-3">Suivi des paiements</h5>
             <div class="table-responsive">
                 <table class="table">
-                    <thead><tr><th>Mois</th><th>Montant</th><th>Facture</th><th>Paiement</th><th>Date paiement</th></tr></thead>
+                    <thead><tr><th>Mois</th><th>Montant</th><th>Facture</th><th>Paiement</th><th>Date paiement</th><th>PDF</th></tr></thead>
                     <tbody>
                     <?php if (empty($rows)): ?>
-                        <tr><td colspan="5" class="text-center">Aucune facture.</td></tr>
+                        <tr><td colspan="6" class="text-center">Aucune facture.</td></tr>
                     <?php else: ?>
                         <?php foreach ($rows as $r): ?>
                         <tr>
@@ -85,6 +85,13 @@ include '../include/header.php';
                             <td><?= htmlspecialchars((string)$r['invoice_status']) ?></td>
                             <td><?= htmlspecialchars((string)($r['payment_status'] ?? 'En attente')) ?></td>
                             <td><?= htmlspecialchars((string)($r['paid_at'] ?? '-')) ?></td>
+                            <td>
+                                <a href="telecharger-facture.php?id=<?= urlencode($r['id_invoice']) ?>"
+                                   target="_blank"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                                </a>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>

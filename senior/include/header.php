@@ -4,6 +4,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once __DIR__ . '/../../active_user.php';
+require_once __DIR__ . '/../../include/lang.php';
 
 include_once __DIR__ . '/../../include/role_redirect.php';
 
@@ -50,6 +51,37 @@ if (!isset($seniorCurrent) || $seniorCurrent === '') {
 
 $firstName = (string)($_SESSION['user']['first_name'] ?? '');
 $roleHome = sh_get_role_home($userRole);
+
+// Taille de police : lecture depuis la session ou BDD
+$seniorFontSize = (string)($_SESSION['user']['font_size'] ?? '');
+if (!in_array($seniorFontSize, ['Normale', 'Grande', 'Tres grande'], true)) {
+    $seniorFontSize = 'Normale';
+    try {
+        $fpPdo = new PDO(
+            'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+            DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        $fpRow = $fpPdo->prepare('SELECT font_size FROM senior_settings WHERE id_user = ? LIMIT 1');
+        $fpRow->execute([$_SESSION['user']['id_user'] ?? '']);
+        $fpVal = $fpRow->fetchColumn();
+        if ($fpVal !== false && in_array($fpVal, ['Normale', 'Grande', 'Tres grande'], true)) {
+            $seniorFontSize = $fpVal;
+        }
+    } catch (Throwable $e) {}
+    $_SESSION['user']['font_size'] = $seniorFontSize;
+}
+
+$fontSizeClass = match($seniorFontSize) {
+    'Grande'      => 'sh-font-grande',
+    'Tres grande' => 'sh-font-tres-grande',
+    default       => 'sh-font-normale',
+};
+
+$tutorialSeen      = !empty($_SESSION['user']['tutorial_seen']);
+$tutorialUserId    = htmlspecialchars((string)($_SESSION['user']['id_user'] ?? ''), ENT_QUOTES);
+$tutorialToken     = htmlspecialchars((string)($_SESSION['user']['token'] ?? ''), ENT_QUOTES);
+$tutorialAutostart = (!$tutorialSeen) ? '1' : '0';
+
 $menuItems = [
     ['key' => 'dashboard', 'label' => 'Tableau de bord', 'href' => 'index.php'],
     ['key' => 'planning', 'label' => 'Planning', 'href' => 'planning.php'],
@@ -60,7 +92,7 @@ $menuItems = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars($GLOBALS['_LANG_CODE'] ?? 'fr') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -70,7 +102,11 @@ $menuItems = [
     <link rel="stylesheet" href="../style.css">
     <link rel="stylesheet" href="../senier.css">
 </head>
-<body>
+<body class="<?= $fontSizeClass ?>"
+    data-user-id="<?= $tutorialUserId ?>"
+    data-token="<?= $tutorialToken ?>"
+    data-tutorial-autostart="<?= $tutorialAutostart ?>"
+>
 <nav class="navbar navbar-expand-lg navbar-light bg-light senior-main-header">
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center" href="../index.php">
@@ -94,9 +130,6 @@ $menuItems = [
             </ul>
 
             <div class="d-flex align-items-center gap-2">
-                <a href="../notifications.php" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-bell"></i>
-                </a>
                 <a href="../<?php echo ltrim($roleHome, '/'); ?>" class="btn btn-outline-primary">
                     <?php echo $firstName !== '' ? 'Bonjour ' . htmlspecialchars($firstName) : 'Espace senior'; ?>
                 </a>

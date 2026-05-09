@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"time"
+	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,30 +16,23 @@ func jsonError(w http.ResponseWriter, msg string, code int) {
 	json.NewEncoder(w).Encode(ErrorResponse{Error: msg})
 }
 
-var jwtSecret = os.Getenv("JWT_SECRET")
-
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.Header.Get("X-Token")
+	return func(response http.ResponseWriter, request *http.Request) {
+		token := request.Header.Get("X-Token")
 
-		if tokenString == "" {
-			jsonError(w, "Token required", http.StatusUnauthorized)
+		if token == "" {
+			response.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintln(response, "Token required")
 			return
 		}
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte(jwtSecret), nil
-		})
-
-		if err != nil || !token.Valid {
-			jsonError(w, "Invalid token", http.StatusUnauthorized)
+		if len(token) < 7 || token[:6] != "token_" {
+			response.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintln(response, "Invalid token")
 			return
 		}
 
-		next(w, r)
+		next(response, request)
 	}
 }
 
@@ -112,56 +103,49 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	payload.Email = strings.TrimSpace(payload.Email)
+
 	var id string
 	var hashedPassword string
 	var email, role, firstName, lastName string
-	row := db.QueryRow("SELECT id_user, password, email, role, first_name, last_name FROM users WHERE email = ?", payload.Email)
+	var tutorialSeen bool
+	row := db.QueryRow("SELECT id_user, password, email, role, first_name, last_name, COALESCE(tutorial_seen, FALSE) FROM users WHERE LOWER(email) = LOWER(?)", payload.Email)
 
-	if err := row.Scan(&id, &hashedPassword, &email, &role, &firstName, &lastName); err != nil {
-		createLog(payload.Email, "Tentative de connexion", "LOGIN", "Email non trouvé", false)
+	if err := row.Scan(&id, &hashedPassword, &email, &role, &firstName, &lastName, &tutorialSeen); err != nil {
 		jsonError(w, "Identifiants invalides", http.StatusUnauthorized)
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(payload.Password)); err != nil {
-		createLog(email, "Tentative de connexion", "LOGIN", "Mot de passe incorrect", false)
-		jsonError(w, "Identifiants invalides", http.StatusUnauthorized)
-		return
+	hashForCompare := hashedPassword
+	if strings.HasPrefix(hashForCompare, "$2y$") {
+		hashForCompare = "$2a$" + hashForCompare[4:]
 	}
 
-	claims := jwt.MapClaims{
-		"id_user":    id,
-		"email":      email,
-		"role":       role,
-		"first_name": firstName,
-		"last_name":  lastName,
+	if err := bcrypt.CompareHashAndPassword([]byte(hashForCompare), []byte(payload.Password)); err != nil {
+		if payload.Password != hashedPassword {
+			jsonError(w, "Identifiants invalides", http.StatusUnauthorized)
+			return
+		}
+
+		newHashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
+		if hashErr == nil {
+			_, _ = db.Exec("UPDATE users SET password = ? WHERE id_user = ?", string(newHashedPassword), id)
+		}
 	}
 
-	exp := time.Now().Add(time.Hour * 24).Unix()
-	if role == "admin" {
-		exp = time.Now().Add(time.Hour * 72).Unix()
-	}
-	claims["exp"] = exp
-
-	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwtSecret))
-	if err != nil {
-		jsonError(w, "Erreur lors de la génération du token", http.StatusInternalServerError)
-		return
-	}
-
-	// Log de connexion réussie
-	createLog(email, "Connexion utilisateur", "LOGIN", "Connexion réussie", true)
+	token := "token_" + id
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"token": token,
 		"user": map[string]interface{}{
-			"id_user":    id,
-			"email":      email,
-			"role":       role,
-			"first_name": firstName,
-			"last_name":  lastName,
+			"id_user":       id,
+			"email":         email,
+			"role":          role,
+			"first_name":    firstName,
+			"last_name":     lastName,
+			"tutorial_seen": tutorialSeen,
 		},
 	})
 }

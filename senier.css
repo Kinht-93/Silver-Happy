@@ -395,6 +395,52 @@
   color: #1e3a8a;
 }
 
+/* ===== Adaptation taille de police pour les seniors ===== */
+/* Normale (défaut) : rien à surcharger */
+
+body.sh-font-grande {
+  font-size: 1.15rem;
+}
+body.sh-font-grande .btn {
+  font-size: 1.1rem;
+  padding: 0.45rem 1rem;
+}
+body.sh-font-grande .form-control,
+body.sh-font-grande .form-select,
+body.sh-font-grande .form-label {
+  font-size: 1.1rem;
+}
+body.sh-font-grande .nav-link,
+body.sh-font-grande .navbar-brand {
+  font-size: 1.15rem;
+}
+body.sh-font-grande h1, body.sh-font-grande .h1 { font-size: 2.1rem; }
+body.sh-font-grande h2, body.sh-font-grande .h2 { font-size: 1.8rem; }
+body.sh-font-grande h3, body.sh-font-grande .h3 { font-size: 1.55rem; }
+body.sh-font-grande h5, body.sh-font-grande .h5 { font-size: 1.2rem; }
+
+body.sh-font-tres-grande {
+  font-size: 1.35rem;
+}
+body.sh-font-tres-grande .btn {
+  font-size: 1.25rem;
+  padding: 0.6rem 1.25rem;
+}
+body.sh-font-tres-grande .form-control,
+body.sh-font-tres-grande .form-select,
+body.sh-font-tres-grande .form-label {
+  font-size: 1.25rem;
+}
+body.sh-font-tres-grande .nav-link,
+body.sh-font-tres-grande .navbar-brand {
+  font-size: 1.35rem;
+}
+body.sh-font-tres-grande h1, body.sh-font-tres-grande .h1 { font-size: 2.5rem; }
+body.sh-font-tres-grande h2, body.sh-font-tres-grande .h2 { font-size: 2.1rem; }
+body.sh-font-tres-grande h3, body.sh-font-tres-grande .h3 { font-size: 1.8rem; }
+body.sh-font-tres-grande h5, body.sh-font-tres-grande .h5 { font-size: 1.4rem; }
+}
+
 .senier-home-alert a {
   display: block;
   color: #1e3a8a;

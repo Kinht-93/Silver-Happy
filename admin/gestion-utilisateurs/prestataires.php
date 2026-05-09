@@ -1,15 +1,45 @@
 <?php
 include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
+require_once __DIR__ . '/../../db.php';
 
 $message = '';
 $messageType = '';
 $token = $_SESSION['user']['token'] ?? '';
 $prestataires = [];
 
+// --- Récupère les documents uploadés pour tous les prestataires ---
+// On groupe par id_user pour pouvoir les afficher dans le modal
+$documentsByUser = [];
+if ($pdo instanceof PDO) {
+    $docRows = $pdo->query(
+        "SELECT id_user, document_type, file_name, file_path, uploaded_at FROM provider_documents ORDER BY uploaded_at ASC"
+    );
+    if ($docRows) {
+        foreach ($docRows->fetchAll() as $doc) {
+            $documentsByUser[$doc['id_user']][] = $doc;
+        }
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+
+    // --- Actions rapides Valider / Rejeter ---
+    if ($action === 'validate' || $action === 'reject') {
+        $newStatus = $action === 'validate' ? 'Valide' : 'Rejete';
+        $userId = $_POST['id'] ?? '';
+        if ($userId !== '' && $pdo instanceof PDO) {
+            $stmt = $pdo->prepare("UPDATE users SET validation_status = :status, active = :active WHERE id_user = :id AND role = 'prestataire'");
+            $stmt->execute([
+                'status' => $newStatus,
+                'active' => $action === 'validate' ? 1 : 0,
+                'id'     => $userId,
+            ]);
+            $message = $action === 'validate' ? 'Prestataire validé.' : 'Prestataire rejeté.';
+            $messageType = $action === 'validate' ? 'success' : 'warning';
+        }
+    }
     
     if ($action === 'create') {
         $data = [
@@ -142,6 +172,20 @@ if (!empty($token)) {
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-primary" data-user="<?= htmlspecialchars(json_encode($prestataire)) ?>" onclick="viewProvider(this)"><i class="bi bi-eye"></i></button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-user="<?= htmlspecialchars(json_encode($prestataire)) ?>" onclick="editProvider(this)"><i class="bi bi-pencil"></i></button>
+                                <?php if (($prestataire['validation_status'] ?? '') !== 'Valide'): ?>
+                                <form method="POST" class="d-inline">
+                                    <input type="hidden" name="action" value="validate">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($prestataire['id_user']) ?>">
+                                    <button type="submit" class="btn btn-sm btn-success" title="Valider ce prestataire"><i class="bi bi-check-lg"></i></button>
+                                </form>
+                                <?php endif; ?>
+                                <?php if (($prestataire['validation_status'] ?? '') !== 'Rejete'): ?>
+                                <form method="POST" class="d-inline">
+                                    <input type="hidden" name="action" value="reject">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($prestataire['id_user']) ?>">
+                                    <button type="submit" class="btn btn-sm btn-warning" title="Rejeter ce prestataire" onclick="return confirm('Rejeter ce prestataire ?')"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                                <?php endif; ?>
                                 <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce prestataire ?');">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?= htmlspecialchars($prestataire['id_user']) ?>">
@@ -155,6 +199,37 @@ if (!empty($token)) {
         </table>
     </div>
 </div>
+</div>
+
+<!-- Modal visualisation prestataire + documents -->
+<div class="modal fade" id="modalViewProvider" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Fiche prestataire</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Nom :</strong> <span id="vpName"></span></p>
+                        <p class="mb-1"><strong>Email :</strong> <span id="vpEmail"></span></p>
+                        <p class="mb-1"><strong>Téléphone :</strong> <span id="vpPhone"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Raison sociale :</strong> <span id="vpCompany"></span></p>
+                        <p class="mb-1"><strong>SIRET :</strong> <span id="vpSiret"></span></p>
+                        <p class="mb-1"><strong>Zone :</strong> <span id="vpZone"></span></p>
+                    </div>
+                </div>
+                <h6 class="border-top pt-3">Documents justificatifs</h6>
+                <div id="vpDocs"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Fermer</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="modalAddProvider" tabindex="-1">
@@ -251,9 +326,45 @@ if (!empty($token)) {
 </div>
 
 <script>
+// Documents indexés par id_user — injectés directement depuis PHP
+const documentsByUser = <?= json_encode($documentsByUser) ?>;
+
+const docLabels = {
+    casier_judiciaire: 'Casier judiciaire (B3)',
+    diplome: 'Diplôme / Certification',
+    recommandation: 'Lettre de recommandation'
+};
+
 function viewProvider(btn) {
     const user = JSON.parse(btn.getAttribute('data-user'));
-    alert('Prestataire: ' + user.first_name + ' ' + user.last_name + '\nSpécialité: ' + (user.company_name || 'N/A') + '\nEmail: ' + user.email + '\nStatut Validation: ' + user.validation_status);
+
+    document.getElementById('vpName').textContent    = user.first_name + ' ' + user.last_name;
+    document.getElementById('vpEmail').textContent   = user.email || '—';
+    document.getElementById('vpPhone').textContent   = user.phone || '—';
+    document.getElementById('vpCompany').textContent = user.company_name || '—';
+    document.getElementById('vpSiret').textContent   = user.siret_number || '—';
+    document.getElementById('vpZone').textContent    = user.zone || '—';
+
+    const docs = documentsByUser[user.id_user] || [];
+    const vpDocs = document.getElementById('vpDocs');
+
+    if (docs.length === 0) {
+        vpDocs.innerHTML = '<p class="text-muted">Aucun document envoyé.</p>';
+    } else {
+        vpDocs.innerHTML = docs.map(function(doc) {
+            const label = docLabels[doc.document_type] || doc.document_type;
+            // Le lien pointe vers la racine du projet + le chemin stocké en BDD
+            const href = '/thib/Silver-Happy/' + doc.file_path;
+            return '<div class="d-flex align-items-center gap-2 mb-2">'
+                + '<i class="bi bi-file-earmark-text text-primary fs-5"></i>'
+                + '<strong>' + label + '</strong>'
+                + '<a href="' + href + '" target="_blank" class="btn btn-sm btn-outline-primary ms-auto">'
+                + '<i class="bi bi-download"></i> Voir</a>'
+                + '</div>';
+        }).join('');
+    }
+
+    openModal('modalViewProvider');
 }
 
 function editProvider(btn) {

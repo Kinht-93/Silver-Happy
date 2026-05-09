@@ -3,6 +3,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+require_once __DIR__ . '/lang.php';
 include_once __DIR__ . '/role_redirect.php';
 require_once __DIR__ . '/../active_user.php';
 
@@ -11,7 +12,7 @@ $isLoggedIn = isset($_SESSION['user']) && is_array($_SESSION['user']);
 $userFirstName = $isLoggedIn ? (string)($_SESSION['user']['first_name'] ?? '') : '';
 $roleHome = $isLoggedIn ? sh_get_role_home($_SESSION['user']['role'] ?? '') : 'index.php';
 ?><!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars($GLOBALS['_LANG_CODE'] ?? 'fr') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,7 +21,17 @@ $roleHome = $isLoggedIn ? sh_get_role_home($_SESSION['user']['role'] ?? '') : 'i
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="<?php echo $basePath; ?>style.css">
 </head>
-<body>
+<?php
+    $tutorialSeen     = !empty($_SESSION['user']['tutorial_seen']);
+    $tutorialUserId   = htmlspecialchars((string)($_SESSION['user']['id_user'] ?? ''), ENT_QUOTES);
+    $tutorialToken    = htmlspecialchars((string)($_SESSION['user']['token'] ?? ''), ENT_QUOTES);
+    $tutorialAutostart = (!$tutorialSeen && $isLoggedIn) ? '1' : '0';
+?>
+<body
+    data-user-id="<?= $tutorialUserId ?>"
+    data-token="<?= $tutorialToken ?>"
+    data-tutorial-autostart="<?= $tutorialAutostart ?>"
+>
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center" href="<?php echo $basePath; ?>index.php">
@@ -32,25 +43,33 @@ $roleHome = $isLoggedIn ? sh_get_role_home($_SESSION['user']['role'] ?? '') : 'i
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item"><a class="nav-link" href="<?php echo $basePath; ?>index.php#prestations">Services</a></li>
-                <li class="nav-item"><a class="nav-link" href="<?php echo $basePath; ?>index.php#evenements">Loisirs</a></li>
-                <li class="nav-item"><a class="nav-link" href="<?php echo $basePath; ?>index.php#temoignages">Conseils</a></li>
-                <li class="nav-item"><a class="nav-link" href="<?php echo $basePath; ?>index.php#presentation">Produits</a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo $basePath; ?>index.php#prestations"><?= t('nav_services') ?></a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo $basePath; ?>index.php#evenements"><?= t('nav_leisure') ?></a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo $basePath; ?>index.php#temoignages"><?= t('nav_advice') ?></a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo $basePath; ?>index.php#presentation"><?= t('nav_products') ?></a></li>
             </ul>
-            <div id="google_translate_element" class="me-3"></div>
             <div class="d-flex align-items-center gap-2">
+                <?php
+                    $currentLang = $GLOBALS['_LANG_CODE'] ?? 'fr';
+                    $otherLang   = $currentLang === 'fr' ? 'en' : 'fr';
+                    $otherLabel  = $currentLang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR';
+                    $langUrl     = strtok((string)($_SERVER['REQUEST_URI'] ?? '/'), '?');
+                    $langParams  = $_GET;
+                    $langParams['setlang'] = $otherLang;
+                ?>
+                <a href="<?= $langUrl . '?' . http_build_query($langParams) ?>" class="btn btn-outline-secondary btn-sm" title="<?= t('lang_select') ?>"><?= $otherLabel ?></a>
                 <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-open-tutorial">
                     <i class="bi bi-question-circle"></i>
-                    <span class="d-none d-md-inline">Guide</span>
+                    <span class="d-none d-md-inline"><?= t('nav_guide') ?></span>
                 </button>
                 <?php if ($isLoggedIn): ?>
                     <a href="<?php echo $basePath . $roleHome; ?>" class="btn btn-outline-primary">
-                        <?php echo $userFirstName !== '' ? 'Bonjour ' . htmlspecialchars($userFirstName) : 'Espace senior'; ?>
+                        <?php echo $userFirstName !== '' ? t('nav_hello') . ' ' . htmlspecialchars($userFirstName) : t('nav_my_space'); ?>
                     </a>
-                    <a href="<?php echo $basePath; ?>logout.php" class="btn btn-primary">Déconnexion</a>
+                    <a href="<?php echo $basePath; ?>logout.php" class="btn btn-primary"><?= t('nav_logout') ?></a>
                 <?php else: ?>
-                    <a href="<?php echo $basePath; ?>signup.php" class="btn btn-outline-primary">Inscription</a>
-                    <a href="<?php echo $basePath; ?>login.php" class="btn btn-primary">Connexion</a>
+                    <a href="<?php echo $basePath; ?>signup.php" class="btn btn-outline-primary"><?= t('nav_signup') ?></a>
+                    <a href="<?php echo $basePath; ?>login.php" class="btn btn-primary"><?= t('nav_login') ?></a>
                 <?php endif; ?>
             </div>
         </div>

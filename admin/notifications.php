@@ -1,10 +1,28 @@
 <?php
 include './include/header-admin.php';
-require_once __DIR__ . '/../include/callapi.php';
 
 $message = '';
 $messageType = '';
 $token = $_SESSION['user']['token'] ?? '';
+
+function callAPI($url, $method = 'GET', $data = null, $token = '') {
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'header' => "X-Token: {$token}\r\nContent-Type: application/json\r\n",
+            'ignore_errors' => true
+        ]
+    ];
+    if ($data) {
+        $opts['http']['content'] = json_encode($data);
+    }
+    $context = stream_context_create($opts);
+    $response = file_get_contents($url, false, $context);
+    if ($response === false) {
+        return ['error' => 'Impossible de se connecter à l\'API'];
+    }
+    return json_decode($response, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -14,15 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($recipientType !== 'all') {
             $details .= "\n\n[Destinataires: " . $recipientType . "]";
         }
-        $limite = $_POST['limited_at'] ?? null;
-        $scheduled = $_POST['scheduled_at'] ?? null;
         $data = [
             'type' => $_POST['type'],
             'title' => $_POST['title'],
             'message' => $details,
-            'recipients' => $recipientType,
-            'scheduled_at' => $scheduled,
-            'limited_at' => $limite
+            'recipients' => $recipientType
         ];
         $response = callAPI('http://localhost:8080/api/notifications', 'POST', $data, $token);
         if ($response && !isset($response['error'])) {
@@ -55,18 +69,6 @@ if (isset($notifications['error'])) {
     $messageType = "warning";
     $notifications = [];
 }
-
-$activeNotifications = [];
-$now = time();
-foreach ($notifications as $notification) {
-    $limited = isset($notification['limited_at']) && $notification['limited_at'] ? strtotime($notification['limited_at']) : null;
-    
-    $isLimited = $limited === null || $now <= $limited;
-    
-    if ($isLimited) {
-        $activeNotifications[] = $notification;
-    }
-}
 ?>
 
 <?php if ($message): ?>
@@ -92,46 +94,33 @@ foreach ($notifications as $notification) {
         <div class="admin-card p-4">
             <h5 class="mb-4">Notifications actives</h5>
             <div class="list-group list-group-flush">
-                <?php if (empty($activeNotifications)): ?>
-                    <div class="list-group-item border-0 px-0 py-3">
-                        <div class="text-muted">Aucune notification active.</div>
-                    </div>
-                <?php else: ?>
-                    <?php foreach ($activeNotifications as $notification): ?>
-                        <div class="list-group-item border-0 px-0 py-3">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div class="fw-semibold">
-                                        <?php if ($notification['type'] == 'Info'): ?>
-                                            <i class="bi bi-info-circle text-info"></i>
-                                        <?php elseif ($notification['type'] == 'Success'): ?>
-                                            <i class="bi bi-check-circle text-success"></i>
-                                        <?php elseif ($notification['type'] == 'Warning'): ?>
-                                            <i class="bi bi-exclamation-triangle text-warning"></i>
-                                        <?php else: ?>
-                                            <i class="bi bi-exclamation-circle text-danger"></i>
-                                        <?php endif; ?>
-                                        <?= htmlspecialchars($notification['title'] ? $notification['title'] : 'Notification sans titre') ?>
-                                    </div>
-                                    <small class="text-muted">
-                                        <?php if (isset($notification['limited_at']) && $notification['limited_at']): ?>
-                                            Limite: <?= date('d/m/Y H:i', strtotime($notification['limited_at'])) ?>
-                                        <?php else: ?>
-                                            Pas de limite
-                                        <?php endif; ?>
-                                    </small>
-                                </div>
-                                <button class="btn btn-sm btn-outline-danger" onclick="if(confirm('Supprimer cette notification ?')) { document.getElementById('delete-form-<?= htmlspecialchars($notification['id_notification']) ?>').submit(); }">
-                                    <i class="bi bi-x"></i>
-                                </button>
-                                <form id="delete-form-<?= htmlspecialchars($notification['id_notification']) ?>" method="POST" style="display: none;">
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars($notification['id_notification']) ?>">
-                                </form>
-                            </div>
+                <div class="list-group-item border-0 px-0 py-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="fw-semibold"><i class="bi bi-exclamation-triangle text-warning"></i> Maintenance prévue</div>
+                            <small class="text-muted">20/02/2026 de 22h à 23h</small>
                         </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></button>
+                    </div>
+                </div>
+                <div class="list-group-item border-0 px-0 py-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="fw-semibold"><i class="bi bi-info-circle text-info"></i> Nouvelle fonctionnalité</div>
+                            <small class="text-muted">Gestion des devis disponible</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></button>
+                    </div>
+                </div>
+                <div class="list-group-item border-0 px-0 py-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="fw-semibold"><i class="bi bi-check-circle text-success"></i> Mise à jour système</div>
+                            <small class="text-muted">Version 2.1.0 déployée</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -179,8 +168,7 @@ foreach ($notifications as $notification) {
                 <tr>
                     <th>Type</th>
                     <th>Message</th>
-                    <th>Date programmée</th>
-                    <th>Limite</th>
+                    <th>Date d'envoi</th>
                     <th>Destinataires</th>
                     <th>Statut</th>
                     <th>Actions</th>
@@ -188,7 +176,7 @@ foreach ($notifications as $notification) {
             </thead>
             <tbody>
                 <?php if (empty($notifications)): ?>
-                    <tr><td colspan="7" class="text-center">Aucune notification trouvée.</td></tr>
+                    <tr><td colspan="6" class="text-center">Aucune notification trouvée.</td></tr>
                 <?php else: ?>
                     <?php foreach ($notifications as $notification): ?>
                         <tr>
@@ -204,23 +192,9 @@ foreach ($notifications as $notification) {
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($notification['title'] ? $notification['title'] : 'Notification sans titre') ?></td>
-                            <td><?= isset($notification['scheduled_at']) && $notification['scheduled_at'] ? date('d/m/Y H:i', strtotime($notification['scheduled_at'])) : date('d/m/Y H:i', strtotime($notification['created_at'])) ?></td>
-                            <td><?= isset($notification['limited_at']) && $notification['limited_at'] ? date('d/m/Y H:i', strtotime($notification['limited_at'])) : '-' ?></td>
+                            <td><?= date('d/m/Y H:i', strtotime($notification['created_at'])) ?></td>
                             <td><?= $notification['first_name'] ? htmlspecialchars($notification['first_name'] . ' ' . $notification['last_name']) : 'Tous les utilisateurs' ?></td>
-                            <td>
-                                <?php
-                                $now = time();
-                                $scheduled = isset($notification['scheduled_at']) && $notification['scheduled_at'] ? strtotime($notification['scheduled_at']) : null;
-                                $limited = isset($notification['limited_at']) && $notification['limited_at'] ? strtotime($notification['limited_at']) : null;
-                                if ($scheduled && $now < $scheduled) {
-                                    echo '<span class="badge bg-secondary">Programmée</span>';
-                                } elseif ($limited && $now > $limited) {
-                                    echo '<span class="badge bg-danger">Expirée</span>';
-                                } else {
-                                    echo '<span class="badge bg-success">Active</span>';
-                                }
-                                ?>
-                            </td>
+                            <td><span class="badge bg-success">Envoyée</span></td>
                             <td>
                                 <button
                                     type="button"
@@ -288,10 +262,6 @@ foreach ($notifications as $notification) {
                     <div class="mb-3">
                         <label for="notificationSchedule" class="form-label">Programmer l'envoi</label>
                         <input type="datetime-local" class="form-control" id="notificationSchedule" name="scheduled_at">
-                    </div>
-                    <div class="mb-3">
-                        <label for="notificationLimite" class="form-label">Date limite de la notification</label>
-                        <input type="datetime-local" class="form-control" id="notificationLimite" name="limited_at">
                     </div>
                 </form>
             </div>

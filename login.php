@@ -31,7 +31,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]
     ]);
 
-    $response = @file_get_contents('http://localhost:8080/api/login', false, $context);
+    $response = false;
+    $loginEndpoints = [
+        'http://localhost:8080/api/login',
+        'http://localhost:5555/api/login',
+    ];
+
+    foreach ($loginEndpoints as $endpoint) {
+        $response = @file_get_contents($endpoint, false, $context);
+        if ($response !== false) {
+            break;
+        }
+    }
 
     if ($response === false) {
         $_SESSION['login_errors'] = ['Email ou mot de passe incorrect'];
@@ -50,12 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($data['token']) && !empty($data['token'])) {
         $_SESSION['user'] = [
-            'token' => $data['token'],
-            'id_user' => $data['user']['id_user'],
-            'email' => $data['user']['email'],
-            'role' => $data['user']['role'],
-            'first_name' => $data['user']['first_name'],
-            'last_name' => $data['user']['last_name'],
+            'token'         => $data['token'],
+            'id_user'       => $data['user']['id_user'],
+            'email'         => $data['user']['email'],
+            'role'          => $data['user']['role'],
+            'first_name'    => $data['user']['first_name'],
+            'last_name'     => $data['user']['last_name'],
+            'tutorial_seen' => (bool)($data['user']['tutorial_seen'] ?? false),
         ];
         header('Location: ' . sh_get_role_home($data['user']['role'] ?? ''));
         exit();

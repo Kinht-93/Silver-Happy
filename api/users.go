@@ -576,10 +576,26 @@ func handleGetUsersSummary(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Role, &active); err != nil {
 			continue
 		}
-		user.Active = active.Valid && active.Bool
+		user.Active = active.Bool
 		users = append(users, user)
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
+}
+
+// PUT /api/users/{id}/tutorial-seen
+// Marque le tutoriel comme vu pour l'utilisateur connecté.
+func handleMarkTutorialSeen(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+	if userID == "" {
+		jsonError(w, "ID utilisateur manquant", http.StatusBadRequest)
+		return
+	}
+	_, err := db.Exec("UPDATE users SET tutorial_seen = TRUE WHERE id_user = ?", userID)
+	if err != nil {
+		jsonError(w, "Erreur mise à jour : "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(SuccessResponse{Message: "Tutorial marqué comme vu"})
 }

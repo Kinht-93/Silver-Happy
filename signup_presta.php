@@ -19,6 +19,26 @@ $siret = preg_replace('/\D+/', '', (string)($_POST['siret'] ?? ''));
 $iban = trim($_POST['iban'] ?? '');
 $zone = trim($_POST['zone'] ?? '');
 $description = trim($_POST['description'] ?? '');
+$expertiseCategoryId = trim((string)($_POST['expertise_category_id'] ?? ''));
+$categoryOptions = [];
+
+// Types MIME autorisés pour les documents (PDF ou image)
+$allowedDocMimes = ['application/pdf', 'image/jpeg', 'image/png'];
+$maxDocSize = 5 * 1024 * 1024; // 5 Mo maximum
+
+// On récupère les fichiers envoyés (null si rien envoyé)
+$docCasier        = $_FILES['doc_casier'] ?? null;
+$docDiplome       = $_FILES['doc_diplome'] ?? null;
+$docRecommandation = $_FILES['doc_recommandation'] ?? null;
+
+if ($pdo instanceof PDO) {
+    try {
+        $categoryStmt = $pdo->query('SELECT id_service_category, name FROM service_categories ORDER BY name ASC');
+        $categoryOptions = $categoryStmt ? $categoryStmt->fetchAll() : [];
+    } catch (Exception $e) {
+        $categoryOptions = [];
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = (string)($_POST['password'] ?? '');
@@ -40,6 +60,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'La raison sociale est obligatoire.';
     }
 
+    if ($expertiseCategoryId === '') {
+        $errors[] = 'Le domaine d expertise est obligatoire.';
+    } elseif (!empty($categoryOptions)) {
+        $validCategoryIds = array_map(static fn($row) => (string)$row['id_service_category'], $categoryOptions);
+        if (!in_array($expertiseCategoryId, $validCategoryIds, true)) {
+            $errors[] = 'Le domaine d expertise selectionne est invalide.';
+        }
+    }
+
     if ($siret === '' || strlen($siret) !== 14) {
         $errors[] = 'Le numéro SIRET doit contenir 14 chiffres.';
     }
@@ -54,6 +83,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$pdo instanceof PDO) {
         $errors[] = 'La base de données est indisponible pour le moment.';
+    }
+
+    // --- Validation du casier judiciaire (obligatoire) ---
+    if (empty($docCasier['tmp_name']) || $docCasier['error'] !== UPLOAD_ERR_OK) {
+        $errors[] = 'Le casier judiciaire (B3) est obligatoire.';
+    } elseif ($docCasier['size'] > $maxDocSize) {
+        $errors[] = 'Le casier judiciaire ne doit pas dépasser 5 Mo.';
+    } else {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $docCasier['tmp_name']);
+        finfo_close($finfo);
+        if (!in_array($mime, $allowedDocMimes, true)) {
+            $errors[] = 'Le casier judiciaire doit être un fichier PDF, JPG ou PNG.';
+        }
+    }
+
+    // --- Validation du diplôme (facultatif) ---
+    if (!empty($docDiplome['tmp_name']) && $docDiplome['error'] === UPLOAD_ERR_OK) {
+        if ($docDiplome['size'] > $maxDocSize) {
+            $errors[] = 'Le fichier diplôme ne doit pas dépasser 5 Mo.';
+        } else {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime  = finfo_file($finfo, $docDiplome['tmp_name']);
+            finfo_close($finfo);
+            if (!in_array($mime, $allowedDocMimes, true)) {
+                $errors[] = 'Le diplôme doit être un fichier PDF, JPG ou PNG.';
+            }
+        }
+    }
+
+    // --- Validation de la recommandation (facultatif) ---
+    if (!empty($docRecommandation['tmp_name']) && $docRecommandation['error'] === UPLOAD_ERR_OK) {
+        if ($docRecommandation['size'] > $maxDocSize) {
+            $errors[] = 'La recommandation ne doit pas dépasser 5 Mo.';
+        } else {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime  = finfo_file($finfo, $docRecommandation['tmp_name']);
+            finfo_close($finfo);
+            if (!in_array($mime, $allowedDocMimes, true)) {
+                $errors[] = 'La recommandation doit être un fichier PDF, JPG ou PNG.';
+            }
+        }
     }
 
     if (empty($errors) && $pdo instanceof PDO) {
@@ -177,6 +248,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            if ($expertiseCategoryId !== '') {
+                $insertExpertiseStmt = $pdo->prepare(
+                    'INSERT INTO provider_service_categories (id_user, id_service_category, created_at)
+                     VALUES (:id_user, :id_service_category, :created_at)'
+                );
+                $insertExpertiseStmt->execute([
+                    'id_user' => $userId,
+                    'id_service_category' => $expertiseCategoryId,
+                    'created_at' => $createdAt,
+                ]);
+            }
+
+            // --- Sauvegarde des documents uploadés ---
+            // On crée le dossier de stockage s'il n'existe pas encore
+            $uploadDir = __DIR__ . '/uploads/documents/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
+            // On boucle sur les 3 types de documents
+            // Pour chaque fichier présent, on génère un nom aléatoire (sécurité)
+            // et on enregistre le chemin en base
+            $docsToSave = [
+                'casier_judiciaire' => $docCasier,
+                'diplome'           => $docDiplome,
+                'recommandation'    => $docRecommandation,
+            ];
+
+            foreach ($docsToSave as $docType => $fileInfo) {
+                if (empty($fileInfo['tmp_name']) || $fileInfo['error'] !== UPLOAD_ERR_OK) {
+                    continue;
+                }
+
+                // Extension originale du fichier (ex: "pdf", "jpg")
+                $ext      = strtolower(pathinfo($fileInfo['name'], PATHINFO_EXTENSION));
+                // Nom de fichier aléatoire pour éviter les conflits et les accès directs
+                $safeName = bin2hex(random_bytes(16)) . '.' . $ext;
+                $destPath = $uploadDir . $safeName;
+
+                if (!move_uploaded_file($fileInfo['tmp_name'], $destPath)) {
+                    throw new RuntimeException('Impossible de sauvegarder le document : ' . $docType . '.');
+                }
+
+                $docId    = 'doc_' . bin2hex(random_bytes(8));
+                $docStmt  = $pdo->prepare(
+                    'INSERT INTO provider_documents (id_document, id_user, document_type, file_name, file_path, uploaded_at)
+                     VALUES (:id_document, :id_user, :document_type, :file_name, :file_path, :uploaded_at)'
+                );
+                $docStmt->execute([
+                    'id_document'   => $docId,
+                    'id_user'       => $userId,
+                    'document_type' => $docType,
+                    'file_name'     => basename($fileInfo['name']),
+                    'file_path'     => 'uploads/documents/' . $safeName,
+                    'uploaded_at'   => $createdAt,
+                ]);
+            }
+
             $pdo->commit();
             header('Location: login.php?signup=success');
             exit;
@@ -209,7 +338,7 @@ include './include/header.php';
             </div>
         <?php endif; ?>
 
-        <form action="" method="post" class="presta-signup-form">
+        <form action="" method="post" class="presta-signup-form" enctype="multipart/form-data">
             <h2 class="presta-signup-section"><i class="bi bi-person-fill"></i> Informations personelles</h2>
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
@@ -237,6 +366,16 @@ include './include/header.php';
                 <div class="col-md-6">
                     <input type="text" class="form-control" name="iban" placeholder="IBAN" value="<?php echo htmlspecialchars($iban); ?>">
                 </div>
+                <div class="col-md-6">
+                    <select class="form-control" name="expertise_category_id" required>
+                        <option value="">Domaine d expertise</option>
+                        <?php foreach ($categoryOptions as $category): ?>
+                            <option value="<?php echo htmlspecialchars((string)$category['id_service_category']); ?>" <?php echo $expertiseCategoryId === (string)$category['id_service_category'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars((string)$category['name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 <div class="col-12">
                     <input type="text" class="form-control" name="zone" placeholder="Zone d'intervention" value="<?php echo htmlspecialchars($zone); ?>">
                 </div>
@@ -251,6 +390,26 @@ include './include/header.php';
                 </div>
                 <div class="col-md-6">
                     <input type="password" class="form-control" name="password_confirm" placeholder="Confirmer le mot de passe" required>
+                </div>
+            </div>
+
+            <h2 class="presta-signup-section"><i class="bi bi-file-earmark-text-fill"></i> Documents justificatifs</h2>
+            <p class="text-muted small mb-3">Les fichiers acceptés sont : PDF, JPG, PNG — 5 Mo maximum par fichier.</p>
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <label class="form-label fw-semibold">
+                        Casier judiciaire (extrait B3) <span class="text-danger">*</span>
+                    </label>
+                    <input type="file" class="form-control" name="doc_casier" accept=".pdf,.jpg,.jpeg,.png" required>
+                    <div class="form-text">Document obligatoire pour valider votre candidature.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Diplômes / certifications <span class="text-muted fw-normal">(facultatif)</span></label>
+                    <input type="file" class="form-control" name="doc_diplome" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Lettre de recommandation <span class="text-muted fw-normal">(facultatif)</span></label>
+                    <input type="file" class="form-control" name="doc_recommandation" accept=".pdf,.jpg,.jpeg,.png">
                 </div>
             </div>
 

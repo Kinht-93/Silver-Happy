@@ -5,18 +5,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 include_once '../db.php';
 
-if (!function_exists('sh_slug_service')) {
-    function sh_slug_service($value)
-    {
-        $slug = strtolower(trim((string)$value));
-        $slug = preg_replace('/[^a-z0-9]+/', '_', $slug);
-        $slug = trim((string)$slug, '_');
-        return $slug !== '' ? $slug : 'service';
-    }
-}
-
-if (!function_exists('sh_resolve_or_create_category')) {
-    function sh_resolve_or_create_category($pdo, $categoryId, $categoryName)
+if (!function_exists('sh_find_existing_category')) {
+    function sh_find_existing_category($pdo, $categoryId, $categoryName)
     {
         if (!$pdo instanceof PDO) {
             return null;
@@ -51,39 +41,6 @@ if (!function_exists('sh_resolve_or_create_category')) {
             if ($row) {
                 return $row;
             }
-
-            $baseId = $categoryId !== '' ? $categoryId : 'cat_' . sh_slug_service($categoryName);
-            $candidateId = $baseId;
-            $suffix = 1;
-
-            while (true) {
-                try {
-                    $insertStmt = $pdo->prepare(
-                        'INSERT INTO service_categories (id_service_category, name, description)
-                         VALUES (?, ?, ?)' 
-                    );
-                    $insertStmt->execute([
-                        $candidateId,
-                        $categoryName,
-                        'Categorie de service',
-                    ]);
-
-                    return [
-                        'id_service_category' => $candidateId,
-                        'name' => $categoryName,
-                        'description' => 'Categorie de service',
-                    ];
-                } catch (PDOException $e) {
-                    if ((string)$e->getCode() !== '23000') {
-                        throw $e;
-                    }
-                    $suffix++;
-                    $candidateId = $baseId . '_' . $suffix;
-                    if ($suffix > 20) {
-                        return null;
-                    }
-                }
-            }
         }
 
         return null;
@@ -103,7 +60,7 @@ $selectedCategory = null;
 
 if ($pdo instanceof PDO && $selectedCategoryId !== '') {
     try {
-        $selectedCategory = sh_resolve_or_create_category($pdo, $selectedCategoryId, $selectedCategoryName);
+        $selectedCategory = sh_find_existing_category($pdo, $selectedCategoryId, $selectedCategoryName);
         if ($selectedCategory) {
             $selectedCategoryId = (string)$selectedCategory['id_service_category'];
             $selectedCategoryName = (string)$selectedCategory['name'];
@@ -113,7 +70,7 @@ if ($pdo instanceof PDO && $selectedCategoryId !== '') {
     }
 } elseif ($pdo instanceof PDO && $selectedCategoryName !== '') {
     try {
-        $selectedCategory = sh_resolve_or_create_category($pdo, '', $selectedCategoryName);
+        $selectedCategory = sh_find_existing_category($pdo, '', $selectedCategoryName);
         if ($selectedCategory) {
             $selectedCategoryId = (string)$selectedCategory['id_service_category'];
             $selectedCategoryName = (string)$selectedCategory['name'];
@@ -144,13 +101,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO) {
                         u.company_name, u.first_name, u.last_name
                  FROM provider_availabilities pa
                  INNER JOIN users u ON u.id_user = pa.id_user
+                                 INNER JOIN provider_service_categories psc ON psc.id_user = pa.id_user AND psc.id_service_category = pa.id_service_category
                  WHERE pa.id_availability = ?
                    AND pa.is_available = 1
+                                     AND pa.id_service_category = ?
                    AND u.role = 'prestataire'
+                                     AND LOWER(COALESCE(u.validation_status, '')) IN ('valide', 'validé')
                    AND (pa.available_date > CURDATE() OR (pa.available_date = CURDATE() AND pa.start_time > CURTIME()))
                  LIMIT 1"
             );
-            $slotStmt->execute([$availabilityId]);
+                        $slotStmt->execute([$availabilityId, $selectedCategoryId]);
             $slot = $slotStmt->fetch();
 
             if (!$slot) {
@@ -185,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo instanceof PDO) {
                 mb_substr($requestAddress, 0, 255),
                 'En attente',
                 $userId,
-                $selectedCategoryId,
+                (string)$selectedCategory['id_service_category'],
             ]);
 
             $missionId = 'mis_' . bin2hex(random_bytes(8));
@@ -228,8 +188,11 @@ if ($pdo instanceof PDO) {
                     u.company_name, u.first_name, u.last_name
              FROM provider_availabilities pa
              INNER JOIN users u ON u.id_user = pa.id_user
+                         INNER JOIN provider_service_categories psc ON psc.id_user = pa.id_user AND psc.id_service_category = pa.id_service_category
              WHERE pa.is_available = 1
+                             AND pa.id_service_category = " . $pdo->quote($selectedCategoryId) . "
                AND u.role = 'prestataire'
+                             AND LOWER(COALESCE(u.validation_status, '')) IN ('valide', 'validé')
                AND (pa.available_date > CURDATE() OR (pa.available_date = CURDATE() AND pa.start_time > CURTIME()))
              ORDER BY pa.available_date ASC, pa.start_time ASC"
         );

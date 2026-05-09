@@ -64,6 +64,26 @@ function ensureSubscribedSchema(PDO $pdo): void
     }
 }
 
+// Retour depuis Stripe : on confirme le paiement via l'API Go
+if (isset($_GET['payment']) && $_GET['payment'] === 'success' && !empty($_GET['session_id'])) {
+    require_once '../include/callapi.php';
+    $token = (string)($_SESSION['user']['token'] ?? '');
+    $confirmResp = callAPI(
+        'http://localhost:8080/api/subscriptions/confirm?session_id=' . urlencode($_GET['session_id']),
+        'GET', null, $token
+    );
+    if (isset($confirmResp['error'])) {
+        $message = 'Erreur confirmation paiement : ' . $confirmResp['error'];
+        $messageType = 'danger';
+    } else {
+        $message = 'Paiement confirmé ! Votre abonnement est maintenant actif.';
+        $messageType = 'success';
+    }
+} elseif (isset($_GET['payment']) && $_GET['payment'] === 'cancelled') {
+    $message = 'Paiement annulé. Votre abonnement n\'a pas été modifié.';
+    $messageType = 'warning';
+}
+
 if (!($pdo instanceof PDO) || $userId === '') {
     $message = "Session invalide ou base indisponible.";
     $messageType = "danger";
@@ -342,7 +362,7 @@ include './include/header.php';
                                             data-plan-yearly="<?= htmlspecialchars((string)number_format((float)($plan['yearly_price'] ?? 0), 2, ',', ' ')) ?>"
                                             data-plan-description="<?= htmlspecialchars(getPlanDescription((string)$plan['id_subscription_type'], (string)$plan['name'], $plan['description'] ?? null), ENT_QUOTES) ?>"
                                             onclick="openSubscribeConfirm(this)"
-                                        >Choisir cette formule</button>
+                                        ><i class="bi bi-credit-card"></i> Payer par Stripe</button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -358,37 +378,41 @@ include './include/header.php';
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Confirmer votre abonnement</h5>
+                <h5 class="modal-title">Confirmer et payer</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post" id="confirmSubscriptionForm">
-                <div class="modal-body">
-                    <input type="hidden" name="action" value="subscribe">
-                    <input type="hidden" name="id_subscription_type" id="confirmPlanId" value="">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($subscriptionCsrf) ?>">
+            <div class="modal-body">
+                <div class="fw-semibold fs-6 mb-1" id="confirmPlanName"></div>
+                <p class="small text-muted mb-3" id="confirmPlanDescription"></p>
 
-                    <div class="mb-2 fw-semibold" id="confirmPlanName"></div>
-                    <p class="small text-muted mb-2" id="confirmPlanDescription"></p>
-                    <div class="small mb-3">
-                        Mensuel: <span id="confirmPlanMonthly"></span> EUR<br>
-                        Annuel: <span id="confirmPlanYearly"></span> EUR
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Choisir la période</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="period" id="periodMonthly" value="monthly" checked>
+                            <label class="form-check-label" for="periodMonthly">
+                                Mensuel — <span id="confirmPlanMonthly"></span> €/mois
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="period" id="periodYearly" value="yearly">
+                            <label class="form-check-label" for="periodYearly">
+                                Annuel — <span id="confirmPlanYearly"></span> €/an
+                            </label>
+                        </div>
                     </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" value="1" name="confirm_subscription" id="confirmSubscriptionCheckbox">
-                        <label class="form-check-label" for="confirmSubscriptionCheckbox">
-                            Je confirme vouloir activer cette formule.
-                        </label>
-                    </div>
-
-                    <label for="confirmText" class="form-label">Tapez <strong>CONFIRMER</strong> pour valider</label>
-                    <input type="text" class="form-control" name="confirm_text" id="confirmText" placeholder="CONFIRMER" autocomplete="off">
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Valider l'abonnement</button>
+
+                <div class="alert alert-info small mb-0">
+                    <i class="bi bi-lock-fill"></i> Vous allez être redirigé vers la page de paiement sécurisé Stripe.
                 </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="btnPayStripe" onclick="payerStripe()">
+                    <i class="bi bi-credit-card"></i> Payer maintenant
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -427,15 +451,53 @@ include './include/header.php';
 </div>
 
 <script>
+let selectedPlanId = '';
+
 function openSubscribeConfirm(btn) {
-    document.getElementById('confirmPlanId').value = btn.getAttribute('data-plan-id') || '';
-    document.getElementById('confirmPlanName').textContent = btn.getAttribute('data-plan-name') || '';
+    selectedPlanId = btn.getAttribute('data-plan-id') || '';
+    document.getElementById('confirmPlanName').textContent        = btn.getAttribute('data-plan-name') || '';
     document.getElementById('confirmPlanDescription').textContent = btn.getAttribute('data-plan-description') || '';
-    document.getElementById('confirmPlanMonthly').textContent = btn.getAttribute('data-plan-monthly') || '0,00';
-    document.getElementById('confirmPlanYearly').textContent = btn.getAttribute('data-plan-yearly') || '0,00';
-    document.getElementById('confirmSubscriptionCheckbox').checked = false;
-    document.getElementById('confirmText').value = '';
+    document.getElementById('confirmPlanMonthly').textContent     = btn.getAttribute('data-plan-monthly') || '0,00';
+    document.getElementById('confirmPlanYearly').textContent      = btn.getAttribute('data-plan-yearly') || '0,00';
+    document.getElementById('periodMonthly').checked = true;
     new bootstrap.Modal(document.getElementById('modalConfirmSubscription')).show();
+}
+
+function payerStripe() {
+    const period = document.querySelector('input[name="period"]:checked').value;
+    const btn = document.getElementById('btnPayStripe');
+    btn.disabled = true;
+    btn.textContent = 'Redirection...';
+
+    // Appel API Go qui crée la session Stripe et retourne l'URL de paiement
+    fetch('http://localhost:8080/api/subscriptions/checkout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Token': '<?= htmlspecialchars($_SESSION['user']['token'] ?? '') ?>'
+        },
+        body: JSON.stringify({
+            id_user: '<?= htmlspecialchars($userId) ?>',
+            id_subscription_type: selectedPlanId,
+            period: period
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.checkout_url) {
+            // Stripe redirige vers sa page de paiement hébergée
+            window.location.href = data.checkout_url;
+        } else {
+            alert('Erreur : ' + (data.error || 'Impossible de créer la session Stripe.'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-credit-card"></i> Payer maintenant';
+        }
+    })
+    .catch(function() {
+        alert('Erreur réseau. Veuillez réessayer.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-credit-card"></i> Payer maintenant';
+    });
 }
 
 function openDeleteSubscriptionConfirm() {

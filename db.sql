@@ -43,7 +43,7 @@ CREATE TABLE `active_users` (
   `id_user` varchar(255) NOT NULL,
   `last_activity` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (id_user) REFERENCES users(id_user)
-)
+);
 
 CREATE TABLE subscription_types (
     id_subscription_type VARCHAR(255) PRIMARY KEY,
@@ -72,6 +72,16 @@ CREATE TABLE service_categories (
     id_service_category VARCHAR(255) PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT
+);
+
+CREATE TABLE provider_service_categories (
+    id_user VARCHAR(255) NOT NULL,
+    id_service_category VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id_user, id_service_category),
+    INDEX idx_psc_category_user (id_service_category, id_user),
+    FOREIGN KEY (id_user) REFERENCES users(id_user),
+    FOREIGN KEY (id_service_category) REFERENCES service_categories(id_service_category)
 );
 
 CREATE TABLE service_types (
@@ -137,8 +147,11 @@ CREATE TABLE reviews (
     review_date DATETIME NOT NULL,
     visible BOOLEAN DEFAULT TRUE,
     id_user VARCHAR(255) NOT NULL,
+    id_reviewed VARCHAR(255),
+    created_at DATETIME,
     INDEX idx_reviews_user_date_visible (id_user, review_date, visible),
-    FOREIGN KEY (id_user) REFERENCES users(id_user)
+    FOREIGN KEY (id_user) REFERENCES users(id_user),
+    FOREIGN KEY (id_reviewed) REFERENCES users(id_user)
 );
 
 CREATE TABLE events (
@@ -276,10 +289,7 @@ CREATE TABLE notifications (
     title VARCHAR(255),
     message TEXT,
     created_at DATETIME NOT NULL,
-    scheduled_at DATETIME NULL,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
-    limited_at DATETIME NULL,
-    recipients VARCHAR(255),
     id_user VARCHAR(255),
     INDEX idx_notifications_user_read_created (id_user, is_read, created_at),
     FOREIGN KEY (id_user) REFERENCES users(id_user)
@@ -288,15 +298,18 @@ CREATE TABLE notifications (
 CREATE TABLE provider_availabilities (
     id_availability INT AUTO_INCREMENT PRIMARY KEY,
     id_user VARCHAR(255) NOT NULL,
+    id_service_category VARCHAR(255) NOT NULL,
     available_date DATE NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     is_available BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,
-    UNIQUE KEY uniq_provider_slot (id_user, available_date, start_time, end_time),
+    UNIQUE KEY uniq_provider_slot (id_user, id_service_category, available_date, start_time, end_time),
     INDEX idx_provider_avail_lookup (is_available, available_date, start_time),
     INDEX idx_provider_avail_user_date (id_user, available_date),
-    FOREIGN KEY (id_user) REFERENCES users(id_user)
+    INDEX idx_provider_avail_category_date (id_service_category, available_date),
+    FOREIGN KEY (id_user) REFERENCES users(id_user),
+    FOREIGN KEY (id_service_category) REFERENCES service_categories(id_service_category)
 );
 
 CREATE TABLE provider_missions (
@@ -391,14 +404,15 @@ CREATE TABLE IF NOT EXISTS support_tickets (
     CONSTRAINT fk_support_tickets_assigned FOREIGN KEY (assigned_to) REFERENCES users(id_user) ON DELETE SET NULL
 );
 
-CREATE TABLE logs (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    utilisateur VARCHAR(255),
-    action      VARCHAR(255) NOT NULL,
-    type        VARCHAR(30) NOT NULL,
-    details     TEXT,
-    statut      BOOLEAN
+CREATE TABLE IF NOT EXISTS provider_documents (
+    id_document VARCHAR(255) PRIMARY KEY,
+    id_user VARCHAR(255) NOT NULL,
+    document_type ENUM('casier_judiciaire','diplome','recommandation') NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    uploaded_at DATETIME NOT NULL,
+    INDEX idx_provider_docs_user (id_user),
+    CONSTRAINT fk_provider_docs_user FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE
 );
 
 INSERT INTO users (id_user,email,password,role,last_name,first_name,phone,address,city,postal_code,birth_date,active,verified_email,tutorial_seen,created_at) VALUES ('usr_admin_default','admin@silverhappy.fr','Admin123!','admin','Administrateur','Super',NULL,NULL,NULL,NULL,NULL,TRUE,TRUE,TRUE,NOW())ON DUPLICATE KEY UPDATE id_user = id_user;
@@ -408,10 +422,69 @@ INSERT INTO users (
     active,verified_email,tutorial_seen,created_at,
     siret_number,company_name,validation_status,average_rating,commission_rate,zone,iban,provider_description,skills_text,provider_updated_at
 ) VALUES (
-    'usr_presta_default','prestataire@silverhappy.fr','Azerty123!','prestataire','Martin','Sophie','0600000001',NULL,NULL,NULL,NULL,
+    'usr_presta_default','prestataire@silverhappy.fr','Azert123!','prestataire','Martin','Sophie','0600000001',NULL,NULL,NULL,NULL,
     TRUE,TRUE,TRUE,NOW(),
     '12345678901234','Aide & Compagnie','Valide',4.8,12.50,'Lyon et environs','FR7630006000011234567890189',
     'Prestataire polyvalente pour accompagnement, courses et aide quotidienne.',
     'Aide a domicile, courses, compagnie, accompagnement rendez-vous',
     NOW()
 ) ON DUPLICATE KEY UPDATE id_user = id_user;
+
+INSERT INTO service_categories (id_service_category, name, description) VALUES
+('cat1','Aide a domicile','Assistance quotidienne a domicile'),
+('cat2','Soins infirmiers','Soins medicaux a domicile'),
+('cat3','Transport accompagne','Accompagnement et transport'),
+('cat4','Repas a domicile','Preparation et livraison de repas'),
+('cat5','Jardinage','Entretien jardin et exterieurs')
+ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
+
+INSERT INTO users (
+    id_user,email,password,role,last_name,first_name,phone,address,city,postal_code,birth_date,
+    active,verified_email,tutorial_seen,created_at,
+    siret_number,company_name,validation_status,average_rating,commission_rate,zone,iban,provider_description,skills_text,provider_updated_at
+) VALUES
+(
+    'usr_presta_001','nora.bernard@silverhappy.fr','Azert123!','prestataire','Bernard','Nora','0600000002',NULL,'Paris','75012',NULL,
+    TRUE,TRUE,TRUE,NOW(),
+    '22345678901234','Bernard Assistance','Valide',4.7,11.00,'Paris et proches alentours','FR7630006000011234567890190',
+    'Aide a domicile et accompagnement de personnes agees.',
+    'Aide a domicile, transport accompagne, compagnie',
+    NOW()
+),
+(
+    'usr_presta_002','lucas.morel@silverhappy.fr','Azert123!','prestataire','Morel','Lucas','0600000003',NULL,'Marseille','13008',NULL,
+    TRUE,TRUE,TRUE,NOW(),
+    '32345678901234','Morel Soins','Valide',4.9,12.00,'Marseille et environs','FR7630006000011234567890191',
+    'Specialiste des soins infirmiers a domicile.',
+    'Soins infirmiers, suivi patient, aide quotidienne',
+    NOW()
+),
+(
+    'usr_presta_003','ines.robert@silverhappy.fr','Azert123!','prestataire','Robert','Ines','0600000004',NULL,'Bordeaux','33000',NULL,
+    TRUE,TRUE,TRUE,NOW(),
+    '42345678901234','Robert Services','Valide',4.6,10.50,'Bordeaux metropole','FR7630006000011234567890192',
+    'Interventions autour des repas et du transport accompagne.',
+    'Repas a domicile, transport accompagne, courses',
+    NOW()
+),
+(
+    'usr_presta_004','hugo.lambert@silverhappy.fr','Azert123!','prestataire','Lambert','Hugo','0600000005',NULL,'Lyon','69003',NULL,
+    TRUE,TRUE,TRUE,NOW(),
+    '52345678901234','Lambert Multi-Services','Valide',4.5,9.90,'Lyon et peripherie','FR7630006000011234567890193',
+    'Prestataire polyvalent pour jardinage et aide quotidienne.',
+    'Jardinage, aide a domicile, entretien exterieur',
+    NOW()
+)
+ON DUPLICATE KEY UPDATE id_user = id_user;
+
+INSERT INTO provider_service_categories (id_user, id_service_category, created_at) VALUES
+('usr_presta_default','cat1',NOW()),
+('usr_presta_default','cat3',NOW()),
+('usr_presta_001','cat1',NOW()),
+('usr_presta_001','cat3',NOW()),
+('usr_presta_002','cat2',NOW()),
+('usr_presta_003','cat3',NOW()),
+('usr_presta_003','cat4',NOW()),
+('usr_presta_004','cat1',NOW()),
+('usr_presta_004','cat5',NOW())
+ON DUPLICATE KEY UPDATE created_at = VALUES(created_at);

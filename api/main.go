@@ -10,12 +10,11 @@ import (
 )
 
 func main() {
-	initDB()
-
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Erreur lors du chargement du fichier .env")
+	for _, f := range []string{".env", "../.env"} {
+		godotenv.Load(f)
 	}
+
+	initDB()
 
 	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
 
@@ -41,6 +40,7 @@ func main() {
 	http.HandleFunc("PATCH /api/users/{id}", authMiddleware(handleUpdateUser))
 	http.HandleFunc("GET /api/users/{id}/senior-settings", authMiddleware(handleGetSeniorSettings))
 	http.HandleFunc("PATCH /api/users/{id}/senior-settings", authMiddleware(handleUpdateSeniorSettings))
+	http.HandleFunc("PUT /api/users/{id}/tutorial-seen", authMiddleware(handleMarkTutorialSeen))
 	http.HandleFunc("DELETE /api/users/{id}", authMiddleware(handleDeleteUser))
 	http.HandleFunc("GET /api/employees", authMiddleware(handleGetEmployees))
 
@@ -101,14 +101,7 @@ func main() {
 	http.HandleFunc("DELETE /api/admin-quotes/{id}", authMiddleware(handleDeleteAdminQuote))
 
 	// NOTIFICATIONS
-	http.HandleFunc("GET /api/notifications", authMiddleware(handleGetNotifications))
-	http.HandleFunc("GET /api/notifications/{id}", authMiddleware(handleGetUserNotifications))
-	http.HandleFunc("POST /api/notifications", authMiddleware(handleCreateNotification))
-	http.HandleFunc("DELETE /api/notifications/{id}", authMiddleware(handleDeleteNotification))
 	http.HandleFunc("POST /api/notifications/probleme/count", authMiddleware(handleGetProblemeCount))
-
-	// LOGS
-	http.HandleFunc("GET /api/logs", authMiddleware(handleGetLogs))
 
 	// EVENTS
 	http.HandleFunc("GET /api/events", handleGetEvents)
@@ -181,6 +174,8 @@ func main() {
 	//STRIPE
 	http.HandleFunc("POST /api/events/{id}/checkout", authMiddleware(handleCreateEventCheckout))
 	http.HandleFunc("GET /api/events/checkout-confirm", authMiddleware(handleConfirmEventCheckout))
+	http.HandleFunc("POST /api/subscriptions/checkout", authMiddleware(handleCreateSubscriptionCheckout))
+	http.HandleFunc("GET /api/subscriptions/confirm", authMiddleware(handleConfirmSubscriptionCheckout))
 	http.HandleFunc("POST /api/stripe/webhook", handleStripeWebhook)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {

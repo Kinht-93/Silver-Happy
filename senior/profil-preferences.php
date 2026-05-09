@@ -92,6 +92,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $emailNotifications ? 1 : 0,
             ]);
 
+            // Mise à jour immédiate de la session pour que les changements s'appliquent sans reconnexion
+            $_SESSION['user']['font_size'] = $fontSize;
+            $_SESSION['lang'] = $language;
+
             $success = 'Preferences mises a jour avec succes.';
         } catch (Throwable $e) {
             $errors[] = 'Impossible d enregistrer vos preferences.';
