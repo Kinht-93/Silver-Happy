@@ -113,12 +113,6 @@ $admin_url = $base_url . '/admin';
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= $admin_url ?>/gestion-contenus/">
-                            <i class="bi bi-file-earmark-richtext"></i> Gestion contenus
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
                         <a class="nav-link" href="<?= $admin_url ?>/facturation-paiements.php">
                             <i class="bi bi-cash-coin"></i> Facturation & paiements
                         </a>
