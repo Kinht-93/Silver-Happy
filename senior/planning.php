@@ -3,9 +3,10 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-include_once '../db.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $seniorCurrent = 'planning';
+$token = (string)($_SESSION['user']['token'] ?? '');
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $bookedAppointments = [];
 $bookedEvents = [];
@@ -27,7 +28,7 @@ if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) {
 $firstDay = sprintf('%04d-%02d-01', $year, $month);
 $firstDate = new DateTime($firstDay);
 $daysInMonth = (int)$firstDate->format('t');
-$startWeekday = (int)$firstDate->format('N'); // 1=lundi ... 7=dimanche
+$startWeekday = (int)$firstDate->format('N');
 $prevMonth = (clone $firstDate)->modify('-1 month')->format('Y-m');
 $nextMonth = (clone $firstDate)->modify('+1 month')->format('Y-m');
 
@@ -48,53 +49,77 @@ $monthNames = [
 $monthLabel = ($monthNames[$month] ?? 'Mois') . ' ' . $year;
 $appointmentsByDay = [];
 $eventsByDay = [];
+$lastDay = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
 
-if ($pdo instanceof PDO && $userId !== '') {
-    try {
-        $stmt = $pdo->prepare(
-            "SELECT sr.desired_date, sr.start_time, sr.estimated_duration, sr.intervention_address, sr.status,
-                    sc.name AS category_name
-             FROM service_requests sr
-             INNER JOIN service_categories sc ON sc.id_service_category = sr.id_service_category
-             WHERE sr.id_user = ?
-               AND sr.desired_date BETWEEN ? AND ?
-             ORDER BY sr.desired_date ASC, sr.start_time ASC"
-        );
-        $lastDay = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
-        $stmt->execute([$userId, $firstDay, $lastDay]);
-        $bookedAppointments = $stmt->fetchAll();
+if ($token !== '' && $userId !== '') {
+    $serviceRequests = callAPI('http://localhost:8080/api/service-requests?id_user=' . urlencode($userId), 'GET', null, $token);
+    $serviceCategories = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
+    $events = callAPI('http://localhost:8080/api/events', 'GET', null, $token);
+    $registrations = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
 
-        foreach ($bookedAppointments as $appointment) {
-            $day = (int)date('j', strtotime((string)$appointment['desired_date']));
+    if (
+        is_array($serviceRequests) && !isset($serviceRequests['error']) &&
+        is_array($serviceCategories) && !isset($serviceCategories['error']) &&
+        is_array($events) && !isset($events['error']) &&
+        is_array($registrations) && !isset($registrations['error'])
+    ) {
+        $categoriesById = [];
+        foreach ($serviceCategories as $category) {
+            if (!empty($category['id_service_category'])) {
+                $categoriesById[(string)$category['id_service_category']] = (string)($category['name'] ?? 'Prestation');
+            }
+        }
+
+        foreach ($serviceRequests as $appointment) {
+            $desiredDate = (string)($appointment['desired_date'] ?? '');
+            if ($desiredDate < $firstDay || $desiredDate > $lastDay) {
+                continue;
+            }
+
+            $appointment['category_name'] = $categoriesById[(string)($appointment['id_service_category'] ?? '')] ?? 'Prestation';
+            $bookedAppointments[] = $appointment;
+
+            $day = (int)date('j', strtotime($desiredDate));
             if (!isset($appointmentsByDay[$day])) {
                 $appointmentsByDay[$day] = [];
             }
             $appointmentsByDay[$day][] = $appointment;
         }
 
-        $eventsStmt = $pdo->prepare(
-            "SELECT e.title, e.start_date, e.end_date, er.status
-             FROM event_registrations er
-             INNER JOIN events e ON e.id_event = er.id_event
-             WHERE er.id_user = ?
-               AND e.start_date BETWEEN ? AND ?
-             ORDER BY e.start_date ASC"
-        );
-        $eventsStmt->execute([
-            $userId,
-            $firstDay . ' 00:00:00',
-            $lastDay . ' 23:59:59',
-        ]);
-        $bookedEvents = $eventsStmt->fetchAll();
+        $eventsById = [];
+        foreach ($events as $event) {
+            if (!empty($event['id_event'])) {
+                $eventsById[(string)$event['id_event']] = $event;
+            }
+        }
 
-        foreach ($bookedEvents as $event) {
-            $day = (int)date('j', strtotime((string)$event['start_date']));
+        foreach ($registrations as $registration) {
+            $eventId = (string)($registration['id_event'] ?? '');
+            if (!isset($eventsById[$eventId])) {
+                continue;
+            }
+
+            $event = $eventsById[$eventId];
+            $startDate = (string)($event['start_date'] ?? '');
+            if ($startDate < $firstDay . ' 00:00:00' || $startDate > $lastDay . ' 23:59:59') {
+                continue;
+            }
+
+            $eventItem = [
+                'title' => $event['title'] ?? 'Événement',
+                'start_date' => $startDate,
+                'end_date' => $event['end_date'] ?? null,
+                'status' => $registration['status'] ?? '',
+            ];
+            $bookedEvents[] = $eventItem;
+
+            $day = (int)date('j', strtotime($startDate));
             if (!isset($eventsByDay[$day])) {
                 $eventsByDay[$day] = [];
             }
-            $eventsByDay[$day][] = $event;
+            $eventsByDay[$day][] = $eventItem;
         }
-    } catch (PDOException $e) {
+    } else {
         $loadError = 'Impossible de charger votre planning.';
     }
 }

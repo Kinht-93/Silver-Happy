@@ -3,10 +3,11 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-include_once '../db.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $seniorCurrent = 'contact';
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
+$token = (string)($_SESSION['user']['token'] ?? '');
 
 $errors = [];
 $success = '';
@@ -23,11 +24,11 @@ if ($contactEmail === '' && isset($_SESSION['user']['email'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!$pdo instanceof PDO) {
-        $errors[] = 'Base de donnees indisponible.';
-    }
     if ($userId === '') {
         $errors[] = 'Session utilisateur invalide.';
+    }
+    if ($token === '') {
+        $errors[] = 'Connexion API indisponible.';
     }
     if ($contactName === '') {
         $errors[] = 'Le nom est obligatoire.';
@@ -40,37 +41,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        try {
-            $adminId = '';
-            $adminStmt = $pdo->query("SELECT id_user FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1");
-            if ($adminStmt) {
-                $adminId = (string)$adminStmt->fetchColumn();
-            }
-            if ($adminId === '') {
-                $adminId = 'usr_admin_default';
-            }
+        $admins = callAPI('http://localhost:8080/api/users-summary?roles=admin', 'GET', null, $token);
+        $adminId = '';
+        if (is_array($admins) && !isset($admins['error']) && !empty($admins)) {
+            $adminId = (string)($admins[0]['id_user'] ?? '');
+        }
 
+        if ($adminId === '') {
+            $errors[] = 'Aucun administrateur disponible pour recevoir votre message.';
+        } else {
             $payload = "Sujet: " . ($contactSubject !== '' ? $contactSubject : 'General')
                 . "\nNom: " . $contactName
                 . "\nEmail: " . $contactEmail
                 . "\n\n" . $contactMessage;
 
-            $insertStmt = $pdo->prepare(
-                'INSERT INTO messages (id_message, content, sent_at, receiver, sender)
-                 VALUES (?, ?, NOW(), ?, ?)'
-            );
-            $insertStmt->execute([
-                'msg_' . bin2hex(random_bytes(8)),
-                mb_substr($payload, 0, 5000),
-                $adminId,
-                $userId,
-            ]);
+            $response = callAPI('http://localhost:8080/api/messages', 'POST', [
+                'content' => mb_substr($payload, 0, 5000),
+                'receiver' => $adminId,
+                'sender' => $userId,
+            ], $token);
 
-            $success = 'Votre message a bien ete envoye.';
-            $contactSubject = '';
-            $contactMessage = '';
-        } catch (Throwable $e) {
-            $errors[] = 'Impossible d envoyer le message pour le moment.';
+            if (is_array($response) && !isset($response['error'])) {
+                $success = 'Votre message a bien ete envoye.';
+                $contactSubject = '';
+                $contactMessage = '';
+            } else {
+                $errors[] = $response['error'] ?? 'Impossible d envoyer le message pour le moment.';
+            }
         }
     }
 }

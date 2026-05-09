@@ -3,11 +3,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-include_once '../db.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $seniorCurrent = 'prestations';
 $errors = [];
 $categoryOptions = [];
+$token = (string)($_SESSION['user']['token'] ?? '');
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
 
 $selectedCategoryId = trim((string)($_POST['id_service_category'] ?? ''));
@@ -17,29 +18,16 @@ $estimatedDuration = (int)($_POST['estimated_duration'] ?? 1);
 $interventionAddress = trim((string)($_POST['intervention_address'] ?? ''));
 $requestMessage = trim((string)($_POST['request_message'] ?? ''));
 
-if ($pdo instanceof PDO) {
-    try {
-        $countCategories = (int)$pdo->query('SELECT COUNT(*) FROM service_categories')->fetchColumn();
-        if ($countCategories === 0) {
-            $defaultCategories = ['Menage', 'Assistance', 'Transport', 'Informatique', 'Sante', 'Courses', 'Animation', 'Accompagnement'];
-            $insertCategory = $pdo->prepare('INSERT INTO service_categories (id_service_category, name, description) VALUES (?, ?, ?)');
-            foreach ($defaultCategories as $name) {
-                $id = 'cat_' . strtolower($name);
-                try {
-                    $insertCategory->execute([$id, $name, 'Categorie de prestation']);
-                } catch (PDOException $e) {
-                }
-            }
-        }
-
-        $categoriesStmt = $pdo->query('SELECT id_service_category, name FROM service_categories ORDER BY name ASC');
-        $categoryOptions = $categoriesStmt ? $categoriesStmt->fetchAll() : [];
-    } catch (PDOException $e) {
+if ($token !== '') {
+    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
+    if (is_array($categoriesResponse) && !isset($categoriesResponse['error'])) {
+        $categoryOptions = $categoriesResponse;
+    } else {
         $errors[] = 'Erreur de chargement des categories.';
     }
 }
 
-if ($selectedCategoryId === '' && isset($_GET['category']) && $pdo instanceof PDO) {
+if ($selectedCategoryId === '' && isset($_GET['category'])) {
     $categoryName = trim((string)$_GET['category']);
     if ($categoryName !== '') {
         foreach ($categoryOptions as $option) {
@@ -52,8 +40,8 @@ if ($selectedCategoryId === '' && isset($_GET['category']) && $pdo instanceof PD
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!$pdo instanceof PDO) {
-        $errors[] = 'Base de donnees indisponible.';
+    if ($token === '') {
+        $errors[] = 'API indisponible.';
     }
     if ($userId === '') {
         $errors[] = 'Session utilisateur invalide.';
@@ -91,32 +79,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        try {
-            $idRequest = 'req_' . bin2hex(random_bytes(8));
-            $addressWithNote = $interventionAddress;
-            if ($requestMessage !== '') {
-                $addressWithNote .= ' | Note: ' . $requestMessage;
-            }
-            $addressWithNote = mb_substr($addressWithNote, 0, 255);
+        $addressWithNote = $interventionAddress;
+        if ($requestMessage !== '') {
+            $addressWithNote .= ' | Note: ' . $requestMessage;
+        }
+        $addressWithNote = mb_substr($addressWithNote, 0, 255);
 
-            $insertStmt = $pdo->prepare(
-                'INSERT INTO service_requests (id_request, desired_date, start_time, estimated_duration, intervention_address, status, created_at, id_user, id_service_category)
-                 VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?)'
-            );
-            $insertStmt->execute([
-                $idRequest,
-                $desiredDate,
-                $startTime,
-                $estimatedDuration,
-                $addressWithNote,
-                'En attente',
-                $userId,
-                $selectedCategoryId,
-            ]);
+        $response = callAPI('http://localhost:8080/api/service-requests', 'POST', [
+            'desired_date' => $desiredDate,
+            'start_time' => $startTime,
+            'estimated_duration' => $estimatedDuration,
+            'intervention_address' => $addressWithNote,
+            'status' => 'En attente',
+            'id_user' => $userId,
+            'id_service_category' => $selectedCategoryId,
+        ], $token);
 
+        if (is_array($response) && !isset($response['error'])) {
             header('Location: prestations-demandes.php?created=1');
             exit;
-        } catch (Throwable $e) {
+        } else {
             $errors[] = 'Impossible d enregistrer la demande pour le moment.';
         }
     }

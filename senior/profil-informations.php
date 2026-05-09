@@ -3,10 +3,11 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-include_once '../db.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $seniorCurrent = 'profil';
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
+$token = (string)($_SESSION['user']['token'] ?? '');
 
 $errors = [];
 $success = '';
@@ -21,17 +22,13 @@ $form = [
     'city' => '',
 ];
 
-if ($pdo instanceof PDO && $userId !== '') {
-    try {
-        $loadStmt = $pdo->prepare('SELECT first_name, last_name, email, phone, address, postal_code, city FROM users WHERE id_user = ? LIMIT 1');
-        $loadStmt->execute([$userId]);
-        $row = $loadStmt->fetch();
-        if ($row) {
-            foreach ($form as $key => $_) {
-                $form[$key] = (string)($row[$key] ?? '');
-            }
+if ($token !== '' && $userId !== '') {
+    $userResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'GET', null, $token);
+    if (is_array($userResponse) && !isset($userResponse['error'])) {
+        foreach ($form as $key => $_) {
+            $form[$key] = (string)($userResponse[$key] ?? '');
         }
-    } catch (Throwable $e) {
+    } else {
         $errors[] = 'Impossible de charger vos informations.';
     }
 }
@@ -41,11 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $form[$key] = trim((string)($_POST[$key] ?? ''));
     }
 
-    if (!$pdo instanceof PDO) {
-        $errors[] = 'Base de donnees indisponible.';
-    }
     if ($userId === '') {
         $errors[] = 'Session utilisateur invalide.';
+    }
+    if ($token === '') {
+        $errors[] = 'Connexion API indisponible.';
     }
     if ($form['first_name'] === '' || $form['last_name'] === '') {
         $errors[] = 'Le prenom et le nom sont obligatoires.';
@@ -55,23 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        try {
-            $updateStmt = $pdo->prepare(
-                'UPDATE users
-                 SET first_name = ?, last_name = ?, email = ?, phone = ?, address = ?, postal_code = ?, city = ?
-                 WHERE id_user = ?'
-            );
-            $updateStmt->execute([
-                $form['first_name'],
-                $form['last_name'],
-                $form['email'],
-                $form['phone'],
-                $form['address'],
-                $form['postal_code'],
-                $form['city'],
-                $userId,
-            ]);
+        $response = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'PATCH', [
+            'first_name' => $form['first_name'],
+            'last_name' => $form['last_name'],
+            'email' => $form['email'],
+            'phone' => $form['phone'],
+            'address' => $form['address'],
+            'postal_code' => $form['postal_code'],
+            'city' => $form['city'],
+        ], $token);
 
+        if (is_array($response) && !isset($response['error'])) {
             if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
                 $_SESSION['user']['first_name'] = $form['first_name'];
                 $_SESSION['user']['last_name'] = $form['last_name'];
@@ -79,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $success = 'Informations mises a jour avec succes.';
-        } catch (Throwable $e) {
-            $errors[] = 'Impossible d enregistrer vos informations.';
+        } else {
+            $errors[] = $response['error'] ?? 'Impossible d enregistrer vos informations.';
         }
     }
 }
