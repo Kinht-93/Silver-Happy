@@ -1,5 +1,6 @@
 <?php
 include_once __DIR__ . '/_auth.php';
+include 'include/header-prestataire.php';
 
 require_once __DIR__ . '/../db.php';
 
@@ -23,7 +24,6 @@ if (!empty($avis)) {
 }
 
 $basePath = '../';
-include '../include/header.php';
 ?>
 
 <div class="page-title h3 mb-3">Mes avis</div>

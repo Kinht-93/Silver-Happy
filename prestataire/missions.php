@@ -1,5 +1,6 @@
 <?php
 include_once __DIR__ . '/_auth.php';
+include 'include/header-prestataire.php';
 
 $message = '';
 $messageType = '';
@@ -42,7 +43,6 @@ if ($providerData && $token !== '') {
 }
 
 $basePath = '../';
-include '../include/header.php';
 ?>
 
 <div class="page-title h3 mb-3">Missions</div>

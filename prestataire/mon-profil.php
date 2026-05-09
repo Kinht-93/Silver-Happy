@@ -1,5 +1,6 @@
 <?php
 include_once __DIR__ . '/_auth.php';
+include 'include/header-prestataire.php';
 
 $message = '';
 $messageType = '';
@@ -59,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
 
 $phoneValue = (string)($currentUserData['phone'] ?? '');
 $basePath = '../';
-include '../include/header.php';
 ?>
 
 <div class="page-title h3 mb-3">Mon profil prestataire</div>

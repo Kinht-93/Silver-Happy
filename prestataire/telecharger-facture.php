@@ -1,7 +1,4 @@
 <?php
-// Cette page génère une facture en HTML imprimable.
-// Le prestataire clique sur "Imprimer" (ou Ctrl+P) et choisit "Enregistrer en PDF".
-// La fenêtre s'ouvre automatiquement en mode impression grâce au JS en bas de page.
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
@@ -10,7 +7,6 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../include/callapi.php';
 
-// Sécurité : seul un prestataire connecté peut accéder à sa propre facture
 if (!isset($_SESSION['user']) || strtolower($_SESSION['user']['role'] ?? '') !== 'prestataire') {
     header('Location: ../login.php');
     exit;
@@ -23,8 +19,6 @@ if ($idFacture === '' || !$pdo instanceof PDO) {
     exit('Facture introuvable.');
 }
 
-// On récupère la facture + les infos du prestataire en une seule requête
-// La clause WHERE id_user vérifie que la facture appartient bien au prestataire connecté
 $stmt = $pdo->prepare(
     "SELECT pi.id_invoice, pi.month_label, pi.amount, pi.status, pi.generated_at,
             u.first_name, u.last_name, u.email, u.phone, u.company_name, u.siret_number, u.iban,
@@ -42,7 +36,6 @@ if (!$facture) {
     exit('Facture introuvable ou accès refusé.');
 }
 
-// Numéro de facture lisible : "FACT-2026-05-XXXX"
 $numeroFacture = 'FACT-' . str_replace('-', '-', $facture['month_label']) . '-' . strtoupper(substr($facture['id_invoice'], -4));
 ?>
 <!DOCTYPE html>
@@ -75,7 +68,7 @@ $numeroFacture = 'FACT-' . str_replace('-', '-', $facture['month_label']) . '-' 
 
         .pied { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 11px; color: #999; text-align: center; }
 
-        /* On cache le bouton imprimer quand on imprime vraiment */
+
         @media print {
             .btn-imprimer { display: none !important; }
             body { padding: 10px; }
@@ -149,9 +142,9 @@ $numeroFacture = 'FACT-' . str_replace('-', '-', $facture['month_label']) . '-' 
 
 <div class="statut-paiement <?= ($facture['payment_status'] ?? '') === 'Paye' ? 'paye' : 'attente' ?>">
     <?php if (($facture['payment_status'] ?? '') === 'Paye'): ?>
-        ✔ Virement effectué le <?= htmlspecialchars(date('d/m/Y', strtotime($facture['paid_at']))) ?>
+        Virement effectué le <?= htmlspecialchars(date('d/m/Y', strtotime($facture['paid_at']))) ?>
     <?php else: ?>
-        ⏳ Paiement en attente de virement
+        Paiement en attente de virement
     <?php endif; ?>
 </div>
 
@@ -161,7 +154,6 @@ $numeroFacture = 'FACT-' . str_replace('-', '-', $facture['month_label']) . '-' 
 </div>
 
 <script>
-    // Ouvre automatiquement la fenêtre d'impression au chargement de la page
     window.onload = function () { window.print(); };
 </script>
 
