@@ -1,0 +1,78 @@
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+    container_name: silverhappy_php
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      API_URL: ${API_URL}
+    networks:
+      - silverhappy_net
+    depends_on:
+      - api
+      - db
+
+  api:
+    build:
+      context: ./api
+    container_name: silverhappy_api
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+    networks:
+      - silverhappy_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    container_name: silverhappy_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - silverhappy_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: silverhappy_cf
+    restart: unless-stopped
+    command: tunnel --url http://silverhappy_php:80
+    networks:
+      - silverhappy_net
+    depends_on:
+      - php
+
+networks:
+  silverhappy_net:
+    driver: bridge
+
+volumes:
+  db_data:
