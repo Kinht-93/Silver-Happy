@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
         }
 
         if ($action === 'generate') {
-            $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-invoices/generate', 'POST', null, $token);
+            $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-invoices/generate', 'POST', null, $token);
             if (!is_array($response) || isset($response['error'])) {
                 throw new RuntimeException((string)($response['error'] ?? 'Impossible de generer la facture.'));
             }
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
 
 $rows = [];
 if ($providerData && $token !== '') {
-    $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-billing', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-billing', 'GET', null, $token);
     if (is_array($response) && !isset($response['error'])) {
         $rows = $response;
     } else {

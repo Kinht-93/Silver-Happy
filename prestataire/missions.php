@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
 
         if ($action === 'accept') {
             $idMission = trim((string)($_POST['id_mission'] ?? ''));
-            $response = callAPI('http://silverhappy_api:8080/api/provider-missions/' . urlencode($idMission) . '/accept', 'POST', [
+            $response = callAPI('http://localhost:8080/api/provider-missions/' . urlencode($idMission) . '/accept', 'POST', [
                 'id_user' => $providerData['id_user'],
             ], $token);
 
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
 
 $missions = [];
 if ($providerData && $token !== '') {
-    $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-missions', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-missions', 'GET', null, $token);
     if (is_array($response) && !isset($response['error'])) {
         $missions = $response;
     } else {

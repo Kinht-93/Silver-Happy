@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'active' => 1
         ];
         
-        $response = callAPI('http://silverhappy_api:8080/api/users', 'POST', $data, $token);
+        $response = callAPI('http://localhost:8080/api/users', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Employé ajouté avec succès.";
             $messageType = "success";
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'phone' => $_POST['phone'] ?? null
         ];
         
-        $response = callAPI("http://silverhappy_api:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Employé modifié avec succès.";
             $messageType = "success";
@@ -46,14 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
-        $response = callAPI("http://silverhappy_api:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
         $message = "Employé supprimé.";
         $messageType = "success";
     }
 }
 
 if (!empty($token)) {
-    $response = callAPI('http://silverhappy_api:8080/api/employees', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/employees', 'GET', null, $token);
     
     if (isset($response['error'])) {
         $message = "Erreur API: " . $response['error'];

@@ -12,8 +12,8 @@ $requests = [];
 $loadError = '';
 
 if ($token !== '' && $userId !== '') {
-    $requestsResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/service-requests', 'GET', null, $token);
-    $categoriesResponse = callAPI('http://silverhappy_api:8080/api/service-categories', 'GET', null, $token);
+    $requestsResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/service-requests', 'GET', null, $token);
+    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
 
     if (
         is_array($requestsResponse) && !isset($requestsResponse['error']) &&
