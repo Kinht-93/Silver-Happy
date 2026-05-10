@@ -266,8 +266,6 @@ if (!empty($token)) {
                             <option value="">Sélectionner un type</option>
                             <option value="senior">Senior</option>
                             <option value="prestataire">Prestataire</option>
-                            <option value="employe">Employé</option>
-                            <option value="admin">Administrateur</option>
                         </select>
                     </div>
                     <div class="mb-3">

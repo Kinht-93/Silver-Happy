@@ -116,7 +116,7 @@ include './include/header.php';
                     <h3><i class="bi bi-calendar3"></i> Planning</h3>
                     <p>Consultez votre agenda et vos prochains rendez-vous.</p>
                 </a>
-                <a class="senier-home-card" href="prestation.php">
+                <a class="senier-home-card" href="prestations.php">
                     <h3><i class="bi bi-briefcase"></i> Prestations</h3>
                     <p>Accédez rapidement aux services disponibles.</p>
                 </a>
