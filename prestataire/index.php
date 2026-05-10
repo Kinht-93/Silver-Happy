@@ -8,7 +8,7 @@ $totalMissionsAcceptees = 0;
 $totalFactures = 0;
 
 if ($providerData && $token !== '') {
-    $dashboardResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-dashboard', 'GET', null, $token);
+    $dashboardResponse = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-dashboard', 'GET', null, $token);
     if (is_array($dashboardResponse) && !isset($dashboardResponse['error'])) {
         $totalDisponibilites = (int)($dashboardResponse['availabilities_count'] ?? 0);
         $totalMissionsAcceptees = (int)($dashboardResponse['accepted_missions_count'] ?? 0);

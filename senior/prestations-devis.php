@@ -11,7 +11,7 @@ $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $quotes = [];
 
 if ($token !== '' && $userId !== '') {
-    $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/quotes', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/quotes', 'GET', null, $token);
     if (is_array($response) && !isset($response['error'])) {
         $quotes = $response;
     }

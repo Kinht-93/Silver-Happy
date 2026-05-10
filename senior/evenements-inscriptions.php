@@ -16,7 +16,7 @@ if (isset($_GET['payment'])) {
         $sessionId = (string)($_GET['session_id'] ?? '');
         if ($sessionId !== '' && $token !== '' && $userId !== '') {
             $confirm = callAPI(
-                'http://silverhappy_api:8080/api/events/checkout-confirm?session_id=' . urlencode($sessionId),
+                'http://localhost:8080/api/events/checkout-confirm?session_id=' . urlencode($sessionId),
                 'GET',
                 null,
                 $token
@@ -41,7 +41,7 @@ if (isset($_GET['payment'])) {
 $upcomingRegistrations = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel' && $token !== '') {
-    $response = callAPI('http://silverhappy_api:8080/api/event-registrations/' . urlencode($_POST['id_registration'] ?? ''), 'DELETE', null, $token);
+    $response = callAPI('http://localhost:8080/api/event-registrations/' . urlencode($_POST['id_registration'] ?? ''), 'DELETE', null, $token);
     if (!is_array($response) || !isset($response['error'])) {
         $message = 'Inscription annulée.';
         $messageType = 'success';
@@ -52,8 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cance
 }
 
 if ($token !== '' && $userId !== '') {
-    $events = callAPI('http://silverhappy_api:8080/api/events', 'GET', null, $token);
-    $registrations = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
+    $events = callAPI('http://localhost:8080/api/events', 'GET', null, $token);
+    $registrations = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
 
     $eventsById = [];
     if (is_array($events) && !isset($events['error'])) {

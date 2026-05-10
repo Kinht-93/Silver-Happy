@@ -8,8 +8,6 @@ $messageType = '';
 $token = $_SESSION['user']['token'] ?? '';
 $prestataires = [];
 
-// --- Récupère les documents uploadés pour tous les prestataires ---
-// On groupe par id_user pour pouvoir les afficher dans le modal
 $documentsByUser = [];
 if ($pdo instanceof PDO) {
     $docRows = $pdo->query(
@@ -25,7 +23,6 @@ if ($pdo instanceof PDO) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    // --- Actions rapides Valider / Rejeter ---
     if ($action === 'validate' || $action === 'reject') {
         $newStatus = $action === 'validate' ? 'Valide' : 'Rejete';
         $userId = $_POST['id'] ?? '';
@@ -52,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'active' => 1
         ];
         
-        $response = callAPI('http://silverhappy_api:8080/api/users', 'POST', $data, $token);
+        $response = callAPI('http://localhost:8080/api/users', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Prestataire ajouté avec succès.";
             $messageType = "success";
@@ -69,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'company_name' => $_POST['company_name'] ?? null
         ];
         
-        $response = callAPI("http://silverhappy_api:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Prestataire modifié avec succès.";
             $messageType = "success";
@@ -78,14 +75,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
-        $response = callAPI("http://silverhappy_api:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
+        $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
         $message = "Prestataire supprimé.";
         $messageType = "success";
     }
 }
 
 if (!empty($token)) {
-    $response = callAPI('http://silverhappy_api:8080/api/users', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/users', 'GET', null, $token);
     if (isset($response['error'])) {
         $message = "Erreur API: " . $response['error'];
         $messageType = "danger";
@@ -201,7 +198,6 @@ if (!empty($token)) {
 </div>
 </div>
 
-<!-- Modal visualisation prestataire + documents -->
 <div class="modal fade" id="modalViewProvider" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -326,7 +322,6 @@ if (!empty($token)) {
 </div>
 
 <script>
-// Documents indexés par id_user — injectés directement depuis PHP
 const documentsByUser = <?= json_encode($documentsByUser) ?>;
 
 const docLabels = {
@@ -353,7 +348,6 @@ function viewProvider(btn) {
     } else {
         vpDocs.innerHTML = docs.map(function(doc) {
             const label = docLabels[doc.document_type] || doc.document_type;
-            // Le lien pointe vers la racine du projet + le chemin stocké en BDD
             const href = '/thib/Silver-Happy/' + doc.file_path;
             return '<div class="d-flex align-items-center gap-2 mb-2">'
                 + '<i class="bi bi-file-earmark-text text-primary fs-5"></i>'

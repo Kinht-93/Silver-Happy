@@ -11,8 +11,8 @@ $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $historyItems = [];
 
 if ($token !== '' && $userId !== '') {
-    $events = callAPI('http://silverhappy_api:8080/api/events', 'GET', null, $token);
-    $registrations = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
+    $events = callAPI('http://localhost:8080/api/events', 'GET', null, $token);
+    $registrations = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
 
     $eventsById = [];
     if (is_array($events) && !isset($events['error'])) {
