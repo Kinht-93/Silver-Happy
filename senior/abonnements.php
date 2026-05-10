@@ -3,18 +3,17 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-include_once '../db.php';
+include './include/header.php';
+
+require_once __DIR__ . '/../include/callapi.php';
 $seniorCurrent = 'abonnements';
 
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
+$token = (string)($_SESSION['user']['token'] ?? '');
 $message = '';
 $messageType = '';
 $plans = [];
 $activeSubscription = null;
-$hasSubscribedStatus = false;
-$hasSubscribedAt = false;
-$hasCancelledAt = false;
-$hasPlanDescription = false;
 
 if (empty($_SESSION['subscription_csrf'])) {
     $_SESSION['subscription_csrf'] = bin2hex(random_bytes(16));
@@ -36,38 +35,8 @@ function getPlanDescription(string $planId, string $planName, ?string $dbDescrip
     return $map[$planId] ?? ('Formule ' . $planName . ' adaptee aux besoins du quotidien.');
 }
 
-
-function ensureSubscribedSchema(PDO $pdo): void
-{
-    $pdo->exec(
-        "CREATE TABLE IF NOT EXISTS subscribed (
-            id_user VARCHAR(255) NOT NULL,
-            id_subscription_type VARCHAR(255) NOT NULL,
-            status VARCHAR(20) NOT NULL DEFAULT 'Actif',
-            subscribed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            cancelled_at DATETIME NULL,
-            PRIMARY KEY (id_user, id_subscription_type)
-        )"
-    );
-
-    $colsStmt = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subscribed'");
-    $cols = $colsStmt ? $colsStmt->fetchAll(PDO::FETCH_COLUMN) : [];
-
-    if (!in_array('status', $cols, true)) {
-        $pdo->exec("ALTER TABLE subscribed ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'Actif'");
-    }
-    if (!in_array('subscribed_at', $cols, true)) {
-        $pdo->exec("ALTER TABLE subscribed ADD COLUMN subscribed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
-    }
-    if (!in_array('cancelled_at', $cols, true)) {
-        $pdo->exec("ALTER TABLE subscribed ADD COLUMN cancelled_at DATETIME NULL");
-    }
-}
-
 // Retour depuis Stripe : on confirme le paiement via l'API Go
 if (isset($_GET['payment']) && $_GET['payment'] === 'success' && !empty($_GET['session_id'])) {
-    require_once '../include/callapi.php';
-    $token = (string)($_SESSION['user']['token'] ?? '');
     $confirmResp = callAPI(
         'http://localhost:8080/api/subscriptions/confirm?session_id=' . urlencode($_GET['session_id']),
         'GET', null, $token
@@ -84,127 +53,77 @@ if (isset($_GET['payment']) && $_GET['payment'] === 'success' && !empty($_GET['s
     $messageType = 'warning';
 }
 
-if (!($pdo instanceof PDO) || $userId === '') {
-    $message = "Session invalide ou base indisponible.";
+if ($userId === '' || $token === '') {
+    $message = "Session invalide ou jeton manquant.";
     $messageType = "danger";
 } else {
-    try {
-        ensureSubscribedSchema($pdo);
-
-        $colsStmt = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subscribed'");
-        $cols = $colsStmt ? $colsStmt->fetchAll(PDO::FETCH_COLUMN) : [];
-        $hasSubscribedStatus = in_array('status', $cols, true);
-        $hasSubscribedAt = in_array('subscribed_at', $cols, true);
-        $hasCancelledAt = in_array('cancelled_at', $cols, true);
-    } catch (Throwable $e) {
-        $hasSubscribedStatus = false;
-        $hasSubscribedAt = false;
-        $hasCancelledAt = false;
-    }
-
-    try {
-        $planColsStmt = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subscription_types'");
-        $planCols = $planColsStmt ? $planColsStmt->fetchAll(PDO::FETCH_COLUMN) : [];
-        $hasPlanDescription = in_array('description', $planCols, true);
-    } catch (Throwable $e) {
-        $hasPlanDescription = false;
-    }
-
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'subscribe') {
-        $subscriptionId = trim((string)($_POST['id_subscription_type'] ?? ''));
-        $csrfToken = (string)($_POST['csrf_token'] ?? '');
-        $confirmText = strtoupper(trim((string)($_POST['confirm_text'] ?? '')));
-        $confirmChecked = (string)($_POST['confirm_subscription'] ?? '') === '1';
+        $planId = (string)($_POST['id_subscription_type'] ?? '');
+        $period = in_array((string)($_POST['period'] ?? 'monthly'), ['monthly', 'yearly'], true) ? (string)$_POST['period'] : 'monthly';
 
-        if ($subscriptionId === '') {
-            $message = "Veuillez sélectionner une formule.";
-            $messageType = "warning";
-        } elseif (!hash_equals($subscriptionCsrf, $csrfToken)) {
-            $message = "Vérification de sécurité invalide. Veuillez réessayer.";
-            $messageType = "danger";
-        } elseif ($confirmText !== 'CONFIRMER' || !$confirmChecked) {
-            $message = "Veuillez cocher la confirmation et saisir CONFIRMER avant de valider.";
-            $messageType = "warning";
+        if ($planId === '') {
+            $message = 'Sélectionnez une formule avant de payer.';
+            $messageType = 'warning';
         } else {
-            try {
-                // Verify user really exists in DB.
-                $userExistsStmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE id_user = ?");
-                $userExistsStmt->execute([$userId]);
-                $userExists = (int)$userExistsStmt->fetchColumn() > 0;
-                if (!$userExists) {
-                    $message = "Votre compte n'existe pas dans la base locale (id: " . $userId . "). Déconnectez-vous puis reconnectez-vous.";
-                    $messageType = "danger";
-                    throw new RuntimeException('USER_NOT_FOUND_IN_DB');
-                }
+            $checkoutResp = callAPI(
+                'http://localhost:8080/api/subscriptions/checkout',
+                'POST',
+                ['id_user' => $userId, 'id_subscription_type' => $planId, 'period' => $period],
+                $token
+            );
 
-                // Verify selected plan exists.
-                $planExistsStmt = $pdo->prepare("SELECT COUNT(*) FROM subscription_types WHERE id_subscription_type = ?");
-                $planExistsStmt->execute([$subscriptionId]);
-                $planExists = (int)$planExistsStmt->fetchColumn() > 0;
-                if (!$planExists) {
-                    $message = "La formule sélectionnée n'existe plus.";
-                    $messageType = "warning";
-                    throw new RuntimeException('PLAN_NOT_FOUND');
-                }
+            if (is_array($checkoutResp) && isset($checkoutResp['checkout_url']) && $checkoutResp['checkout_url'] !== '') {
+                header('Location: ' . $checkoutResp['checkout_url']);
+                exit;
+            }
 
-                $pdo->beginTransaction();
-
-                // Un seul abonnement actif à la fois pour un senior.
-                if ($hasSubscribedStatus) {
-                    if ($hasCancelledAt) {
-                        $cancelStmt = $pdo->prepare("UPDATE subscribed SET status='Résilié', cancelled_at=NOW() WHERE id_user=? AND status='Actif'");
-                    } else {
-                        $cancelStmt = $pdo->prepare("UPDATE subscribed SET status='Résilié' WHERE id_user=? AND status='Actif'");
-                    }
-                    $cancelStmt->execute([$userId]);
-                } else {
-                    $pdo->prepare("DELETE FROM subscribed WHERE id_user=?")->execute([$userId]);
-                }
-
-                if ($hasSubscribedStatus && $hasSubscribedAt && $hasCancelledAt) {
-                    $subStmt = $pdo->prepare(
-                        "INSERT INTO subscribed (id_user, id_subscription_type, status, subscribed_at, cancelled_at)
-                         VALUES (?, ?, 'Actif', NOW(), NULL)
-                         ON DUPLICATE KEY UPDATE status='Actif', subscribed_at=NOW(), cancelled_at=NULL"
-                    );
-                    $subStmt->execute([$userId, $subscriptionId]);
-                } elseif ($hasSubscribedStatus && $hasSubscribedAt) {
-                    $subStmt = $pdo->prepare(
-                        "INSERT INTO subscribed (id_user, id_subscription_type, status, subscribed_at)
-                         VALUES (?, ?, 'Actif', NOW())
-                         ON DUPLICATE KEY UPDATE status='Actif', subscribed_at=NOW()"
-                    );
-                    $subStmt->execute([$userId, $subscriptionId]);
-                } elseif ($hasSubscribedStatus) {
-                    $subStmt = $pdo->prepare(
-                        "INSERT INTO subscribed (id_user, id_subscription_type, status)
-                         VALUES (?, ?, 'Actif')
-                         ON DUPLICATE KEY UPDATE status='Actif'"
-                    );
-                    $subStmt->execute([$userId, $subscriptionId]);
-                } else {
-                    $subStmt = $pdo->prepare(
-                        "INSERT INTO subscribed (id_user, id_subscription_type)
-                         VALUES (?, ?)
-                         ON DUPLICATE KEY UPDATE id_subscription_type=VALUES(id_subscription_type)"
-                    );
-                    $subStmt->execute([$userId, $subscriptionId]);
-                }
-
-                $pdo->commit();
-                $message = "Votre abonnement a bien été activé.";
-                $messageType = "success";
-            } catch (Throwable $e) {
-                if ($pdo->inTransaction()) {
-                    $pdo->rollBack();
-                }
-                if ($messageType === '') {
-                    $message = "Impossible d'activer l'abonnement: " . $e->getMessage();
-                    $messageType = "danger";
-                }
+            if (is_array($checkoutResp) && isset($checkoutResp['error'])) {
+                $message = 'Erreur Stripe : ' . $checkoutResp['error'];
+                $messageType = 'danger';
+            } else {
+                $message = 'Impossible de créer la session de paiement. Veuillez réessayer.';
+                $messageType = 'danger';
             }
         }
-    } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_my_subscription') {
+    }
+
+    // Fetch subscription types
+    $plansResponse = callAPI('http://localhost:8080/api/subscription-types?user_type=senior', 'GET', null, $token);
+    
+    // Debug logging
+    error_log('Plans Response Type: ' . gettype($plansResponse));
+    error_log('Plans Response: ' . json_encode($plansResponse));
+    
+    if (is_array($plansResponse)) {
+        if (isset($plansResponse['error'])) {
+            $message = 'Erreur API abonnements : ' . $plansResponse['error'];
+            $messageType = 'danger';
+        } elseif (count($plansResponse) === 0) {
+            $message = 'Aucune formule senior disponible pour le moment.';
+            $messageType = 'warning';
+        } else {
+            $plans = $plansResponse;
+        }
+    } else {
+        $message = 'Réponse API invalide (non-array): ' . json_encode($plansResponse);
+        $messageType = 'danger';
+    }
+
+    // Fetch user subscriptions
+    $subsResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/subscriptions', 'GET', null, $token);
+    error_log('DEBUG: User subscriptions response: ' . json_encode($subsResponse));
+    if (is_array($subsResponse) && !isset($subsResponse['error'])) {
+        foreach ($subsResponse as $sub) {
+            error_log('DEBUG: Subscription item: ' . json_encode($sub));
+            if (($sub['status'] ?? '') === 'Actif') {
+                $activeSubscription = $sub;
+                error_log('DEBUG: Active subscription set: ' . json_encode($activeSubscription));
+                break;
+            }
+        }
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_my_subscription') {
         $csrfToken = (string)($_POST['csrf_token'] ?? '');
         $confirmText = strtoupper(trim((string)($_POST['confirm_delete_text'] ?? '')));
         $confirmChecked = (string)($_POST['confirm_delete_subscription'] ?? '') === '1';
@@ -215,75 +134,26 @@ if (!($pdo instanceof PDO) || $userId === '') {
         } elseif ($confirmText !== 'SUPPRIMER' || !$confirmChecked) {
             $message = "Veuillez cocher la confirmation et saisir SUPPRIMER pour valider la suppression.";
             $messageType = "warning";
+        } elseif (!$activeSubscription) {
+            $message = "Aucun abonnement actif à supprimer.";
+            $messageType = "warning";
         } else {
-            try {
-                if ($hasSubscribedStatus) {
-                    $stmt = $pdo->prepare("DELETE FROM subscribed WHERE id_user=? AND status='Actif'");
-                    $stmt->execute([$userId]);
-                } else {
-                    $stmt = $pdo->prepare("DELETE FROM subscribed WHERE id_user=?");
-                    $stmt->execute([$userId]);
-                }
+            $deleteResp = callAPI(
+                'http://localhost:8080/api/users/' . urlencode($userId) . '/subscriptions/' . urlencode($activeSubscription['id_subscription']),
+                'DELETE', null, $token
+            );
+            if (isset($deleteResp['error'])) {
+                $message = 'Erreur lors de la suppression : ' . $deleteResp['error'];
+                $messageType = 'danger';
+            } else {
                 $message = "Votre abonnement a été supprimé.";
                 $messageType = "success";
-            } catch (Throwable $e) {
-                $message = "Impossible de supprimer l'abonnement: " . $e->getMessage();
-                $messageType = "danger";
+                $activeSubscription = null;
             }
         }
     }
-
-    try {
-        $planSql = $hasPlanDescription
-            ? "SELECT id_subscription_type, name, user_type, monthly_price, yearly_price, description
-               FROM subscription_types
-               WHERE LOWER(user_type) = 'senior'
-               ORDER BY monthly_price ASC, name ASC"
-            : "SELECT id_subscription_type, name, user_type, monthly_price, yearly_price, NULL AS description
-               FROM subscription_types
-               WHERE LOWER(user_type) = 'senior'
-               ORDER BY monthly_price ASC, name ASC";
-        $plansStmt = $pdo->query($planSql);
-        $plans = $plansStmt ? $plansStmt->fetchAll(PDO::FETCH_ASSOC) : [];
-    } catch (Throwable $e) {
-        $plans = [];
-    }
-
-    try {
-        if ($hasSubscribedStatus && $hasSubscribedAt) {
-            $currentStmt = $pdo->prepare(
-                "SELECT st.id_subscription_type, st.name, st.monthly_price, st.yearly_price, s.subscribed_at
-                 FROM subscribed s
-                 INNER JOIN subscription_types st ON st.id_subscription_type = s.id_subscription_type
-                 WHERE s.id_user = ? AND s.status = 'Actif'
-                 ORDER BY s.subscribed_at DESC
-                 LIMIT 1"
-            );
-        } elseif ($hasSubscribedStatus) {
-            $currentStmt = $pdo->prepare(
-                "SELECT st.id_subscription_type, st.name, st.monthly_price, st.yearly_price, NULL AS subscribed_at
-                 FROM subscribed s
-                 INNER JOIN subscription_types st ON st.id_subscription_type = s.id_subscription_type
-                 WHERE s.id_user = ? AND s.status = 'Actif'
-                 LIMIT 1"
-            );
-        } else {
-            $currentStmt = $pdo->prepare(
-                "SELECT st.id_subscription_type, st.name, st.monthly_price, st.yearly_price, NULL AS subscribed_at
-                 FROM subscribed s
-                 INNER JOIN subscription_types st ON st.id_subscription_type = s.id_subscription_type
-                 WHERE s.id_user = ?
-                 LIMIT 1"
-            );
-        }
-        $currentStmt->execute([$userId]);
-        $activeSubscription = $currentStmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    } catch (Throwable $e) {
-        $activeSubscription = null;
-    }
 }
 
-include './include/header.php';
 ?>
 
 <section class="senier-page">
@@ -308,9 +178,14 @@ include './include/header.php';
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div>
                         <div class="fw-semibold fs-5"><?= htmlspecialchars((string)$activeSubscription['name']) ?></div>
-                        <?php if (!empty($activeSubscription['subscribed_at'])): ?>
+                        <?php if (!empty($activeSubscription['subscription_start'])): ?>
                             <div class="text-muted small">
-                                Activé le <?= htmlspecialchars(date('d/m/Y', strtotime((string)$activeSubscription['subscribed_at']))) ?>
+                                Début : <?= htmlspecialchars(date('d/m/Y', strtotime((string)$activeSubscription['subscription_start']))) ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($activeSubscription['subscription_end'])): ?>
+                            <div class="text-muted small">
+                                Fin : <?= htmlspecialchars(date('d/m/Y', strtotime((string)$activeSubscription['subscription_end']))) ?>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -377,42 +252,47 @@ include './include/header.php';
 <div class="modal fade" id="modalConfirmSubscription" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmer et payer</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="fw-semibold fs-6 mb-1" id="confirmPlanName"></div>
-                <p class="small text-muted mb-3" id="confirmPlanDescription"></p>
+            <form method="post" id="subscribeForm">
+                <input type="hidden" name="action" value="subscribe">
+                <input type="hidden" name="id_subscription_type" id="subscribePlanId" value="">
+                <input type="hidden" name="period" id="subscribePeriod" value="monthly">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer et payer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="fw-semibold fs-6 mb-1" id="confirmPlanName"></div>
+                    <p class="small text-muted mb-3" id="confirmPlanDescription"></p>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Choisir la période</label>
-                    <div class="d-flex gap-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="period" id="periodMonthly" value="monthly" checked>
-                            <label class="form-check-label" for="periodMonthly">
-                                Mensuel — <span id="confirmPlanMonthly"></span> €/mois
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="period" id="periodYearly" value="yearly">
-                            <label class="form-check-label" for="periodYearly">
-                                Annuel — <span id="confirmPlanYearly"></span> €/an
-                            </label>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Choisir la période</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="period_option" id="periodMonthly" value="monthly" checked onclick="updateSubscribePeriod('monthly')">
+                                <label class="form-check-label" for="periodMonthly">
+                                    Mensuel — <span id="confirmPlanMonthly"></span> €/mois
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="period_option" id="periodYearly" value="yearly" onclick="updateSubscribePeriod('yearly')">
+                                <label class="form-check-label" for="periodYearly">
+                                    Annuel — <span id="confirmPlanYearly"></span> €/an
+                                </label>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="alert alert-info small mb-0">
-                    <i class="bi bi-lock-fill"></i> Vous allez être redirigé vers la page de paiement sécurisé Stripe.
+                    <div class="alert alert-info small mb-0">
+                        <i class="bi bi-lock-fill"></i> Vous allez être redirigé vers la page de paiement sécurisé Stripe.
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="btnPayStripe" onclick="payerStripe()">
-                    <i class="bi bi-credit-card"></i> Payer maintenant
-                </button>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="btnPayStripe">
+                        <i class="bi bi-credit-card"></i> Payer maintenant
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -451,53 +331,22 @@ include './include/header.php';
 </div>
 
 <script>
-let selectedPlanId = '';
+let selectedPlanId = ''; 
 
 function openSubscribeConfirm(btn) {
     selectedPlanId = btn.getAttribute('data-plan-id') || '';
+    document.getElementById('subscribePlanId').value = selectedPlanId;
     document.getElementById('confirmPlanName').textContent        = btn.getAttribute('data-plan-name') || '';
     document.getElementById('confirmPlanDescription').textContent = btn.getAttribute('data-plan-description') || '';
     document.getElementById('confirmPlanMonthly').textContent     = btn.getAttribute('data-plan-monthly') || '0,00';
     document.getElementById('confirmPlanYearly').textContent      = btn.getAttribute('data-plan-yearly') || '0,00';
     document.getElementById('periodMonthly').checked = true;
+    document.getElementById('subscribePeriod').value = 'monthly';
     new bootstrap.Modal(document.getElementById('modalConfirmSubscription')).show();
 }
 
-function payerStripe() {
-    const period = document.querySelector('input[name="period"]:checked').value;
-    const btn = document.getElementById('btnPayStripe');
-    btn.disabled = true;
-    btn.textContent = 'Redirection...';
-
-    // Appel API Go qui crée la session Stripe et retourne l'URL de paiement
-    fetch('http://localhost:8080/api/subscriptions/checkout', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Token': '<?= htmlspecialchars($_SESSION['user']['token'] ?? '') ?>'
-        },
-        body: JSON.stringify({
-            id_user: '<?= htmlspecialchars($userId) ?>',
-            id_subscription_type: selectedPlanId,
-            period: period
-        })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.checkout_url) {
-            // Stripe redirige vers sa page de paiement hébergée
-            window.location.href = data.checkout_url;
-        } else {
-            alert('Erreur : ' + (data.error || 'Impossible de créer la session Stripe.'));
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-credit-card"></i> Payer maintenant';
-        }
-    })
-    .catch(function() {
-        alert('Erreur réseau. Veuillez réessayer.');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-credit-card"></i> Payer maintenant';
-    });
+function updateSubscribePeriod(period) {
+    document.getElementById('subscribePeriod').value = period;
 }
 
 function openDeleteSubscriptionConfirm() {

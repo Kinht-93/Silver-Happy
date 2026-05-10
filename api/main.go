@@ -183,6 +183,9 @@ func main() {
 	http.HandleFunc("GET /api/events/checkout-confirm", authMiddleware(handleConfirmEventCheckout))
 	http.HandleFunc("POST /api/subscriptions/checkout", authMiddleware(handleCreateSubscriptionCheckout))
 	http.HandleFunc("GET /api/subscriptions/confirm", authMiddleware(handleConfirmSubscriptionCheckout))
+	http.HandleFunc("GET /api/subscription-types", authMiddleware(handleGetSubscriptionTypes))
+	http.HandleFunc("GET /api/users/{id}/subscriptions", authMiddleware(handleGetUserSubscriptions))
+	http.HandleFunc("DELETE /api/users/{id}/subscriptions/{subId}", authMiddleware(handleDeleteUserSubscription))
 	http.HandleFunc("POST /api/stripe/webhook", handleStripeWebhook)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {

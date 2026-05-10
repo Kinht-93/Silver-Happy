@@ -50,7 +50,8 @@ CREATE TABLE subscription_types (
     name VARCHAR(50) NOT NULL UNIQUE,
     user_type VARCHAR(20) NOT NULL,
     monthly_price DECIMAL(10,2),
-    yearly_price DECIMAL(10,2)
+    yearly_price DECIMAL(10,2),
+    description TEXT
 );
 
 CREATE TABLE contracts (
@@ -229,6 +230,10 @@ CREATE TABLE show_type (
 CREATE TABLE subscribed (
     id_user VARCHAR(255),
     id_subscription_type VARCHAR(255),
+    status VARCHAR(50) NOT NULL DEFAULT 'Actif',
+    period VARCHAR(50) NOT NULL DEFAULT 'monthly',
+    subscribed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    cancelled_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id_user, id_subscription_type),
     FOREIGN KEY (id_user) REFERENCES users(id_user),
     FOREIGN KEY (id_subscription_type) REFERENCES subscription_types(id_subscription_type)

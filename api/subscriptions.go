@@ -4,19 +4,141 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/checkout/session"
 )
 
+// GET /api/subscription-types
+func handleGetSubscriptionTypes(w http.ResponseWriter, r *http.Request) {
+	userType := r.URL.Query().Get("user_type")
+	if userType == "" {
+		userType = "senior"
+	}
+
+	rows, err := db.Query(`
+		SELECT id_subscription_type, name, user_type, monthly_price, yearly_price, description
+		FROM subscription_types
+		WHERE LOWER(user_type) = LOWER(?)
+		ORDER BY monthly_price ASC, name ASC
+	`, userType)
+	if err != nil {
+		jsonError(w, "Erreur lors de la récupération des formules", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var types []SubscriptionType
+	for rows.Next() {
+		var t SubscriptionType
+		var desc *string
+		err := rows.Scan(&t.ID, &t.Name, &t.UserType, &t.MonthlyPrice, &t.YearlyPrice, &desc)
+		if err != nil {
+			continue
+		}
+		t.Description = desc
+		types = append(types, t)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(types)
+}
+
+// GET /api/users/{id}/subscriptions
+func handleGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+	if userID == "" {
+		jsonError(w, "ID utilisateur manquant", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := db.Query(`
+		SELECT s.id_subscription_type AS id_subscription, s.id_subscription_type, st.name, s.status, s.period, s.subscribed_at, s.cancelled_at
+		FROM subscribed s
+		INNER JOIN subscription_types st ON st.id_subscription_type = s.id_subscription_type
+		WHERE s.id_user = ?
+		ORDER BY s.subscribed_at DESC
+	`, userID)
+	if err != nil {
+		jsonError(w, "Erreur lors de la récupération des abonnements", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var subs []UserSubscription
+	for rows.Next() {
+		var s UserSubscription
+		var cancelledAt *string
+		err := rows.Scan(&s.ID, &s.SubscriptionTypeID, &s.Name, &s.Status, &s.Period, &s.SubscribedAt, &cancelledAt)
+		if err != nil {
+			continue
+		}
+		s.CancelledAt = cancelledAt
+		s.SubscriptionStart = s.SubscribedAt
+
+		if s.SubscribedAt != "" {
+			var parsedTime time.Time
+			formats := []string{
+				"2006-01-02 15:04:05",
+				"2006-01-02T15:04:05Z",
+				"2006-01-02T15:04:05",
+			}
+
+			for _, format := range formats {
+				if t, err := time.Parse(format, s.SubscribedAt); err == nil {
+					parsedTime = t
+					break
+				}
+			}
+
+			if !parsedTime.IsZero() {
+				if s.Period == "yearly" {
+					s.SubscriptionEnd = parsedTime.AddDate(1, 0, 0).Format("2006-01-02")
+				} else {
+					s.SubscriptionEnd = parsedTime.AddDate(0, 1, 0).Format("2006-01-02")
+				}
+			}
+		}
+		subs = append(subs, s)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(subs)
+}
+
+// DELETE /api/users/{id}/subscriptions/{subId}
+func handleDeleteUserSubscription(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+	subID := r.PathValue("subId")
+	if userID == "" || subID == "" {
+		jsonError(w, "Paramètres manquants", http.StatusBadRequest)
+		return
+	}
+
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM subscribed WHERE id_user = ? AND id_subscription_type = ?", userID, subID).Scan(&count)
+	if err != nil || count == 0 {
+		jsonError(w, "Abonnement introuvable", http.StatusNotFound)
+		return
+	}
+
+	_, err = db.Exec("DELETE FROM subscribed WHERE id_user = ? AND id_subscription_type = ?", userID, subID)
+	if err != nil {
+		jsonError(w, "Erreur lors de la suppression", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Abonnement supprimé"})
+}
+
 // POST /api/subscriptions/checkout
-// Crée une session Stripe Checkout pour payer un abonnement senior.
-// Body JSON : { "id_user": "...", "id_subscription_type": "...", "period": "monthly" | "yearly" }
 func handleCreateSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		UserID             string `json:"id_user"`
 		SubscriptionTypeID string `json:"id_subscription_type"`
-		Period             string `json:"period"` // "monthly" ou "yearly"
+		Period             string `json:"period"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.UserID == "" || body.SubscriptionTypeID == "" {
 		jsonError(w, "JSON invalide ou champs manquants", http.StatusBadRequest)
@@ -26,7 +148,6 @@ func handleCreateSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 		body.Period = "monthly"
 	}
 
-	// On récupère le plan depuis la BDD
 	var planName string
 	var monthlyPrice, yearlyPrice float64
 	err := db.QueryRow(
@@ -38,7 +159,6 @@ func handleCreateSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// On choisit le prix selon la période
 	price := monthlyPrice
 	label := "mensuel"
 	if body.Period == "yearly" {
@@ -51,8 +171,6 @@ func handleCreateSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 		baseURL = "http://localhost/thib/Silver-Happy"
 	}
 
-	// Création de la session Stripe Checkout
-	// On stocke les infos dans Metadata pour les retrouver au retour (success URL)
 	params := &stripe.CheckoutSessionParams{
 		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
@@ -86,8 +204,6 @@ func handleCreateSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"checkout_url": s.URL})
 }
 
-// GET /api/subscriptions/confirm?session_id=xxx
-// Vérifie que le paiement Stripe est bien passé et active l'abonnement en BDD.
 func handleConfirmSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.URL.Query().Get("session_id")
 	if sessionID == "" {
@@ -101,7 +217,6 @@ func handleConfirmSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// On vérifie que le paiement est bien confirmé côté Stripe
 	if s.PaymentStatus != stripe.CheckoutSessionPaymentStatusPaid {
 		jsonError(w, "Paiement non confirmé", http.StatusConflict)
 		return
@@ -114,22 +229,24 @@ func handleConfirmSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// On vérifie qu'on n'a pas déjà activé cet abonnement (double-clic ou refresh)
 	var existing int
-	db.QueryRow("SELECT COUNT(*) FROM subscribed WHERE id_user = ? AND id_subscription_type = ? AND status = 'Actif'", idUser, idSub).Scan(&existing)
+	db.QueryRow("SELECT COUNT(*) FROM subscribed WHERE id_user = ? AND id_subscription_type = ?", idUser, idSub).Scan(&existing)
 	if existing > 0 {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"message": "Abonnement déjà actif"})
 		return
 	}
 
-	// On résilie l'abonnement actif précédent s'il existe
-	db.Exec("UPDATE subscribed SET status = 'Résilié', cancelled_at = NOW() WHERE id_user = ? AND status = 'Actif'", idUser)
+	period := s.Metadata["period"]
+	if period != "monthly" && period != "yearly" {
+		period = "monthly"
+	}
 
-	// On active le nouvel abonnement
+	db.Exec("DELETE FROM subscribed WHERE id_user = ?", idUser)
+
 	_, err = db.Exec(
-		"INSERT INTO subscribed (id_user, id_subscription_type, status, subscribed_at) VALUES (?, ?, 'Actif', NOW()) ON DUPLICATE KEY UPDATE status='Actif', subscribed_at=NOW(), cancelled_at=NULL",
-		idUser, idSub,
+		"INSERT INTO subscribed (id_user, id_subscription_type, status, period, subscribed_at) VALUES (?, ?, 'Actif', ?, NOW())",
+		idUser, idSub, period,
 	)
 	if err != nil {
 		jsonError(w, "Erreur activation abonnement : "+err.Error(), http.StatusInternalServerError)

@@ -70,6 +70,19 @@ type SubscriptionType struct {
 	UserType     string  `json:"user_type"`
 	MonthlyPrice float64 `json:"monthly_price,omitempty"`
 	YearlyPrice  float64 `json:"yearly_price,omitempty"`
+	Description  *string `json:"description,omitempty"`
+}
+
+type UserSubscription struct {
+	ID                 string  `json:"id_subscription"`
+	SubscriptionTypeID string  `json:"id_subscription_type"`
+	Name               string  `json:"name"`
+	Status             string  `json:"status"`
+	Period             string  `json:"period,omitempty"`
+	SubscribedAt       string  `json:"subscribed_at"`
+	SubscriptionStart  string  `json:"subscription_start,omitempty"`
+	SubscriptionEnd    string  `json:"subscription_end,omitempty"`
+	CancelledAt        *string `json:"cancelled_at,omitempty"`
 }
 
 // CONTRACTS
@@ -163,13 +176,13 @@ type Event struct {
 
 // EVENT REGISTRATIONS
 type EventRegistration struct {
-	ID               string    `json:"id_registration"`
-	RegistrationDate time.Time `json:"registration_date"`
-	Status           string    `json:"status"`
-	Paid             bool      `json:"paid"`
-	StripePaymentIntentID *string `json:"stripe_payment_intent_id,omitempty"`
-	UserID           string    `json:"id_user"`
-	EventID          string    `json:"id_event"`
+	ID                    string    `json:"id_registration"`
+	RegistrationDate      time.Time `json:"registration_date"`
+	Status                string    `json:"status"`
+	Paid                  bool      `json:"paid"`
+	StripePaymentIntentID *string   `json:"stripe_payment_intent_id,omitempty"`
+	UserID                string    `json:"id_user"`
+	EventID               string    `json:"id_event"`
 }
 
 // INVOICES
