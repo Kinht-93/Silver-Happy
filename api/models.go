@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-// USERS
 type User struct {
 	ID                    string    `json:"id_user"`
 	Email                 string    `json:"email"`
@@ -43,7 +42,6 @@ type SeniorSettings struct {
 	EmergencyRelation  *string `json:"emergency_relation,omitempty"`
 }
 
-// SENIORS
 type Senior struct {
 	ID                    string `json:"id_senior"`
 	MembershipNumber      string `json:"membership_number"`
@@ -53,7 +51,6 @@ type Senior struct {
 	Mobility              string `json:"mobility,omitempty"`
 }
 
-// PROVIDERS
 type Provider struct {
 	ID               string  `json:"id_provider"`
 	SiretNumber      string  `json:"siret_number"`
@@ -63,7 +60,6 @@ type Provider struct {
 	CommissionRate   float32 `json:"commission_rate"`
 }
 
-// SUBSCRIPTIONS
 type SubscriptionType struct {
 	ID           string  `json:"id_subscription_type"`
 	Name         string  `json:"name"`
@@ -85,7 +81,6 @@ type UserSubscription struct {
 	CancelledAt        *string `json:"cancelled_at,omitempty"`
 }
 
-// CONTRACTS
 type Contract struct {
 	ID            string  `json:"id_contract"`
 	StartDate     string  `json:"start_date"`
@@ -97,14 +92,12 @@ type Contract struct {
 	ProviderID    string  `json:"id_provider"`
 }
 
-// SERVICE CATEGORIES
 type ServiceCategory struct {
 	ID          string `json:"id_service_category"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 }
 
-// SERVICE TYPES
 type ServiceType struct {
 	ID                    string  `json:"id_service_type"`
 	Name                  string  `json:"name"`
@@ -114,7 +107,6 @@ type ServiceType struct {
 	ServiceCategoryID     string  `json:"id_service_category"`
 }
 
-// SERVICE REQUESTS
 type ServiceRequest struct {
 	ID                  string    `json:"id_request"`
 	DesiredDate         string    `json:"desired_date"`
@@ -127,7 +119,6 @@ type ServiceRequest struct {
 	ServiceCategoryID   string    `json:"id_service_category"`
 }
 
-// QUOTES
 type Quote struct {
 	ID            string    `json:"id_quote"`
 	QuoteNumber   string    `json:"quote_number"`
@@ -141,7 +132,6 @@ type Quote struct {
 	ServiceTypeID string    `json:"id_service_type"`
 }
 
-// COMPLETED SERVICES
 type CompletedService struct {
 	ID                 string  `json:"id_completed_service"`
 	ServiceDate        string  `json:"service_date"`
@@ -153,7 +143,6 @@ type CompletedService struct {
 	RequestID          string  `json:"id_request"`
 }
 
-// REVIEWS
 type Review struct {
 	ID         string    `json:"id_review"`
 	Rating     float32   `json:"rating"`
@@ -163,7 +152,6 @@ type Review struct {
 	ProviderID string    `json:"id_provider"`
 }
 
-// EVENTS
 type Event struct {
 	ID        string  `json:"id_event"`
 	Title     string  `json:"title"`
@@ -174,7 +162,6 @@ type Event struct {
 	Price     float64 `json:"price"`
 }
 
-// EVENT REGISTRATIONS
 type EventRegistration struct {
 	ID                    string    `json:"id_registration"`
 	RegistrationDate      time.Time `json:"registration_date"`
@@ -185,7 +172,6 @@ type EventRegistration struct {
 	EventID               string    `json:"id_event"`
 }
 
-// INVOICES
 type Invoice struct {
 	ID            string  `json:"id_invoice"`
 	InvoiceNumber string  `json:"invoice_number"`
@@ -199,7 +185,6 @@ type Invoice struct {
 	QuoteID       string  `json:"id_quote"`
 }
 
-// MESSAGES
 type Message struct {
 	ID       string    `json:"id_message"`
 	Content  string    `json:"content"`
@@ -208,7 +193,6 @@ type Message struct {
 	Sender   string    `json:"sender"`
 }
 
-// AVAILABILITY
 type Availability struct {
 	ID          string `json:"id"`
 	TimeSlot    string `json:"time_slot"`
@@ -216,7 +200,6 @@ type Availability struct {
 	UserID      string `json:"id_user"`
 }
 
-// AUTH PAYLOADS
 type SignupPayload struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`

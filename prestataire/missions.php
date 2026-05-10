@@ -60,7 +60,6 @@ $basePath = '../';
     <?php endif; ?>
 
     <?php
-    // On sépare les missions en deux groupes pour les deux onglets
     $aAccepter = array_values(array_filter($missions, fn($m) => $m['status'] === 'Proposee' && empty($m['id_user'])));
     $mesMissions = array_values(array_filter($missions, fn($m) => !($m['status'] === 'Proposee' && empty($m['id_user']))));
     ?>

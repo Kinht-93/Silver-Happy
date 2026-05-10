@@ -362,8 +362,6 @@ $basePath = '../';
 <?php include '../include/footer.php'; ?>
 
 <script>
-// Dates qui ont au moins un créneau, générées par PHP
-// Ex: ["2026-05-10", "2026-05-11", ...]
 const datesAvec = <?= json_encode(array_values(array_unique(array_map(
     fn($r) => substr((string)($r['available_date'] ?? ''), 0, 10),
     $availabilities
@@ -373,7 +371,7 @@ const mois = ['Janvier','Février','Mars','Avril','Mai','Juin',
               'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
 let annee = new Date().getFullYear();
-let moisIdx = new Date().getMonth(); // 0 = janvier
+let moisIdx = new Date().getMonth();
 
 function afficherCalendrier() {
     const grid  = document.getElementById('calGrid');
@@ -381,8 +379,8 @@ function afficherCalendrier() {
     titre.textContent = mois[moisIdx] + ' ' + annee;
 
     const nbJours   = new Date(annee, moisIdx + 1, 0).getDate();
-    const premierJS = new Date(annee, moisIdx, 1).getDay(); // 0=dim
-    const decalage  = premierJS === 0 ? 6 : premierJS - 1;  // on veut lundi en 1er
+    const premierJS = new Date(annee, moisIdx, 1).getDay();
+    const decalage  = premierJS === 0 ? 6 : premierJS - 1;
     const aujourdhui = new Date().toISOString().slice(0, 10);
 
     let html = '';

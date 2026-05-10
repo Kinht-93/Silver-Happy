@@ -35,7 +35,6 @@ function getPlanDescription(string $planId, string $planName, ?string $dbDescrip
     return $map[$planId] ?? ('Formule ' . $planName . ' adaptee aux besoins du quotidien.');
 }
 
-// Retour depuis Stripe : on confirme le paiement via l'API Go
 if (isset($_GET['payment']) && $_GET['payment'] === 'success' && !empty($_GET['session_id'])) {
     $confirmResp = callAPI(
         'http://localhost:8080/api/subscriptions/confirm?session_id=' . urlencode($_GET['session_id']),
@@ -87,10 +86,8 @@ if ($userId === '' || $token === '') {
         }
     }
 
-    // Fetch subscription types
     $plansResponse = callAPI('http://localhost:8080/api/subscription-types?user_type=senior', 'GET', null, $token);
     
-    // Debug logging
     error_log('Plans Response Type: ' . gettype($plansResponse));
     error_log('Plans Response: ' . json_encode($plansResponse));
     
@@ -109,7 +106,6 @@ if ($userId === '' || $token === '') {
         $messageType = 'danger';
     }
 
-    // Fetch user subscriptions
     $subsResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/subscriptions', 'GET', null, $token);
     error_log('DEBUG: User subscriptions response: ' . json_encode($subsResponse));
     if (is_array($subsResponse) && !isset($subsResponse['error'])) {

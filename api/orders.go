@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// Order structure
 type Order struct {
 	IDOrder        string  `json:"id_order"`
 	OrderNumber    string  `json:"order_number"`

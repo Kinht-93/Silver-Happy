@@ -5,7 +5,6 @@ import (
 	"net/http"
 )
 
-// Get last transactions
 func handleGetLastTransactions(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT i.amount_incl_tax, i.invoice_type, i.issue_date, u.first_name, u.last_name 
@@ -46,7 +45,6 @@ func handleGetLastTransactions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(transactions)
 }
 
-// Get provider pending count
 func handleGetPendingProvidersCount(w http.ResponseWriter, r *http.Request) {
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE role = 'prestataire' AND validation_status = 'En attente'").Scan(&count)
@@ -61,7 +59,6 @@ func handleGetPendingProvidersCount(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Get service pending count
 func handleGetPendingServiceRequestsCount(w http.ResponseWriter, r *http.Request) {
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM service_requests WHERE status = 'En attente'").Scan(&count)
