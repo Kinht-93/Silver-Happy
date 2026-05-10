@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'scheduled_at' => $scheduled,
             'limited_at' => $limite
         ];
-        $response = callAPI('http://silverhappy_api:8080/api/notifications', 'POST', $data, $token);
+        $response = callAPI('http://localhost:8080/api/notifications', 'POST', $data, $token);
         if ($response && !isset($response['error'])) {
             $message = "Notification créée et enregistrée.";
             $messageType = "success";
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'delete') {
         $id = $_POST['id'] ?? '';
-        $response = callAPI("http://silverhappy_api:8080/api/notifications/{$id}", 'DELETE', null, $token);
+        $response = callAPI("http://localhost:8080/api/notifications/{$id}", 'DELETE', null, $token);
         if ($response && !isset($response['error'])) {
             $message = "Notification supprimée.";
             $messageType = "success";
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$notifications = callAPI('http://silverhappy_api:8080/api/notifications', 'GET', null, $token);
+$notifications = callAPI('http://localhost:8080/api/notifications', 'GET', null, $token);
 if (isset($notifications['error'])) {
     $message = "Erreur API: " . $notifications['error'];
     $messageType = "danger";

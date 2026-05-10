@@ -17,8 +17,8 @@ $emergencyPhone = '';
 $emergencyRelation = '';
 
 if ($token !== '' && $userId !== '') {
-    $userResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId), 'GET', null, $token);
-    $settingsResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/senior-settings', 'GET', null, $token);
+    $userResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'GET', null, $token);
+    $settingsResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/senior-settings', 'GET', null, $token);
 
     if (is_array($userResponse) && !isset($userResponse['error'])) {
         $emergencyName = (string)($userResponse['emergency_contact_name'] ?? '');
@@ -53,11 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $userUpdate = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId), 'PATCH', [
+        $userUpdate = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'PATCH', [
             'emergency_contact_name' => $emergencyName,
             'emergency_contact_phone' => $emergencyPhone,
         ], $token);
-        $settingsUpdate = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/senior-settings', 'PATCH', [
+        $settingsUpdate = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/senior-settings', 'PATCH', [
             'emergency_relation' => $emergencyRelation,
         ], $token);
 

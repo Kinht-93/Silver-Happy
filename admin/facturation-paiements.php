@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'update_status' && !empty($_POST['id']) && !empty($token)) {
         $response = callAPI(
-            'http://silverhappy_api:8080/api/admin-invoices/' . urlencode($_POST['id']) . '/status',
+            'http://localhost:8080/api/admin-invoices/' . urlencode($_POST['id']) . '/status',
             'PATCH',
             ['status' => $_POST['status'] ?? 'En attente'],
             $token
@@ -33,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $statsResponse = callAPI('http://silverhappy_api:8080/api/admin-invoices/stats', 'GET', null, $token);
-    $facturesResponse = callAPI('http://silverhappy_api:8080/api/admin-invoices', 'GET', null, $token);
+    $statsResponse = callAPI('http://localhost:8080/api/admin-invoices/stats', 'GET', null, $token);
+    $facturesResponse = callAPI('http://localhost:8080/api/admin-invoices', 'GET', null, $token);
 
     if (is_array($statsResponse) && !isset($statsResponse['error'])) {
         $ca = (float) ($statsResponse['ca'] ?? 0);

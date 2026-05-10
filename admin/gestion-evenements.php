@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if (!empty($token)) {
         if ($action === 'create') {
-            $response = callAPI('http://silverhappy_api:8080/api/admin-events', 'POST', [
+            $response = callAPI('http://localhost:8080/api/admin-events', 'POST', [
                 'title' => $_POST['title'] ?? '',
                 'event_type' => $_POST['event_type'] ?? 'Autre',
                 'start_date' => $_POST['start_date'] ?? '',
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'danger';
             }
         } elseif ($action === 'update' && !empty($_POST['id'])) {
-            $response = callAPI('http://silverhappy_api:8080/api/admin-events/' . urlencode($_POST['id']), 'PATCH', [
+            $response = callAPI('http://localhost:8080/api/admin-events/' . urlencode($_POST['id']), 'PATCH', [
                 'title' => $_POST['title'] ?? '',
                 'start_date' => $_POST['start_date'] ?? '',
                 'max_places' => !empty($_POST['max_places']) ? (int) $_POST['max_places'] : 20,
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'danger';
             }
         } elseif ($action === 'delete' && !empty($_POST['id'])) {
-            $response = callAPI('http://silverhappy_api:8080/api/admin-events/' . urlencode($_POST['id']), 'DELETE', null, $token);
+            $response = callAPI('http://localhost:8080/api/admin-events/' . urlencode($_POST['id']), 'DELETE', null, $token);
             if (!is_array($response) || !isset($response['error'])) {
                 $message = "Événement supprimé.";
                 $messageType = "success";
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $eventsResponse = callAPI('http://silverhappy_api:8080/api/admin-events', 'GET', null, $token);
+    $eventsResponse = callAPI('http://localhost:8080/api/admin-events', 'GET', null, $token);
     if (is_array($eventsResponse) && !isset($eventsResponse['error'])) {
         $events = $eventsResponse;
     } elseif ($message === '') {
