@@ -25,7 +25,7 @@ if ($token !== '') {
         $serviceMap[strtolower((string)$category['name'])] = $category;
     }
 
-    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
+    $categoriesResponse = callAPI('http://silverhappy_api:8080/api/service-categories', 'GET', null, $token);
     if (is_array($categoriesResponse) && !isset($categoriesResponse['error'])) {
         foreach ($categoriesResponse as $apiCategory) {
             $apiName = (string)($apiCategory['name'] ?? '');

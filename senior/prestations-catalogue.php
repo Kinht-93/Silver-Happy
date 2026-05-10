@@ -11,8 +11,8 @@ $categories = [];
 $typesByCategory = [];
 
 if ($token !== '') {
-    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
-    $typesResponse = callAPI('http://localhost:8080/api/service-types', 'GET', null, $token);
+    $categoriesResponse = callAPI('http://silverhappy_api:8080/api/service-categories', 'GET', null, $token);
+    $typesResponse = callAPI('http://silverhappy_api:8080/api/service-types', 'GET', null, $token);
 
     if (
         is_array($categoriesResponse) && !isset($categoriesResponse['error']) &&

@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if (!empty($token)) {
         if ($action === 'create') {
-            $response = callAPI('http://localhost:8080/api/admin-quotes', 'POST', [
+            $response = callAPI('http://silverhappy_api:8080/api/admin-quotes', 'POST', [
                 'id_user' => $_POST['id_user'] ?? '',
                 'id_service_type' => $_POST['id_service_type'] ?? '',
                 'amount' => isset($_POST['amount']) ? (float) $_POST['amount'] : 0,
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'danger';
             }
         } elseif ($action === 'update' && !empty($_POST['id'])) {
-            $response = callAPI('http://localhost:8080/api/admin-quotes/' . urlencode($_POST['id']), 'PATCH', [
+            $response = callAPI('http://silverhappy_api:8080/api/admin-quotes/' . urlencode($_POST['id']), 'PATCH', [
                 'amount' => isset($_POST['amount']) ? (float) $_POST['amount'] : 0,
                 'status' => $_POST['status'] ?? 'En attente',
             ], $token);
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'danger';
             }
         } elseif ($action === 'delete' && !empty($_POST['id'])) {
-            $response = callAPI('http://localhost:8080/api/admin-quotes/' . urlencode($_POST['id']), 'DELETE', null, $token);
+            $response = callAPI('http://silverhappy_api:8080/api/admin-quotes/' . urlencode($_POST['id']), 'DELETE', null, $token);
             if (!is_array($response) || !isset($response['error'])) {
                 $message = "Devis supprimé.";
                 $messageType = "success";
@@ -54,9 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $devisResponse = callAPI('http://localhost:8080/api/admin-quotes', 'GET', null, $token);
-    $seniorsResponse = callAPI('http://localhost:8080/api/users-summary?roles=senior', 'GET', null, $token);
-    $serviceTypesResponse = callAPI('http://localhost:8080/api/service-types', 'GET', null, $token);
+    $devisResponse = callAPI('http://silverhappy_api:8080/api/admin-quotes', 'GET', null, $token);
+    $seniorsResponse = callAPI('http://silverhappy_api:8080/api/users-summary?roles=senior', 'GET', null, $token);
+    $serviceTypesResponse = callAPI('http://silverhappy_api:8080/api/service-types', 'GET', null, $token);
 
     if (is_array($devisResponse) && !isset($devisResponse['error'])) {
         $devis = $devisResponse;
