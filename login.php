@@ -11,6 +11,11 @@ if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
 $errors = [];
 $email = trim($_POST['login_email'] ?? '');
 
+$sessionExpired = isset($_GET['expired']) && $_GET['expired'] === '1';
+if ($sessionExpired) {
+    $errors[] = 'Votre session a expiré. Veuillez vous reconnecter.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['login_password'] ?? '';
 
@@ -82,11 +87,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $showSignupSuccess = isset($_GET['signup']) && $_GET['signup'] === 'success';
 
-$errors = $_SESSION['login_errors'] ?? [];
+$sessionErrors = $_SESSION['login_errors'] ?? [];
 $formData = $_SESSION['form_data'] ?? [];
 $email = $formData['login_email'] ?? $email;
 
 unset($_SESSION['login_errors'], $_SESSION['form_data']);
+
+// Fusionner les erreurs de session expirée avec les erreurs de login
+$errors = array_merge($errors, $sessionErrors);
 
 include './include/header.php';
 ?>

@@ -37,7 +37,16 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return []byte(jwtSecret), nil
 		})
 
-		if err != nil || !token.Valid {
+		if err != nil {
+			if strings.Contains(err.Error(), "token is expired") {
+				jsonError(w, "Token expired", http.StatusUnauthorized)
+				return
+			}
+			jsonError(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		if !token.Valid {
 			jsonError(w, "Invalid token", http.StatusUnauthorized)
 			return
 		}
@@ -153,9 +162,9 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		"last_name":  lastName,
 	}
 
-	exp := time.Now().Add(time.Hour * 24).Unix()
+	exp := time.Now().Add(time.Hour * 1).Unix()
 	if role == "admin" {
-		exp = time.Now().Add(time.Hour * 72).Unix()
+		exp = time.Now().Add(time.Hour * 2).Unix()
 	}
 	claims["exp"] = exp
 
