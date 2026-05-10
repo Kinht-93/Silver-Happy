@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]
         ]);
 
-        $response = @file_get_contents('http://localhost:8080/api/signup', false, $context);
+        $response = @file_get_contents('hhttp://silverhappy_api:8080/api/signup', false, $context);
 
         if ($response === false) {
             $errors[] = 'Erreur de connexion avec le serveur.';

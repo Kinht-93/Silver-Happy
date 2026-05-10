@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $response = false;
     $loginEndpoints = [
-        'http://localhost:8080/api/login',
+        'hhttp://silverhappy_api:8080/api/login',
         'http://localhost:5555/api/login',
     ];
 

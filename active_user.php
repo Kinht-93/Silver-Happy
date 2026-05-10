@@ -14,6 +14,6 @@ function updateUserActivity() {
         return;
     }
 
-    callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/activity', 'POST', [], $token);
+    callAPI('hhttp://silverhappy_api:8080/api/users/' . urlencode($userId) . '/activity', 'POST', [], $token);
 }
 ?> 
