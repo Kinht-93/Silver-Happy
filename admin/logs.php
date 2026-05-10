@@ -31,7 +31,7 @@ if ($queryString) {
     $queryString = '?page=' . $page . '&limit=50';
 }
 
-$response = callAPI('http://localhost:8080/api/logs' . $queryString, 'GET', null, $token);
+$response = callAPI('http://silverhappy_api:8080/api/logs' . $queryString, 'GET', null, $token);
 
 $logs = [];
 $total = 0;

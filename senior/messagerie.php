@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $response = callAPI('http://localhost:8080/api/messages', 'POST', [
+        $response = callAPI('http://silverhappy_api:8080/api/messages', 'POST', [
             'content' => mb_substr($newContent, 0, 5000),
             'receiver' => $selectedPeerId,
             'sender' => $userId,
@@ -54,9 +54,9 @@ if (isset($_GET['sent']) && $_GET['sent'] === '1') {
 }
 
 if ($token !== '' && $userId !== '') {
-    $providersResponse = callAPI('http://localhost:8080/api/users-summary?roles=prestataire', 'GET', null, $token);
-    $usersResponse = callAPI('http://localhost:8080/api/users-summary', 'GET', null, $token);
-    $messagesResponse = callAPI('http://localhost:8080/api/messages?id_user=' . urlencode($userId), 'GET', null, $token);
+    $providersResponse = callAPI('http://silverhappy_api:8080/api/users-summary?roles=prestataire', 'GET', null, $token);
+    $usersResponse = callAPI('http://silverhappy_api:8080/api/users-summary', 'GET', null, $token);
+    $messagesResponse = callAPI('http://silverhappy_api:8080/api/messages?id_user=' . urlencode($userId), 'GET', null, $token);
 
     if (
         !is_array($providersResponse) || isset($providersResponse['error']) ||

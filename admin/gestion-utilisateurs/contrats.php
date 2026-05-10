@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'auto_renew' => isset($_POST['auto_renew']) ? true : false
         ];
         
-        $response = callAPI('http://localhost:8080/api/contracts', 'POST', $data, $token);
+        $response = callAPI('http://silverhappy_api:8080/api/contracts', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Contrat créé avec succès.";
             $messageType = "success";
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'auto_renew' => isset($_POST['auto_renew']) ? true : false
         ];
         
-        $response = callAPI("http://localhost:8080/api/contracts/{$_POST['id']}", 'PATCH', $data, $token);
+        $response = callAPI("http://silverhappy_api:8080/api/contracts/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $message = "Contrat modifié avec succès.";
             $messageType = "success";
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
-        $response = callAPI("http://localhost:8080/api/contracts/{$_POST['id']}", 'DELETE', null, $token);
+        $response = callAPI("http://silverhappy_api:8080/api/contracts/{$_POST['id']}", 'DELETE', null, $token);
         $message = "Contrat supprimé.";
         $messageType = "success";
     }
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $filter = $_GET['filter'] ?? 'tous';
 
 if (!empty($token)) {
-    $response = callAPI('http://localhost:8080/api/contracts', 'GET', null, $token);
+    $response = callAPI('http://silverhappy_api:8080/api/contracts', 'GET', null, $token);
     
     if (isset($response['error'])) {
         $message = "Erreur API: " . $response['error'];
@@ -75,7 +75,7 @@ if (!empty($token)) {
         }
     }
 
-    $usersResponse = callAPI('http://localhost:8080/api/users-without-contract', 'GET', null, $token);
+    $usersResponse = callAPI('http://silverhappy_api:8080/api/users-without-contract', 'GET', null, $token);
     if (is_array($usersResponse) && !isset($usersResponse['error'])) {
         $users = $usersResponse;
     }

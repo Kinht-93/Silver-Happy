@@ -8,8 +8,8 @@ $testimonials = [];
 
 
 try {
-    $serviceCategories = callAPI('http://localhost:8080/api/service-categories');
-    $serviceTypes = callAPI('http://localhost:8080/api/service-types');
+    $serviceCategories = callAPI('http://silverhappy_api:8080/api/service-categories');
+    $serviceTypes = callAPI('http://silverhappy_api:8080/api/service-types');
 
     if (is_array($serviceCategories) && !isset($serviceCategories['error']) && is_array($serviceTypes) && !isset($serviceTypes['error'])) {
         $categoriesById = [];
@@ -44,7 +44,7 @@ try {
 }
 
 try {
-    $eventsResponse = callAPI('http://localhost:8080/api/events');
+    $eventsResponse = callAPI('http://silverhappy_api:8080/api/events');
     if (is_array($eventsResponse) && !isset($eventsResponse['error'])) {
         usort($eventsResponse, static function ($left, $right) {
             return strcmp((string)($left['start_date'] ?? ''), (string)($right['start_date'] ?? ''));

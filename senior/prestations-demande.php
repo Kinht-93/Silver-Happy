@@ -19,7 +19,7 @@ $interventionAddress = trim((string)($_POST['intervention_address'] ?? ''));
 $requestMessage = trim((string)($_POST['request_message'] ?? ''));
 
 if ($token !== '') {
-    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
+    $categoriesResponse = callAPI('http://silverhappy_api:8080/api/service-categories', 'GET', null, $token);
     if (is_array($categoriesResponse) && !isset($categoriesResponse['error'])) {
         $categoryOptions = $categoriesResponse;
     } else {
@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $addressWithNote = mb_substr($addressWithNote, 0, 255);
 
-        $response = callAPI('http://localhost:8080/api/service-requests', 'POST', [
+        $response = callAPI('http://silverhappy_api:8080/api/service-requests', 'POST', [
             'desired_date' => $desiredDate,
             'start_time' => $startTime,
             'estimated_duration' => $estimatedDuration,
