@@ -231,7 +231,7 @@ CREATE TABLE subscribed (
     id_user VARCHAR(255),
     id_subscription_type VARCHAR(255),
     status VARCHAR(50) NOT NULL DEFAULT 'Actif',
-    period VARCHAR(50) NOT NULL DEFAULT 'monthly',
+    period VARCHAR(50) NOT NULL DEFAULT 'monthly' AFTER status,
     subscribed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     cancelled_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id_user, id_subscription_type),
