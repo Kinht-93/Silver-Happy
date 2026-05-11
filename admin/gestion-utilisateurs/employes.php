@@ -142,6 +142,27 @@ if (!empty($token)) {
 </div>
 </div>
 
+<div class="modal fade" id="modalViewEmployee" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Fiche employé</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1"><strong>Nom :</strong> <span id="veName"></span></p>
+                <p class="mb-1"><strong>Email :</strong> <span id="veEmail"></span></p>
+                <p class="mb-1"><strong>Téléphone :</strong> <span id="vePhone"></span></p>
+                <p class="mb-1"><strong>Statut :</strong> <span id="veStatus"></span></p>
+                <p class="mb-1"><strong>Date d'inscription :</strong> <span id="veCreated"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalAddEmployee" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -163,6 +184,10 @@ if (!empty($token)) {
                     <div class="mb-3">
                         <label for="employeeEmail" class="form-label">Email *</label>
                         <input type="email" class="form-control" id="employeeEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="employeePhone" class="form-label">Téléphone</label>
+                        <input type="tel" class="form-control" id="employeePhone" name="phone">
                     </div>
                     <div class="mb-3">
                         <label for="employeePosition" class="form-label">Poste</label>
@@ -228,7 +253,12 @@ if (!empty($token)) {
 <script>
 function viewEmployee(btn) {
     const user = JSON.parse(btn.getAttribute('data-user'));
-    alert('Employé: ' + user.first_name + ' ' + user.last_name + '\nEmail: ' + user.email + '\Téléphone: ' + (user.phone || 'N/A'));
+    document.getElementById('veName').textContent = (user.first_name || '') + ' ' + (user.last_name || '');
+    document.getElementById('veEmail').textContent = user.email || '—';
+    document.getElementById('vePhone').textContent = user.phone || '—';
+    document.getElementById('veStatus').textContent = user.active ? 'Actif' : 'Inactif';
+    document.getElementById('veCreated').textContent = user.created_at ? new Date(user.created_at).toLocaleString('fr-FR') : '—';
+    openModal('modalViewEmployee');
 }
 
 function editEmployee(btn) {
