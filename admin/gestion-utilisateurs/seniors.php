@@ -257,3 +257,7 @@ function editSenior(btn) {
     openModal('modalEditSenior');
 }
 </script>
+
+<?php
+include '../include/footer-admin.php';
+?>
