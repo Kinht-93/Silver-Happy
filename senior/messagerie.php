@@ -224,7 +224,7 @@ include './include/header.php';
                     <p class="mb-0">Ou commencez en contactant un prestataire.</p>
                 </div>
             <?php else: ?>
-                <div class="border rounded p-3 mb-3" style="height:500px; overflow:auto; background:#fff;">
+                <div class="border rounded p-3 mb-3" style="height:650px; overflow:auto; background:#fff;">
                     <?php if (empty($currentMessages)): ?>
                         <p class="text-muted mb-0">Aucun message pour le moment.</p>
                     <?php else: ?>
@@ -248,7 +248,7 @@ include './include/header.php';
 
                 <form method="post" class="d-flex flex-column gap-2">
                     <input type="hidden" name="receiver" value="<?= htmlspecialchars($selectedPeerId) ?>">
-                    <textarea class="form-control" name="content" rows="5" placeholder="Votre message..." required><?= htmlspecialchars($newContent) ?></textarea>
+                    <textarea class="form-control" name="content" rows="8" placeholder="Votre message..." required><?= htmlspecialchars($newContent) ?></textarea>
                     <div class="text-end">
                         <button type="submit" class="btn btn-success btn-sm">Envoyer</button>
                     </div>
