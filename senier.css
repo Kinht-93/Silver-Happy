@@ -245,6 +245,10 @@
   gap: 12px;
 }
 
+.senier-message-layout--wide {
+  grid-template-columns: 0.85fr 3.15fr;
+}
+
 .senier-conversations {
   background: #ffffff;
   border: 1px solid #d9d9d9;
@@ -278,6 +282,16 @@
   justify-content: center;
   text-align: center;
   padding: 16px;
+}
+
+.senier-chat--thread {
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.senier-chat--thread > * {
+  width: 100%;
 }
 
 .senier-chat-empty h4 {
