@@ -314,14 +314,6 @@ if (!empty($token)) {
                         <label for="editProviderSiret" class="form-label">SIRET</label>
                         <input type="text" class="form-control" id="editProviderSiret" name="siret_number" readonly>
                     </div>
-                    <div class="mb-3">
-                        <label for="editProviderValidation" class="form-label">Statut de validation</label>
-                        <select class="form-select" id="editProviderValidation" name="validation_status">
-                            <option value="En attente">En attente</option>
-                            <option value="Validé">Validé</option>
-                            <option value="Rejeté">Rejeté</option>
-                        </select>
-                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -381,7 +373,6 @@ function editProvider(btn) {
     document.getElementById('editProviderPhone').value = user.phone || '';
     document.getElementById('editProviderCompany').value = user.company_name || '';
     document.getElementById('editProviderSiret').value = user.siret_number || '';
-    document.getElementById('editProviderValidation').value = user.validation_status || 'En attente';
     openModal('modalEditProvider');
 }
 </script>
