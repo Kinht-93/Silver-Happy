@@ -2,8 +2,9 @@
 include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['type_message'] ?? '';
+$messageType = $_SESSION['type_message_type'] ?? '';
+unset($_SESSION['type_message'], $_SESSION['type_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 $types = [];
 $categories = [];
@@ -22,8 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI('http://localhost:8080/api/service-types', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Type ajouté avec succès.";
-            $messageType = "success";
+            $_SESSION['type_message'] = "Type ajouté avec succès.";
+            $_SESSION['type_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de l'ajout du type.";
             $messageType = "danger";
@@ -37,16 +40,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI("http://localhost:8080/api/service-types/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Type modifié avec succès.";
-            $messageType = "success";
+            $_SESSION['type_message'] = "Type modifié avec succès.";
+            $_SESSION['type_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la modification.";
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
         $response = callAPI("http://localhost:8080/api/service-types/{$_POST['id']}", 'DELETE', null, $token);
-        $message = "Type supprimé.";
-        $messageType = "success";
+        $_SESSION['type_message'] = "Type supprimé.";
+        $_SESSION['type_message_type'] = "success";
+        header("Location: {$_SERVER['PHP_SELF']}");
+        exit;
     }
 }
 

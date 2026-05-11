@@ -2,8 +2,9 @@
 include './include/header-admin.php';
 require_once __DIR__ . '/../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['notification_message'] ?? '';
+$messageType = $_SESSION['notification_message_type'] ?? '';
+unset($_SESSION['notification_message'], $_SESSION['notification_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -26,8 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
         $response = callAPI('http://localhost:8080/api/notifications', 'POST', $data, $token);
         if ($response && !isset($response['error'])) {
-            $message = "Notification créée et enregistrée.";
-            $messageType = "success";
+            $_SESSION['notification_message'] = "Notification créée et enregistrée.";
+            $_SESSION['notification_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la création: " . ($response['error'] ?? json_encode($response));
             $messageType = "danger";
@@ -36,8 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = $_POST['id'] ?? '';
         $response = callAPI("http://localhost:8080/api/notifications/{$id}", 'DELETE', null, $token);
         if ($response && !isset($response['error'])) {
-            $message = "Notification supprimée.";
-            $messageType = "success";
+            $_SESSION['notification_message'] = "Notification supprimée.";
+            $_SESSION['notification_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la suppression: " . ($response['error'] ?? json_encode($response));
             $messageType = "danger";

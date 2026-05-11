@@ -2,8 +2,9 @@
 include './include/header-admin.php';
 require_once __DIR__ . '/../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['quote_message'] ?? '';
+$messageType = $_SESSION['quote_message_type'] ?? '';
+unset($_SESSION['quote_message'], $_SESSION['quote_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 
 $devis = [];
@@ -21,8 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], $token);
 
             if (is_array($response) && !isset($response['error'])) {
-                $message = "Devis créé avec succès.";
-                $messageType = "success";
+                $_SESSION['quote_message'] = "Devis créé avec succès.";
+                $_SESSION['quote_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur sur la gestion du devis: ' . ($response['error'] ?? 'Création impossible.');
                 $messageType = 'danger';
@@ -34,8 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], $token);
 
             if (is_array($response) && !isset($response['error'])) {
-                $message = "Devis mis à jour.";
-                $messageType = "success";
+                $_SESSION['quote_message'] = "Devis mis à jour.";
+                $_SESSION['quote_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur sur la gestion du devis: ' . ($response['error'] ?? 'Mise à jour impossible.');
                 $messageType = 'danger';
@@ -43,8 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'delete' && !empty($_POST['id'])) {
             $response = callAPI('http://localhost:8080/api/admin-quotes/' . urlencode($_POST['id']), 'DELETE', null, $token);
             if (!is_array($response) || !isset($response['error'])) {
-                $message = "Devis supprimé.";
-                $messageType = "success";
+                $_SESSION['quote_message'] = "Devis supprimé.";
+                $_SESSION['quote_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur sur la gestion du devis: ' . $response['error'];
                 $messageType = 'danger';

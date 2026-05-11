@@ -2,8 +2,9 @@
 include './include/header-admin.php';
 require_once __DIR__ . '/../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['invoice_message'] ?? '';
+$messageType = $_SESSION['invoice_message_type'] ?? '';
+unset($_SESSION['invoice_message'], $_SESSION['invoice_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 
 $factures = [];
@@ -23,8 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
 
         if (!is_array($response) || !isset($response['error'])) {
-            $message = "Statut de la facture mis à jour.";
-            $messageType = "success";
+            $_SESSION['invoice_message'] = "Statut de la facture mis à jour.";
+            $_SESSION['invoice_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur: " . $response['error'];
             $messageType = "danger";

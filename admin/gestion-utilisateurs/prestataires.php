@@ -3,8 +3,9 @@ include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
 require_once __DIR__ . '/../../db.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['provider_message'] ?? '';
+$messageType = $_SESSION['provider_message_type'] ?? '';
+unset($_SESSION['provider_message'], $_SESSION['provider_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 $prestataires = [];
 
@@ -51,8 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI('http://localhost:8080/api/users', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Prestataire ajouté avec succès.";
-            $messageType = "success";
+            $_SESSION['provider_message'] = "Prestataire ajouté avec succès.";
+            $_SESSION['provider_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de l'ajout.";
             $messageType = "danger";
@@ -68,16 +71,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Prestataire modifié avec succès.";
-            $messageType = "success";
+            $_SESSION['provider_message'] = "Prestataire modifié avec succès.";
+            $_SESSION['provider_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la modification.";
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
         $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
-        $message = "Prestataire supprimé.";
-        $messageType = "success";
+        $_SESSION['provider_message'] = "Prestataire supprimé.";
+        $_SESSION['provider_message_type'] = "success";
+        header("Location: {$_SERVER['PHP_SELF']}");
+        exit;
     }
 }
 

@@ -2,8 +2,9 @@
 include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['admin_message'] ?? '';
+$messageType = $_SESSION['admin_message_type'] ?? '';
+unset($_SESSION['admin_message'], $_SESSION['admin_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 $administrateurs = [];
 
@@ -22,8 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI('http://localhost:8080/api/users', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Administrateur ajouté avec succès.";
-            $messageType = "success";
+            $_SESSION['admin_message'] = "Administrateur ajouté avec succès.";
+            $_SESSION['admin_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de l'ajout.";
             $messageType = "danger";
@@ -38,16 +41,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Administrateur modifié avec succès.";
-            $messageType = "success";
+            $_SESSION['admin_message'] = "Administrateur modifié avec succès.";
+            $_SESSION['admin_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la modification.";
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
         $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
-        $message = "Administrateur supprimé.";
-        $messageType = "success";
+        $_SESSION['admin_message'] = "Administrateur supprimé.";
+        $_SESSION['admin_message_type'] = "success";
+        header("Location: {$_SERVER['PHP_SELF']}");
+        exit;
     }
 }
 

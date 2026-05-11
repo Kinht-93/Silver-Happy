@@ -2,8 +2,9 @@
 include_once __DIR__ . '/_auth.php';
 include 'include/header-prestataire.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['provider_invoice_message'] ?? '';
+$messageType = $_SESSION['provider_invoice_message_type'] ?? '';
+unset($_SESSION['provider_invoice_message'], $_SESSION['provider_invoice_message_type']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
     $action = $_POST['action'] ?? '';
@@ -18,8 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
                 throw new RuntimeException((string)($response['error'] ?? 'Impossible de generer la facture.'));
             }
 
-            $message = 'Facture mensuelle generee.';
-            $messageType = 'success';
+            $_SESSION['provider_invoice_message'] = 'Facture mensuelle generee.';
+            $_SESSION['provider_invoice_message_type'] = 'success';
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         }
     } catch (Exception $e) {
         $message = 'Erreur: ' . $e->getMessage();

@@ -10,7 +10,8 @@ $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $token = (string)($_SESSION['user']['token'] ?? '');
 
 $errors = [];
-$success = '';
+$success = $_SESSION['profile_emergency_success'] ?? '';
+unset($_SESSION['profile_emergency_success']);
 
 $emergencyName = '';
 $emergencyPhone = '';
@@ -62,7 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ], $token);
 
         if (is_array($userUpdate) && !isset($userUpdate['error']) && is_array($settingsUpdate) && !isset($settingsUpdate['error'])) {
-            $success = 'Contact d urgence mis a jour avec succes.';
+            $_SESSION['profile_emergency_success'] = 'Contact d urgence mis a jour avec succes.';
+            header('Location: profil-contact-urgence.php');
+            exit;
         } else {
             $errors[] = $userUpdate['error'] ?? $settingsUpdate['error'] ?? 'Impossible d enregistrer le contact d urgence.';
         }

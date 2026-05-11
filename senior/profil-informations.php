@@ -10,7 +10,8 @@ $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $token = (string)($_SESSION['user']['token'] ?? '');
 
 $errors = [];
-$success = '';
+$success = $_SESSION['profile_info_success'] ?? '';
+unset($_SESSION['profile_info_success']);
 
 $form = [
     'first_name' => '',
@@ -69,7 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user']['email'] = $form['email'];
             }
 
-            $success = 'Informations mises a jour avec succes.';
+            $_SESSION['profile_info_success'] = 'Informations mises a jour avec succes.';
+            header('Location: profil-informations.php');
+            exit;
         } else {
             $errors[] = $response['error'] ?? 'Impossible d enregistrer vos informations.';
         }

@@ -3,8 +3,9 @@
 include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['user_message'] ?? '';
+$messageType = $_SESSION['user_message_type'] ?? '';
+unset($_SESSION['user_message'], $_SESSION['user_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 $utilisateurs = [];
 
@@ -23,13 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'city' => $_POST['city'] ?? '',
             'active' => (bool)(int)$_POST['active'] ?? 1
         ];
-        var_dump(json_encode($data));
         
         $response = callAPI('http://localhost:8080/api/users', 'POST', $data, $token);
-        var_dump($response);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Utilisateur ajouté";
-            $messageType = "success";
+            $_SESSION['user_message'] = "Utilisateur ajouté";
+            $_SESSION['user_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de l'ajout.";
             $messageType = "danger";
@@ -47,16 +48,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Utilisateur modifié.";
-            $messageType = "success";
+            $_SESSION['user_message'] = "Utilisateur modifié.";
+            $_SESSION['user_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la modification.";
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
         $response = callAPI("http://localhost:8080/api/users/{$_POST['id']}", 'DELETE', null, $token);
-        $message = "Utilisateur supprimé.";
-        $messageType = "success";
+        $_SESSION['user_message'] = "Utilisateur supprimé.";
+        $_SESSION['user_message_type'] = "success";
+        header("Location: {$_SERVER['PHP_SELF']}");
+        exit;
     }
 }
 

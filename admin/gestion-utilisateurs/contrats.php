@@ -2,8 +2,9 @@
 include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['contract_message'] ?? '';
+$messageType = $_SESSION['contract_message_type'] ?? '';
+unset($_SESSION['contract_message'], $_SESSION['contract_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 $contrats = [];
 $users = [];
@@ -23,8 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI('http://localhost:8080/api/contracts', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Contrat créé avec succès.";
-            $messageType = "success";
+            $_SESSION['contract_message'] = "Contrat créé avec succès.";
+            $_SESSION['contract_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = $response['error'] ?? "Erreur lors de la création du contrat.";
             $messageType = "danger";
@@ -41,16 +44,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI("http://localhost:8080/api/contracts/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Contrat modifié avec succès.";
-            $messageType = "success";
+            $_SESSION['contract_message'] = "Contrat modifié avec succès.";
+            $_SESSION['contract_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la modification du contrat.";
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
         $response = callAPI("http://localhost:8080/api/contracts/{$_POST['id']}", 'DELETE', null, $token);
-        $message = "Contrat supprimé.";
-        $messageType = "success";
+        $_SESSION['contract_message'] = "Contrat supprimé.";
+        $_SESSION['contract_message_type'] = "success";
+        header("Location: {$_SERVER['PHP_SELF']}");
+        exit;
     }
 }
 

@@ -8,8 +8,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 $token = (string)($_SESSION['user']['token'] ?? '');
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
-$message = '';
-$messageType = '';
+$message = $_SESSION['event_message'] ?? '';
+$messageType = $_SESSION['event_message_type'] ?? '';
+unset($_SESSION['event_message'], $_SESSION['event_message_type']);
 $availableEvents = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'register' && $token !== '' && $userId !== '') {
@@ -28,8 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
         header('Location: ' . $response['checkout_url']);
         exit;
     } else {
-        $message     = 'Inscription enregistrée avec succès.';
-        $messageType = 'success';
+        $_SESSION['event_message'] = 'Inscription enregistrée avec succès.';
+        $_SESSION['event_message_type'] = 'success';
+        header('Location: evenements-liste.php');
+        exit;
     }
 }
 

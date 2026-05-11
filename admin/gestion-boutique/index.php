@@ -2,8 +2,9 @@
 include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['product_message'] ?? '';
+$messageType = $_SESSION['product_message_type'] ?? '';
+unset($_SESSION['product_message'], $_SESSION['product_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 $produits = [];
 
@@ -21,8 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI('http://localhost:8080/api/products', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Produit ajouté avec succès.";
-            $messageType = "success";
+            $_SESSION['product_message'] = "Produit ajouté avec succès.";
+            $_SESSION['product_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de l'ajout.";
             $messageType = "danger";
@@ -36,16 +39,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI("http://localhost:8080/api/products/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Produit modifié avec succès.";
-            $messageType = "success";
+            $_SESSION['product_message'] = "Produit modifié avec succès.";
+            $_SESSION['product_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la modification.";
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
         $response = callAPI("http://localhost:8080/api/products/{$_POST['id']}", 'DELETE', null, $token);
-        $message = "Produit supprimé.";
-        $messageType = "success";
+        $_SESSION['product_message'] = "Produit supprimé.";
+        $_SESSION['product_message_type'] = "success";
+        header("Location: {$_SERVER['PHP_SELF']}");
+        exit;
     }
 }
 

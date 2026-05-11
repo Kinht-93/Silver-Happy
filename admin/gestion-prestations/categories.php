@@ -2,8 +2,9 @@
 include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['category_message'] ?? '';
+$messageType = $_SESSION['category_message_type'] ?? '';
+unset($_SESSION['category_message'], $_SESSION['category_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 $categories = [];
 
@@ -19,8 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI('http://localhost:8080/api/service-categories', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Catégorie ajoutée avec succès.";
-            $messageType = "success";
+            $_SESSION['category_message'] = "Catégorie ajoutée avec succès.";
+            $_SESSION['category_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de l'ajout de la catégorie.";
             $messageType = "danger";
@@ -33,16 +36,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $response = callAPI("http://localhost:8080/api/service-categories/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Catégorie modifiée avec succès.";
-            $messageType = "success";
+            $_SESSION['category_message'] = "Catégorie modifiée avec succès.";
+            $_SESSION['category_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la modification.";
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
         $response = callAPI("http://localhost:8080/api/service-categories/{$_POST['id']}", 'DELETE', null, $token);
-        $message = "Catégorie supprimée.";
-        $messageType = "success";
+        $_SESSION['category_message'] = "Catégorie supprimée.";
+        $_SESSION['category_message_type'] = "success";
+        header("Location: {$_SERVER['PHP_SELF']}");
+        exit;
     }
 }
 

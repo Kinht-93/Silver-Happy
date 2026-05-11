@@ -2,8 +2,9 @@
 include_once __DIR__ . '/_auth.php';
 include 'include/header-prestataire.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['provider_availability_message'] ?? '';
+$messageType = $_SESSION['provider_availability_message_type'] ?? '';
+unset($_SESSION['provider_availability_message'], $_SESSION['provider_availability_message_type']);
 $providerCategories = [];
 
 if ($pdo instanceof PDO && $providerData) {
@@ -85,16 +86,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
             }
 
             $insertedCount = (int)($response['inserted_count'] ?? 1);
-            $message = 'Disponibilite ajoutee (' . $insertedCount . ' creneau(x)).';
-            $messageType = 'success';
+            $_SESSION['provider_availability_message'] = 'Disponibilite ajoutee (' . $insertedCount . ' creneau(x)).';
+            $_SESSION['provider_availability_message_type'] = 'success';
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } elseif ($action === 'delete') {
             $availabilityId = (int)($_POST['id_availability'] ?? 0);
             $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities/' . urlencode((string)$availabilityId), 'DELETE', null, $token);
             if (is_array($response) && isset($response['error'])) {
                 throw new RuntimeException((string)$response['error']);
             }
-            $message = 'Disponibilite supprimee.';
-            $messageType = 'success';
+            $_SESSION['provider_availability_message'] = 'Disponibilite supprimee.';
+            $_SESSION['provider_availability_message_type'] = 'success';
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         }
     } catch (Exception $e) {
         $message = 'Erreur: ' . $e->getMessage();

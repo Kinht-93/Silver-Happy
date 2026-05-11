@@ -18,7 +18,6 @@ type Order struct {
 	Items          *string `json:"items"`
 }
 
-// OrderStats structure
 type OrderStats struct {
 	TotalCommandes int `json:"total_commandes"`
 	EnAttente      int `json:"en_attente"`

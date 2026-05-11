@@ -10,8 +10,9 @@ $seniorCurrent = 'abonnements';
 
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $token = (string)($_SESSION['user']['token'] ?? '');
-$message = '';
-$messageType = '';
+$message = $_SESSION['subscription_message'] ?? '';
+$messageType = $_SESSION['subscription_message_type'] ?? '';
+unset($_SESSION['subscription_message'], $_SESSION['subscription_message_type']);
 $plans = [];
 $activeSubscription = null;
 
@@ -142,9 +143,10 @@ if ($userId === '' || $token === '') {
                 $message = 'Erreur lors de la suppression : ' . $deleteResp['error'];
                 $messageType = 'danger';
             } else {
-                $message = "Votre abonnement a été supprimé.";
-                $messageType = "success";
-                $activeSubscription = null;
+                $_SESSION['subscription_message'] = "Votre abonnement a été supprimé.";
+                $_SESSION['subscription_message_type'] = "success";
+                header('Location: abonnements.php');
+                exit;
             }
         }
     }
