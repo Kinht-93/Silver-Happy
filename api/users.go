@@ -27,7 +27,7 @@ var allowedSeniorFontSizes = map[string]bool{
 func handleGetUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT id_user, email, role, last_name, first_name, phone, address, 
-		city, postal_code, birth_date, company_name, validation_status,
+		city, postal_code, birth_date, company_name, skills_text, validation_status,
 		active, verified_email, tutorial_seen, created_at 
 		FROM users
 	`)
@@ -42,7 +42,7 @@ func handleGetUsers(w http.ResponseWriter, r *http.Request) {
 		var u User
 		err := rows.Scan(&u.ID, &u.Email, &u.Role, &u.LastName, &u.FirstName,
 			&u.Phone, &u.Address, &u.City, &u.PostalCode, &u.BirthDate,
-			&u.CompanyName, &u.ValidationStatus,
+			&u.CompanyName, &u.SkillsText, &u.ValidationStatus,
 			&u.Active, &u.VerifiedEmail, &u.TutorialSeen, &u.CreatedAt)
 		if err != nil {
 			continue

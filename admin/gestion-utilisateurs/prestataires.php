@@ -58,12 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "danger";
         }
     } elseif ($action === 'update') {
+        $skillsText = isset($_POST['skills_text']) ? trim((string)$_POST['skills_text']) : '';
         $data = [
             'first_name' => $_POST['first_name'],
             'last_name' => $_POST['last_name'],
             'email' => $_POST['email'],
             'phone' => $_POST['phone'] ?? null,
-            'company_name' => $_POST['company_name'] ?? null
+            'company_name' => $_POST['company_name'] ?? null,
+            'skills_text' => $skillsText !== '' ? $skillsText : null,
         ];
         
         $response = callAPI("http://silverhappy_api:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
@@ -311,6 +313,10 @@ if (!empty($token)) {
                         <input type="text" class="form-control" id="editProviderCompany" name="company_name">
                     </div>
                     <div class="mb-3">
+                        <label for="editProviderSkills" class="form-label">Domaine d'expertise</label>
+                        <input type="text" class="form-control" id="editProviderSkills" name="skills_text" placeholder="Ex: aide a domicile, menage, accompagnement...">
+                    </div>
+                    <div class="mb-3">
                         <label for="editProviderSiret" class="form-label">SIRET</label>
                         <input type="text" class="form-control" id="editProviderSiret" name="siret_number" readonly>
                     </div>
@@ -372,6 +378,7 @@ function editProvider(btn) {
     document.getElementById('editProviderEmail').value = user.email;
     document.getElementById('editProviderPhone').value = user.phone || '';
     document.getElementById('editProviderCompany').value = user.company_name || '';
+    document.getElementById('editProviderSkills').value = user.skills_text || '';
     document.getElementById('editProviderSiret').value = user.siret_number || '';
     openModal('modalEditProvider');
 }
