@@ -153,7 +153,7 @@ include './include/header.php';
                 <div class="senier-legend-item mb-0"><span class="senier-dot" style="background:#0ea5e9;"></span> RV médical</div>
             </div>
             <a href="evenements-liste.php" class="btn btn-success btn-sm w-100 mb-2">S'inscrire a un evenement</a>
-            <a href="prestation.php" class="btn btn-outline-success btn-sm w-100">Demander une prestation</a>
+            <a href="prestations.php" class="btn btn-outline-success btn-sm w-100">Demander une prestation</a>
         </aside>
 
         <div class="senier-panel">
