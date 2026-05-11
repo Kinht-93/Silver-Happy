@@ -144,7 +144,7 @@ include './include/header.php';
         <div class="senier-breadcrumb">Accueil/Messagerie</div>
     </div>
 
-    <div class="senier-message-layout">
+    <div class="senier-message-layout" style="grid-template-columns: 1fr 2.5fr;">
         <div class="senier-conversations">
             <div class="senier-search">
                 <input type="text" class="form-control form-control-sm" placeholder="Conversations" disabled>
