@@ -85,7 +85,6 @@ if (!empty($token)) {
             <a href="./index.php" class="btn btn-sm btn-outline-primary">Tous</a>
             <a href="./seniors.php" class="btn btn-sm btn-primary active">Seniors</a>
             <a href="./prestataires.php" class="btn btn-sm btn-outline-primary">Prestataires</a>
-            <a href="./employes.php" class="btn btn-sm btn-outline-primary">Employés</a>
             <a href="./administrateurs.php" class="btn btn-sm btn-outline-primary">Administrateurs</a>
         </div>
     </div>
