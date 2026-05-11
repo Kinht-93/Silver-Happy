@@ -3,8 +3,6 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-include './include/header.php';
-
 require_once __DIR__ . '/../include/callapi.php';
 $seniorCurrent = 'abonnements';
 
@@ -155,6 +153,8 @@ if ($userId === '' || $token === '') {
 }
 
 ?>
+
+<?php include './include/header.php'; ?>
 
 <section class="senier-page">
     <div class="senier-head d-flex flex-wrap align-items-end gap-2">
