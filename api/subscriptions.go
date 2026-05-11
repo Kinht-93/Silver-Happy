@@ -24,7 +24,31 @@ func handleGetSubscriptionTypes(w http.ResponseWriter, r *http.Request) {
 		ORDER BY monthly_price ASC, name ASC
 	`, userType)
 	if err != nil {
-		jsonError(w, "Erreur lors de la récupération des formules", http.StatusInternalServerError)
+		rows, err = db.Query(`
+			SELECT id_subscription_type, name, user_type, monthly_price, yearly_price
+			FROM subscription_types
+			WHERE LOWER(user_type) = LOWER(?)
+			ORDER BY monthly_price ASC, name ASC
+		`, userType)
+		if err != nil {
+			jsonError(w, "Erreur lors de la récupération des formules", http.StatusInternalServerError)
+			return
+		}
+
+		defer rows.Close()
+
+		var types []SubscriptionType
+		for rows.Next() {
+			var t SubscriptionType
+			err := rows.Scan(&t.ID, &t.Name, &t.UserType, &t.MonthlyPrice, &t.YearlyPrice)
+			if err != nil {
+				continue
+			}
+			types = append(types, t)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(types)
 		return
 	}
 	defer rows.Close()
