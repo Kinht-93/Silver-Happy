@@ -93,10 +93,10 @@ if (!empty($token)) {
 <div class="row mb-4">
     <div class="col">
         <div class="btn-group" role="group">
-            <button type="button" class="btn btn-sm btn-primary active" data-filter="all">Tous</button>
-            <button type="button" class="btn btn-sm btn-outline-primary" data-filter="senior">Seniors</button>
-            <button type="button" class="btn btn-sm btn-outline-primary" data-filter="prestataire">Prestataires</button>
-            <button type="button" class="btn btn-sm btn-outline-primary" data-filter="admin">Administrateurs</button>
+            <a href="./index.php" class="btn btn-sm btn-primary active">Tous</a>
+            <a href="./seniors.php" class="btn btn-sm btn-outline-primary">Seniors</a>
+            <a href="./prestataires.php" class="btn btn-sm btn-outline-primary">Prestataires</a>
+            <a href="./administrateurs.php" class="btn btn-sm btn-outline-primary">Administrateurs</a>
         </div>
     </div>
     <div class="col text-end">
@@ -302,32 +302,6 @@ function loadUserData(btn) {
     openModal('modalEditUser');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const filterButtons = document.querySelectorAll('[data-filter]');
-    const tableRows = document.querySelectorAll('#usersTable tbody tr[data-role]');
-    
-    filterButtons.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            filterButtons.forEach(b => {
-                b.classList.remove('btn-primary', 'active');
-                b.classList.add('btn-outline-primary');
-            });
-            this.classList.add('btn-primary', 'active');
-            this.classList.remove('btn-outline-primary');
-            
-            const filter = this.getAttribute('data-filter');
-            tableRows.forEach(row => {
-                if (filter === 'all') {
-                    row.style.display = '';
-                } else {
-                    row.style.display = row.getAttribute('data-role') === filter ? '' : 'none';
-                }
-            });
-        });
-    });
-});
 </script>
 
 <?php
