@@ -224,7 +224,7 @@ include './include/header.php';
                     <p class="mb-0">Ou commencez en contactant un prestataire.</p>
                 </div>
             <?php else: ?>
-                <div class="border rounded p-3 mb-3" style="height:400px; overflow:auto; background:#fff;">
+                <div class="border rounded p-3 mb-3" style="height:560px; overflow:auto; background:#fff;">
                     <?php if (empty($currentMessages)): ?>
                         <p class="text-muted mb-0">Aucun message pour le moment.</p>
                     <?php else: ?>
