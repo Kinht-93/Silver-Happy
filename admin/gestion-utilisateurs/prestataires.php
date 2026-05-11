@@ -145,18 +145,30 @@ if (!empty($token)) {
                     <tr><td colspan="7" class="text-center">Aucun prestataire trouvé.</td></tr>
                 <?php else: ?>
                     <?php foreach ($prestataires as $prestataire): ?>
+                        <?php
+                        $fullName = trim((string)($prestataire['first_name'] ?? '') . ' ' . (string)($prestataire['last_name'] ?? ''));
+                        $email = (string)($prestataire['email'] ?? '');
+                        $companyName = (string)($prestataire['company_name'] ?? '');
+                        $prestationsCount = (int)($prestataire['prestations_count'] ?? 0);
+                        $validationStatus = (string)($prestataire['validation_status'] ?? 'En attente');
+                        $isValidated = in_array($validationStatus, ['Validé', 'Valide'], true);
+                        $isRejected = in_array($validationStatus, ['Rejeté', 'Rejete'], true);
+                        $idUser = (string)($prestataire['id_user'] ?? '');
+                        ?>
                         <tr>
-                            <td><?= htmlspecialchars($prestataire['first_name'] . ' ' . $prestataire['last_name']) ?></td>
-                            <td><?= htmlspecialchars($prestataire['email']) ?></td>
-                            <td><?= htmlspecialchars($prestataire['company_name']) ?></td>
-                            <td><?= (int)$prestataire['prestations_count'] ?></td>
+                            <td><?= htmlspecialchars($fullName) ?></td>
+                            <td><?= htmlspecialchars($email) ?></td>
+                            <td><?= htmlspecialchars($companyName) ?></td>
+                            <td><?= $prestationsCount ?></td>
                             <td>
-                                <?php if ($prestataire['validation_status'] == 'Validé'): ?>
+                                <?php if ($isValidated): ?>
                                     <span class="badge bg-success">Validé</span>
-                                <?php elseif ($prestataire['validation_status'] == 'En attente'): ?>
+                                <?php elseif ($validationStatus === 'En attente'): ?>
                                     <span class="badge bg-warning">En attente</span>
+                                <?php elseif ($isRejected): ?>
+                                    <span class="badge bg-danger">Rejeté</span>
                                 <?php else: ?>
-                                    <span class="badge bg-secondary"><?= htmlspecialchars($prestataire['validation_status']) ?></span>
+                                    <span class="badge bg-secondary"><?= htmlspecialchars($validationStatus) ?></span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -169,23 +181,23 @@ if (!empty($token)) {
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-primary" data-user="<?= htmlspecialchars(json_encode($prestataire)) ?>" onclick="viewProvider(this)"><i class="bi bi-eye"></i></button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-user="<?= htmlspecialchars(json_encode($prestataire)) ?>" onclick="editProvider(this)"><i class="bi bi-pencil"></i></button>
-                                <?php if (($prestataire['validation_status'] ?? '') !== 'Valide'): ?>
+                                <?php if (!$isValidated): ?>
                                 <form method="POST" class="d-inline">
                                     <input type="hidden" name="action" value="validate">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars($prestataire['id_user']) ?>">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($idUser) ?>">
                                     <button type="submit" class="btn btn-sm btn-success" title="Valider ce prestataire"><i class="bi bi-check-lg"></i></button>
                                 </form>
                                 <?php endif; ?>
-                                <?php if (($prestataire['validation_status'] ?? '') !== 'Rejete'): ?>
+                                <?php if (!$isRejected): ?>
                                 <form method="POST" class="d-inline">
                                     <input type="hidden" name="action" value="reject">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars($prestataire['id_user']) ?>">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($idUser) ?>">
                                     <button type="submit" class="btn btn-sm btn-warning" title="Rejeter ce prestataire" onclick="return confirm('Rejeter ce prestataire ?')"><i class="bi bi-x-lg"></i></button>
                                 </form>
                                 <?php endif; ?>
                                 <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce prestataire ?');">
                                     <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars($prestataire['id_user']) ?>">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($idUser) ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                                 </form>
                             </td>
