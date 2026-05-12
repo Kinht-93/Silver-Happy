@@ -40,7 +40,7 @@ if ($userId === '') {
     </div>
 <?php endif; ?>
 
-<div class="row">
+<div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="card mb-4">
             <div class="card-body">

@@ -149,9 +149,7 @@ include './include/header-admin.php';
                 <tr>
                     <th>Type</th>
                     <th>Message</th>
-                    <th>Date programmée</th>
-                    <th>Limite</th>
-                    <th>Destinataires</th>
+                    <th>Date d'envoie</th>
                     <th>Statut</th>
                     <th>Actions</th>
                 </tr>
