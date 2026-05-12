@@ -82,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
                     'available_date' => $cursor,
                     'start_time' => $start,
                     'end_time' => $end,
+                    'id_service_category' => $categoryId,
                 ], $token);
 
                 if (is_array($response) && !isset($response['error'])) {
