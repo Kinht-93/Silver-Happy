@@ -36,8 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ], $token);
 
         if (is_array($response) && !isset($response['error'])) {
-            header('Location: messagerie.php?with=' . urlencode($selectedPeerId) . '&sent=1');
-            exit;
+            $success = 'Message envoye.';
+            $newContent = '';
         } else {
             $errors[] = 'Impossible d envoyer le message pour le moment.';
         }
