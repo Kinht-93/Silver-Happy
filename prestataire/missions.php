@@ -28,6 +28,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
             } else {
                 throw new RuntimeException((string)($response['error'] ?? 'Mission indisponible ou deja acceptee.'));
             }
+        } elseif ($action === 'accept_request') {
+            $requestId = trim((string)($_POST['id_request'] ?? ''));
+            if ($requestId === '') {
+                throw new RuntimeException('Demande invalide.');
+            }
+            if (!$pdo instanceof PDO) {
+                throw new RuntimeException('Base de donnees indisponible.');
+            }
+
+            $requestStmt = $pdo->prepare(
+                "SELECT sr.id_request, sr.desired_date, sr.start_time, sr.estimated_duration,
+                        sr.intervention_address, sr.id_user, sr.id_service_category,
+                        COALESCE(sc.name, '') AS category_name,
+                        COALESCE(u.first_name, '') AS first_name,
+                        COALESCE(u.last_name, '') AS last_name
+                 FROM service_requests sr
+                 LEFT JOIN service_categories sc ON sc.id_service_category = sr.id_service_category
+                 LEFT JOIN users u ON u.id_user = sr.id_user
+                 WHERE sr.id_request = ?
+                   AND sr.status = 'En attente'
+                   AND EXISTS (
+                        SELECT 1
+                        FROM provider_service_categories psc
+                        WHERE psc.id_user = ?
+                          AND psc.id_service_category = sr.id_service_category
+                   )
+                 LIMIT 1"
+            );
+            $requestStmt->execute([$requestId, (string)$providerData['id_user']]);
+            $requestRow = $requestStmt->fetch();
+            if (!$requestRow) {
+                throw new RuntimeException('Cette demande n est plus disponible ou ne correspond pas a vos categories.');
+            }
+
+            $updateStmt = $pdo->prepare("UPDATE service_requests SET status = 'Acceptee' WHERE id_request = ? AND status = 'En attente'");
+            $updateStmt->execute([$requestId]);
+            if ($updateStmt->rowCount() !== 1) {
+                throw new RuntimeException('Cette demande vient d etre prise en charge.');
+            }
+
+            $seniorName = trim((string)($requestRow['first_name'] ?? '') . ' ' . (string)($requestRow['last_name'] ?? ''));
+            if ($seniorName === '') {
+                $seniorName = (string)($requestRow['id_user'] ?? 'N/A');
+            }
+
+            $categoryName = trim((string)($requestRow['category_name'] ?? ''));
+            if ($categoryName === '') {
+                $categoryName = 'Service';
+            }
+
+            $missionDescription = 'Senior: ' . $seniorName
+                . ' | Service: ' . $categoryName
+                . ' | Heure: ' . substr((string)($requestRow['start_time'] ?? ''), 0, 5)
+                . ' | Duree: ' . (int)($requestRow['estimated_duration'] ?? 0) . 'h'
+                . ' | Adresse: ' . (string)($requestRow['intervention_address'] ?? '');
+
+            $insertStmt = $pdo->prepare(
+                "INSERT INTO provider_missions (id_mission, mission_title, mission_description, mission_date, status, id_user, accepted_at, created_at)
+                 VALUES (CONCAT('mis_', UUID()), ?, ?, ?, 'Acceptee', ?, NOW(), NOW())"
+            );
+            $insertStmt->execute([
+                'Demande senior - ' . $categoryName,
+                $missionDescription,
+                (string)($requestRow['desired_date'] ?? null),
+                (string)$providerData['id_user'],
+            ]);
+
+            $_SESSION['provider_mission_message'] = 'Demande senior acceptee.';
+            $_SESSION['provider_mission_message_type'] = 'success';
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         }
     } catch (Exception $e) {
         $message = 'Erreur: ' . $e->getMessage();
@@ -132,8 +203,8 @@ $basePath = '../';
                         <p class="text-muted text-center my-3">Aucune demande senior en attente pour vos categories.</p>
                     <?php else: ?>
                         <div class="table-responsive mb-4">
-                            <table class="table align-middle">
-                                <thead><tr><th>Senior</th><th>Categorie</th><th>Date</th><th>Heure</th><th>Duree</th><th>Adresse</th></tr></thead>
+                            <table class="table table-sm align-middle mb-0">
+                                <thead><tr><th>Senior</th><th>Categorie</th><th>Date</th><th>Heure</th><th>Duree</th><th>Adresse</th><th>Action</th></tr></thead>
                                 <tbody>
                                 <?php foreach ($seniorRequests as $sr): ?>
                                 <tr>
@@ -143,6 +214,13 @@ $basePath = '../';
                                     <td><?= htmlspecialchars(substr((string)($sr['start_time'] ?? ''), 0, 5)) ?></td>
                                     <td><?= (int)($sr['estimated_duration'] ?? 0) ?> h</td>
                                     <td><?= htmlspecialchars((string)($sr['intervention_address'] ?? '—')) ?></td>
+                                    <td>
+                                        <form method="POST" class="d-inline" onsubmit="return confirm('Accepter cette demande ?');">
+                                            <input type="hidden" name="action" value="accept_request">
+                                            <input type="hidden" name="id_request" value="<?= htmlspecialchars((string)($sr['id_request'] ?? '')) ?>">
+                                            <button class="btn btn-sm btn-success py-0 px-2" <?= !$isProviderValidated ? 'disabled' : '' ?>>Accepter</button>
+                                        </form>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                                 </tbody>
@@ -154,7 +232,7 @@ $basePath = '../';
                     <?php if (empty($aAccepter)): ?>
                         <p class="text-muted text-center my-3">Aucune mission proposée pour le moment.</p>
                     <?php else: ?>
-                        <table class="table align-middle">
+                        <table class="table table-sm align-middle mb-0">
                             <thead><tr><th>Titre</th><th>Date</th><th>Statut</th><th>Action</th></tr></thead>
                             <tbody>
                             <?php foreach ($aAccepter as $m): ?>
@@ -170,7 +248,7 @@ $basePath = '../';
                                     <form method="POST" class="d-inline">
                                         <input type="hidden" name="action" value="accept">
                                         <input type="hidden" name="id_mission" value="<?= htmlspecialchars($m['id_mission']) ?>">
-                                        <button class="btn btn-sm btn-success" <?= !$isProviderValidated ? 'disabled' : '' ?>>Accepter</button>
+                                        <button class="btn btn-sm btn-success py-0 px-2" <?= !$isProviderValidated ? 'disabled' : '' ?>>Accepter</button>
                                     </form>
                                 </td>
                             </tr>
