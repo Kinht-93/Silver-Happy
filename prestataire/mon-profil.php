@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
         $description = trim((string)($_POST['description'] ?? ''));
         $skills = trim((string)($_POST['skills_text'] ?? ''));
 
-        $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']), 'PATCH', [
+        $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']), 'PATCH', [
             'first_name' => $firstName,
             'last_name' => $lastName,
             'phone' => $phone !== '' ? $phone : null,

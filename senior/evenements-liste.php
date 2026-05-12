@@ -16,7 +16,7 @@ $availableEvents = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'register' && $token !== '' && $userId !== '') {
     $idEvent  = $_POST['id_event'] ?? '';
     $response = callAPI(
-        'http://localhost:8080/api/events/' . urlencode($idEvent) . '/checkout',
+        'http://silverhappy_api:8080/api/events/' . urlencode($idEvent) . '/checkout',
         'POST',
         ['id_user' => $userId],
         $token
@@ -37,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
 }
 
 if ($token !== '' && $userId !== '') {
-    $events = callAPI('http://localhost:8080/api/events', 'GET', null, $token);
-    $registrations = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
+    $events = callAPI('http://silverhappy_api:8080/api/events', 'GET', null, $token);
+    $registrations = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
 
     $registeredEventIds = [];
     if (is_array($registrations) && !isset($registrations['error'])) {

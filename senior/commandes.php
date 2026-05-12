@@ -17,7 +17,7 @@ unset($_SESSION['commandes_message'], $_SESSION['commandes_message_type']);
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'refund_order') {
     $refundOrderId = (string)($_POST['order_id'] ?? '');
     if ($refundOrderId !== '' && $token !== '' && $userId !== '') {
-        $refundResponse = callAPI('http://localhost:8080/api/orders/' . urlencode($refundOrderId) . '/refund', 'POST', null, $token);
+        $refundResponse = callAPI('http://silverhappy_api:8080/api/orders/' . urlencode($refundOrderId) . '/refund', 'POST', null, $token);
         if (is_array($refundResponse) && !isset($refundResponse['error'])) {
             $_SESSION['commandes_message'] = 'Commande annulée et remboursée avec succès.';
             $_SESSION['commandes_message_type'] = 'success';
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'refun
 }
 
 if ($token !== '' && $userId !== '') {
-    $response = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/orders', 'GET', null, $token);
+    $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/orders', 'GET', null, $token);
     
     if (is_array($response) && !isset($response['error'])) {
         $orders = $response;

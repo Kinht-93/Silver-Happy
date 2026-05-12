@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'stock' => (int)($_POST['stock'] ?? 0)
         ];
         
-        $response = callAPI('http://localhost:8080/api/products', 'POST', $data, $token);
+        $response = callAPI('http://silverhappy_api:8080/api/products', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $_SESSION['product_message'] = "Produit ajouté avec succès.";
             $_SESSION['product_message_type'] = "success";
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'stock' => (int)($_POST['stock'] ?? 0)
         ];
         
-        $response = callAPI("http://localhost:8080/api/products/{$_POST['id']}", 'PATCH', $data, $token);
+        $response = callAPI("http://silverhappy_api:8080/api/products/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $_SESSION['product_message'] = "Produit modifié avec succès.";
             $_SESSION['product_message_type'] = "success";
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
-        $response = callAPI("http://localhost:8080/api/products/{$_POST['id']}", 'DELETE', null, $token);
+        $response = callAPI("http://silverhappy_api:8080/api/products/{$_POST['id']}", 'DELETE', null, $token);
         $_SESSION['product_message'] = "Produit supprimé.";
         $_SESSION['product_message_type'] = "success";
         header("Location: {$_SERVER['PHP_SELF']}");
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $response = callAPI('http://localhost:8080/api/products', 'GET', null, $token);
+    $response = callAPI('http://silverhappy_api:8080/api/products', 'GET', null, $token);
     
     if (isset($response['error'])) {
         $message = "Erreur API: " . $response['error'];

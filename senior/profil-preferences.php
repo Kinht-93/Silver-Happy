@@ -18,7 +18,7 @@ $fontSize = 'Normale';
 $emailNotifications = true;
 
 if ($token !== '' && $userId !== '') {
-    $settingsResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/senior-settings', 'GET', null, $token);
+    $settingsResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/senior-settings', 'GET', null, $token);
     if (is_array($settingsResponse) && !isset($settingsResponse['error'])) {
         $language = in_array((string)($settingsResponse['language'] ?? 'fr'), ['fr', 'en', 'es', 'de', 'it'], true) ? (string)$settingsResponse['language'] : 'fr';
         $fontSize = in_array((string)($settingsResponse['font_size'] ?? 'Normale'), ['Normale', 'Grande', 'Tres grande'], true) ? (string)$settingsResponse['font_size'] : 'Normale';
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $response = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/senior-settings', 'PATCH', [
+        $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/senior-settings', 'PATCH', [
             'language' => $language,
             'font_size' => $fontSize,
             'email_notifications' => $emailNotifications,

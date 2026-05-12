@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'created_by' => $user_id
         ];
         
-        $response = callAPI('http://localhost:8080/api/medical-appointments', 'POST', $data, $token);
+        $response = callAPI('http://silverhappy_api:8080/api/medical-appointments', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $_SESSION['appointment_message'] = "RDV médical créé avec succès.";
             $_SESSION['appointment_message_type'] = "success";
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'status' => $_POST['status']
         ];
         
-        $response = callAPI("http://localhost:8080/api/medical-appointments/{$_POST['id']}", 'PATCH', $data, $token);
+        $response = callAPI("http://silverhappy_api:8080/api/medical-appointments/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $_SESSION['appointment_message'] = "RDV médical modifié.";
             $_SESSION['appointment_message_type'] = "success";
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
-        $response = callAPI("http://localhost:8080/api/medical-appointments/{$_POST['id']}", 'DELETE', null, $token);
+        $response = callAPI("http://silverhappy_api:8080/api/medical-appointments/{$_POST['id']}", 'DELETE', null, $token);
         $_SESSION['appointment_message'] = "RDV médical supprimé.";
         $_SESSION['appointment_message_type'] = "success";
         header("Location: {$_SERVER['PHP_SELF']}");
@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $response = callAPI('http://localhost:8080/api/medical-appointments', 'GET', null, $token);
+    $response = callAPI('http://silverhappy_api:8080/api/medical-appointments', 'GET', null, $token);
     
     if (isset($response['error'])) {
         $message = "Erreur API: " . $response['error'];
@@ -70,7 +70,7 @@ if (!empty($token)) {
         $appointments = $response;
     }
 
-    $usersResponse = callAPI('http://localhost:8080/api/users-for-appointments', 'GET', null, $token);
+    $usersResponse = callAPI('http://silverhappy_api:8080/api/users-for-appointments', 'GET', null, $token);
     if (is_array($usersResponse) && !isset($usersResponse['error'])) {
         $users = $usersResponse;
     }

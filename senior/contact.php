@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $admins = callAPI('http://localhost:8080/api/users-summary?roles=admin', 'GET', null, $token);
+        $admins = callAPI('http://silverhappy_api:8080/api/users-summary?roles=admin', 'GET', null, $token);
         $adminId = '';
         if (is_array($admins) && !isset($admins['error']) && !empty($admins)) {
             $adminId = (string)($admins[0]['id_user'] ?? '');
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 . "\nEmail: " . $contactEmail
                 . "\n\n" . $contactMessage;
 
-            $response = callAPI('http://localhost:8080/api/messages', 'POST', [
+            $response = callAPI('http://silverhappy_api:8080/api/messages', 'POST', [
                 'content' => mb_substr($payload, 0, 5000),
                 'receiver' => $adminId,
                 'sender' => $userId,

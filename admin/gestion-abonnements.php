@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if (!empty($token)) {
         if ($action === 'create') {
-            $response = callAPI('http://localhost:8080/api/subscription-types-admin', 'POST', [
+            $response = callAPI('http://silverhappy_api:8080/api/subscription-types-admin', 'POST', [
                 'name' => $_POST['name'] ?? '',
                 'user_type' => $_POST['user_type'] ?? '',
                 'monthly_price' => isset($_POST['monthly_price']) ? (float) $_POST['monthly_price'] : 0,
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'danger';
             }
         } elseif ($action === 'update' && !empty($_POST['id'])) {
-            $response = callAPI('http://localhost:8080/api/subscription-types-admin/' . urlencode($_POST['id']), 'PATCH', [
+            $response = callAPI('http://silverhappy_api:8080/api/subscription-types-admin/' . urlencode($_POST['id']), 'PATCH', [
                 'name' => $_POST['name'] ?? '',
                 'user_type' => $_POST['user_type'] ?? '',
                 'monthly_price' => isset($_POST['monthly_price']) ? (float) $_POST['monthly_price'] : 0,
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'danger';
             }
         } elseif ($action === 'delete' && !empty($_POST['id'])) {
-            $response = callAPI('http://localhost:8080/api/subscription-types-admin/' . urlencode($_POST['id']), 'DELETE', null, $token);
+            $response = callAPI('http://silverhappy_api:8080/api/subscription-types-admin/' . urlencode($_POST['id']), 'DELETE', null, $token);
             if (!is_array($response) || !isset($response['error'])) {
                 $_SESSION['subscription_message'] = "Formule d'abonnement supprimée avec succès.";
                 $_SESSION['subscription_message_type'] = "success";
@@ -62,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $subscriptionsResponse = callAPI('http://localhost:8080/api/subscription-types-admin', 'GET', null, $token);
-    $statsResponse = callAPI('http://localhost:8080/api/subscription-types-admin/stats', 'GET', null, $token);
+    $subscriptionsResponse = callAPI('http://silverhappy_api:8080/api/subscription-types-admin', 'GET', null, $token);
+    $statsResponse = callAPI('http://silverhappy_api:8080/api/subscription-types-admin/stats', 'GET', null, $token);
 
     if (is_array($subscriptionsResponse) && !isset($subscriptionsResponse['error'])) {
         $subscriptions = $subscriptionsResponse;

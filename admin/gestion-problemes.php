@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if (!empty($token)) {
         if ($action === 'create') {
-            $response = callAPI('http://localhost:8080/api/support-tickets', 'POST', [
+            $response = callAPI('http://silverhappy_api:8080/api/support-tickets', 'POST', [
                 'title' => $_POST['title'] ?? '',
                 'description' => $_POST['description'] ?? '',
                 'category' => $_POST['category'] ?? 'Autre',
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'update' && !empty($_POST['id'])) {
             $assignedTo = !empty($_POST['assigned_to']) ? $_POST['assigned_to'] : null;
-            $response = callAPI('http://localhost:8080/api/support-tickets/' . urlencode($_POST['id']), 'PATCH', [
+            $response = callAPI('http://silverhappy_api:8080/api/support-tickets/' . urlencode($_POST['id']), 'PATCH', [
                 'title' => $_POST['title'] ?? '',
                 'description' => $_POST['description'] ?? '',
                 'priority' => $_POST['priority'] ?? 'Moyen',
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'danger';
             }
         } elseif ($action === 'resolve' && !empty($_POST['id'])) {
-            $response = callAPI('http://localhost:8080/api/support-tickets/' . urlencode($_POST['id']) . '/resolve', 'PATCH', [
+            $response = callAPI('http://silverhappy_api:8080/api/support-tickets/' . urlencode($_POST['id']) . '/resolve', 'PATCH', [
                 'resolution_notes' => $_POST['resolution_notes'] ?? '',
             ], $token);
 
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'danger';
             }
         } elseif ($action === 'delete' && !empty($_POST['id'])) {
-            $response = callAPI('http://localhost:8080/api/support-tickets/' . urlencode($_POST['id']), 'DELETE', null, $token);
+            $response = callAPI('http://silverhappy_api:8080/api/support-tickets/' . urlencode($_POST['id']), 'DELETE', null, $token);
             if (!is_array($response) || !isset($response['error'])) {
                 $_SESSION['ticket_message'] = "Ticket supprimé.";
                 $_SESSION['ticket_message_type'] = "success";
@@ -81,14 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $filterStatus = $_GET['status'] ?? 'tous';
 if (!empty($token)) {
-    $ticketsUrl = 'http://localhost:8080/api/support-tickets';
+    $ticketsUrl = 'http://silverhappy_api:8080/api/support-tickets';
     if ($filterStatus !== 'tous') {
         $ticketsUrl .= '?status=' . urlencode($filterStatus);
     }
 
     $ticketsResponse = callAPI($ticketsUrl, 'GET', null, $token);
-    $usersResponse = callAPI('http://localhost:8080/api/users-summary', 'GET', null, $token);
-    $assignResponse = callAPI('http://localhost:8080/api/users-summary?roles=admin,employe,employee', 'GET', null, $token);
+    $usersResponse = callAPI('http://silverhappy_api:8080/api/users-summary', 'GET', null, $token);
+    $assignResponse = callAPI('http://silverhappy_api:8080/api/users-summary?roles=admin,employe,employee', 'GET', null, $token);
 
     if (is_array($ticketsResponse) && !isset($ticketsResponse['error'])) {
         $tickets = $ticketsResponse;

@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
                 }
             }
 
-            $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities', 'POST', [
+            $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities', 'POST', [
                 'available_from_date' => $fromDate,
                 'available_to_date' => $toDate,
                 'start_time' => $start,
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
             exit;
         } elseif ($action === 'delete') {
             $availabilityId = (int)($_POST['id_availability'] ?? 0);
-            $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities/' . urlencode((string)$availabilityId), 'DELETE', null, $token);
+            $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities/' . urlencode((string)$availabilityId), 'DELETE', null, $token);
             if (is_array($response) && isset($response['error'])) {
                 throw new RuntimeException((string)$response['error']);
             }
@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
 
 $availabilities = [];
 if ($providerData && $token !== '') {
-    $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities', 'GET', null, $token);
+    $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities', 'GET', null, $token);
     if (is_array($response) && !isset($response['error'])) {
         $availabilities = $response;
     } else {

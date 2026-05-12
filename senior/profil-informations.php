@@ -24,7 +24,7 @@ $form = [
 ];
 
 if ($token !== '' && $userId !== '') {
-    $userResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'GET', null, $token);
+    $userResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId), 'GET', null, $token);
     if (is_array($userResponse) && !isset($userResponse['error'])) {
         foreach ($form as $key => $_) {
             $form[$key] = (string)($userResponse[$key] ?? '');
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $response = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'PATCH', [
+        $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId), 'PATCH', [
             'first_name' => $form['first_name'],
             'last_name' => $form['last_name'],
             'email' => $form['email'],

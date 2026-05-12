@@ -52,10 +52,10 @@ $eventsByDay = [];
 $lastDay = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
 
 if ($token !== '' && $userId !== '') {
-    $serviceRequests = callAPI('http://localhost:8080/api/service-requests?id_user=' . urlencode($userId), 'GET', null, $token);
-    $serviceCategories = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
-    $events = callAPI('http://localhost:8080/api/events', 'GET', null, $token);
-    $registrations = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
+    $serviceRequests = callAPI('http://silverhappy_api:8080/api/service-requests?id_user=' . urlencode($userId), 'GET', null, $token);
+    $serviceCategories = callAPI('http://silverhappy_api:8080/api/service-categories', 'GET', null, $token);
+    $events = callAPI('http://silverhappy_api:8080/api/events', 'GET', null, $token);
+    $registrations = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
 
     if (
         is_array($serviceRequests) && !isset($serviceRequests['error']) &&

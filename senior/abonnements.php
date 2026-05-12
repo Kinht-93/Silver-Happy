@@ -36,7 +36,7 @@ function getPlanDescription(string $planId, string $planName, ?string $dbDescrip
 
 if (isset($_GET['payment']) && $_GET['payment'] === 'success' && !empty($_GET['session_id'])) {
     $confirmResp = callAPI(
-        'http://localhost:8080/api/subscriptions/confirm?session_id=' . urlencode($_GET['session_id']),
+        'http://silverhappy_api:8080/api/subscriptions/confirm?session_id=' . urlencode($_GET['session_id']),
         'GET', null, $token
     );
     if (isset($confirmResp['error'])) {
@@ -64,7 +64,7 @@ if ($userId === '' || $token === '') {
             $messageType = 'warning';
         } else {
             $checkoutResp = callAPI(
-                'http://localhost:8080/api/subscriptions/checkout',
+                'http://silverhappy_api:8080/api/subscriptions/checkout',
                 'POST',
                 ['id_user' => $userId, 'id_subscription_type' => $planId, 'period' => $period],
                 $token
@@ -85,7 +85,7 @@ if ($userId === '' || $token === '') {
         }
     }
 
-    $plansResponse = callAPI('http://localhost:8080/api/subscription-types?user_type=senior', 'GET', null, $token);
+    $plansResponse = callAPI('http://silverhappy_api:8080/api/subscription-types?user_type=senior', 'GET', null, $token);
     
     error_log('Plans Response Type: ' . gettype($plansResponse));
     error_log('Plans Response: ' . json_encode($plansResponse));
@@ -105,7 +105,7 @@ if ($userId === '' || $token === '') {
         $messageType = 'danger';
     }
 
-    $subsResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/subscriptions', 'GET', null, $token);
+    $subsResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/subscriptions', 'GET', null, $token);
     error_log('DEBUG: User subscriptions response: ' . json_encode($subsResponse));
     if (is_array($subsResponse) && !isset($subsResponse['error'])) {
         foreach ($subsResponse as $sub) {
@@ -134,7 +134,7 @@ if ($userId === '' || $token === '') {
             $messageType = "warning";
         } else {
             $deleteResp = callAPI(
-                'http://localhost:8080/api/users/' . urlencode($userId) . '/subscriptions/' . urlencode($activeSubscription['id_subscription']),
+                'http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/subscriptions/' . urlencode($activeSubscription['id_subscription']),
                 'DELETE', null, $token
             );
             if (isset($deleteResp['error'])) {

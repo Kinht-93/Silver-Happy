@@ -7,7 +7,7 @@ $realisees = [];
 
 
 if (!empty($token)) {
-    $response = callAPI('http://localhost:8080/api/completed-services-admin', 'GET', null, $token);
+    $response = callAPI('http://silverhappy_api:8080/api/completed-services-admin', 'GET', null, $token);
     
     if (!isset($response['error']) && is_array($response)) {
         $realisees = $response;

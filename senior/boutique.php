@@ -19,7 +19,7 @@ $selectedCategory = $_GET['category'] ?? 'all';
 $cart = $_SESSION['shopping_cart'] ?? [];
 
 if (isset($_GET['payment']) && $_GET['payment'] === 'success' && !empty($_GET['session_id'])) {
-    $confirmResp = callAPI('http://localhost:8080/api/orders/confirm?session_id=' . urlencode($_GET['session_id']), 'GET', null, $token);
+    $confirmResp = callAPI('http://silverhappy_api:8080/api/orders/confirm?session_id=' . urlencode($_GET['session_id']), 'GET', null, $token);
     if (is_array($confirmResp) && isset($confirmResp['error'])) {
         $message = 'Erreur confirmation paiement : ' . $confirmResp['error'];
         $messageType = 'danger';
@@ -35,8 +35,8 @@ if (isset($_GET['payment']) && $_GET['payment'] === 'success' && !empty($_GET['s
 }
 
 if ($token !== '') {
-    $productsResponse = callAPI('http://localhost:8080/api/products', 'GET', null, $token);
-    $categoriesResponse = callAPI('http://localhost:8080/api/product-categories', 'GET', null, $token);
+    $productsResponse = callAPI('http://silverhappy_api:8080/api/products', 'GET', null, $token);
+    $categoriesResponse = callAPI('http://silverhappy_api:8080/api/product-categories', 'GET', null, $token);
 
     if (is_array($productsResponse) && !isset($productsResponse['error'])) {
         $products = $productsResponse;
@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'check
             ];
         }
 
-        $response = callAPI('http://localhost:8080/api/orders/checkout', 'POST', [
+        $response = callAPI('http://silverhappy_api:8080/api/orders/checkout', 'POST', [
             'id_user' => $userId,
             'items' => $items
         ], $token);

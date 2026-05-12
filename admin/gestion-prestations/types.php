@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id_service_category' => $_POST['id_service_category']
         ];
         
-        $response = callAPI('http://localhost:8080/api/service-types', 'POST', $data, $token);
+        $response = callAPI('http://silverhappy_api:8080/api/service-types', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $_SESSION['type_message'] = "Type ajouté avec succès.";
             $_SESSION['type_message_type'] = "success";
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id_service_category' => $_POST['id_service_category']
         ];
         
-        $response = callAPI("http://localhost:8080/api/service-types/{$_POST['id']}", 'PATCH', $data, $token);
+        $response = callAPI("http://silverhappy_api:8080/api/service-types/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
             $_SESSION['type_message'] = "Type modifié avec succès.";
             $_SESSION['type_message_type'] = "success";
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
-        $response = callAPI("http://localhost:8080/api/service-types/{$_POST['id']}", 'DELETE', null, $token);
+        $response = callAPI("http://silverhappy_api:8080/api/service-types/{$_POST['id']}", 'DELETE', null, $token);
         $_SESSION['type_message'] = "Type supprimé.";
         $_SESSION['type_message_type'] = "success";
         header("Location: {$_SERVER['PHP_SELF']}");
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $response = callAPI('http://localhost:8080/api/service-types-admin', 'GET', null, $token);
+    $response = callAPI('http://silverhappy_api:8080/api/service-types-admin', 'GET', null, $token);
     
     if (isset($response['error'])) {
         $message = "Erreur API: " . $response['error'];
@@ -68,7 +68,7 @@ if (!empty($token)) {
         $types = $response;
     }
     
-    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories-admin', 'GET', null, $token);
+    $categoriesResponse = callAPI('http://silverhappy_api:8080/api/service-categories-admin', 'GET', null, $token);
     if (is_array($categoriesResponse) && !isset($categoriesResponse['error'])) {
         $categories = $categoriesResponse;
     }
