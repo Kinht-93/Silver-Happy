@@ -109,9 +109,13 @@ if ($token !== '' && $userId !== '') {
                 if (!(($sender === $userId && $receiver === $selectedPeerId) || ($sender === $selectedPeerId && $receiver === $userId))) {
                     continue;
                 }
-                $row['sender_first_name'] = $sender !== '' && isset($userMap[$sender]) ? $userMap[$sender]['name'] : $sender;
+                $row['sender_first_name'] = $sender === $userId
+                    ? 'Vous'
+                    : ($sender !== '' && isset($userMap[$sender]) ? $userMap[$sender]['name'] : $sender);
                 $row['sender_last_name'] = '';
-                $row['receiver_first_name'] = $receiver !== '' && isset($userMap[$receiver]) ? $userMap[$receiver]['name'] : $receiver;
+                $row['receiver_first_name'] = $receiver === $userId
+                    ? 'Vous'
+                    : ($receiver !== '' && isset($userMap[$receiver]) ? $userMap[$receiver]['name'] : $receiver);
                 $row['receiver_last_name'] = '';
                 $thread[] = $row;
             }
