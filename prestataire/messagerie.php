@@ -1,13 +1,9 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
-
-require_once __DIR__ . '/../include/callapi.php';
+include_once __DIR__ . '/_auth.php';
+include 'include/header-prestataire.php';
 
 $prestataireCurrent = 'messagerie';
-$token = (string)($_SESSION['user']['token'] ?? '');
-$userId = (string)($_SESSION['user']['id_user'] ?? '');
+$userId = (string)($currentUserData['id_user'] ?? ($_SESSION['user']['id_user'] ?? ''));
 
 $errors = [];
 $success = '';
@@ -37,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $response = callAPI('http://silverhappy_api:8080/api/messages', 'POST', [
             'content' => mb_substr($newContent, 0, 5000),
             'receiver' => $selectedPeerId,
+            'sender' => $userId,
         ], $token);
 
         if (is_array($response) && !isset($response['error'])) {
@@ -129,21 +126,24 @@ if ($token !== '' && $userId !== '') {
     }
 }
 
-include __DIR__ . '/../include/header.php';
 ?>
 
-<section class="senier-page">
-    <div class="senier-head d-flex flex-wrap align-items-end gap-2">
+<div class="page-title h3 mb-3">Messagerie</div>
+<?php include __DIR__ . '/_menu.php'; ?>
+
+<section>
+    <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
         <div>
-            <h1 class="senier-title">Messagerie</h1>
-            <p class="senier-subtitle">Bienvenue dans votre messagerie.</p>
+            <p class="text-muted mb-0">Bienvenue dans votre messagerie.</p>
         </div>
-        <div class="senier-breadcrumb">Accueil/Messagerie</div>
+        <div class="small text-muted">Accueil/Messagerie</div>
     </div>
 
-    <div class="senier-message-layout senier-message-layout--wide">
-        <div class="senier-conversations">
-            <div class="senier-search">
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+            <div class="mb-2">
                 <input type="text" class="form-control form-control-sm" placeholder="Conversations" disabled>
             </div>
             <?php if ($success): ?>
@@ -207,11 +207,16 @@ include __DIR__ . '/../include/header.php';
                     </div>
                 </form>
             <?php endif; ?>
+
+                </div>
+            </div>
         </div>
 
-        <div class="senier-chat <?= $selectedPeerId !== '' ? 'senier-chat--thread' : '' ?>">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
             <?php if ($selectedPeerId === ''): ?>
-                <div class="senier-chat-empty">
+                <div class="text-center text-muted py-5">
                     <div class="fs-2 mb-2"><i class="bi bi-chat-dots"></i></div>
                     <h4>Sélectionnez une conversation</h4>
                     <p class="mb-0">Ou commencez en contactant quelqu'un.</p>
@@ -247,8 +252,11 @@ include __DIR__ . '/../include/header.php';
                     </div>
                 </form>
             <?php endif; ?>
+
+                </div>
+            </div>
         </div>
     </div>
 </section>
 
-<?php include __DIR__ . '/../include/footer.php'; ?>
+<?php include __DIR__ . '/include/footer-prestataire.php'; ?>
