@@ -80,7 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $token !== '') {
 }
 
 if ($token !== '') {
-    $slotsResponse = callAPI('http://silverhappy_api:8080/api/provider-availabilities', 'GET', null, $token);
+    $slotsUrl = 'http://silverhappy_api:8080/api/provider-availabilities';
+    if ($selectedCategoryId !== '') {
+        $slotsUrl .= '?id_service_category=' . urlencode($selectedCategoryId);
+    }
+
+    $slotsResponse = callAPI($slotsUrl, 'GET', null, $token);
     if (is_array($slotsResponse) && !isset($slotsResponse['error'])) {
         $availableSlots = array_values(array_filter($slotsResponse, static function ($slot) {
             return !empty($slot['available_date']) && !empty($slot['start_time']) && !empty($slot['end_time']);
