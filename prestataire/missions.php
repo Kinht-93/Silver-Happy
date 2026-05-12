@@ -63,8 +63,8 @@ $basePath = '../';
     <?php endif; ?>
 
     <?php
-    $aAccepter = array_values(array_filter($missions, fn($m) => $m['status'] === 'Proposee' && empty($m['id_user'])));
-    $mesMissions = array_values(array_filter($missions, fn($m) => !($m['status'] === 'Proposee' && empty($m['id_user']))));
+    $aAccepter = array_values(array_filter($missions, fn($m) => ($m['status'] ?? '') === 'Proposee'));
+    $mesMissions = array_values(array_filter($missions, fn($m) => ($m['status'] ?? '') !== 'Proposee'));
     ?>
 
     <ul class="nav nav-tabs mb-3" id="missionsTabs">
