@@ -1,10 +1,15 @@
 <?php
-include './include/header.php';
 require_once __DIR__ . '/include/callapi.php';
 
 if (!isset($_SESSION['user']) || !is_array($_SESSION['user'])) {
     header('Location: login.php');
     exit;
+}
+$role = $_SESSION['user']['role'];
+if ($role == 'senior'){
+    include './include/header.php';
+} elseif ($role == 'prestataire'){
+    include './prestataire/include/header-prestataire.php';
 }
 
 $token = (string)($_SESSION['user']['token'] ?? '');
