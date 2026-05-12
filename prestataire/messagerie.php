@@ -1,6 +1,5 @@
 <?php
 include_once __DIR__ . '/_auth.php';
-include 'include/header-prestataire.php';
 
 $prestataireCurrent = 'messagerie';
 $userId = (string)($currentUserData['id_user'] ?? ($_SESSION['user']['id_user'] ?? ''));
@@ -126,6 +125,7 @@ if ($token !== '' && $userId !== '') {
     }
 }
 
+include 'include/header-prestataire.php';
 ?>
 
 <div class="page-title h3 mb-3">Messagerie</div>
