@@ -22,7 +22,7 @@ $opts = [
     ];
 
 $context = stream_context_create($opts);
-$response_users_summary = file_get_contents("http://silverhappy_api:8080/api/users-summary", false, $context);
+$response_usercount = file_get_contents("http://silverhappy_api:8080/api/users/active-count", false, $context);
 $response_prestations = file_get_contents("http://silverhappy_api:8080/api/service-completed/count", false, $context);
 $response_devis = file_get_contents("http://silverhappy_api:8080/api/quotes/count", false, $context);
 $response_problemes = file_get_contents("http://silverhappy_api:8080/api/notifications/probleme/count", false, $context);
@@ -31,15 +31,10 @@ $response_events = file_get_contents("http://silverhappy_api:8080/api/events", f
 $response_pending_providers = file_get_contents("http://silverhappy_api:8080/api/transactions/pending-providers", false, $context);
 $response_pending_requests = file_get_contents("http://silverhappy_api:8080/api/service-requests/pending", false, $context);
 
-if ($response_users_summary !== false) {
-    $data = json_decode($response_users_summary, true);
-    if (is_array($data)) {
-        $usercount = 0;
-        foreach ($data as $user) {
-            if (!empty($user['active'])) {
-                $usercount++;
-            }
-        }
+if ($response_usercount !== false) {
+    $data = json_decode($response_usercount, true);
+    if (isset($data['count'])) {
+        $usercount = $data["count"];
     }
 }
 
