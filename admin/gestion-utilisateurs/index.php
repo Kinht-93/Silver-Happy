@@ -15,15 +15,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($action === 'create') {
         $data = [
-            'first_name' => $_POST['first_name'],
-            'last_name' => $_POST['last_name'],
-            'password'   => $_POST['password'],
-            'email' => $_POST['email'],
-            'role' => $_POST['role'],
-            'phone' => $_POST['phone'] ?? '',
-            'city' => $_POST['city'] ?? '',
-            'active' => (bool)(int)$_POST['active'] ?? 1
+            'first_name' => $_POST['first_name'] ?? '',
+            'last_name' => $_POST['last_name'] ?? '',
+            'email' => $_POST['email'] ?? '',
+            'password' => $_POST['password'] ?? null,
+            'role' => $_POST['role'] ?? '',
+            'phone' => $_POST['phone'] ?? null,
+            'city' => $_POST['city'] ?? null,
+            'active' => filter_var($_POST['active'] ?? 1, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
+            'verified_email' => false,
+            'tutorial_seen' => false
         ];
+        
+        if ($data['password'] === '' || $data['password'] === null) {
+            unset($data['password']);
+        }
         
         $response = callAPI('http://silverhappy_api:8080/api/users', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
@@ -32,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: {$_SERVER['PHP_SELF']}");
             exit;
         } else {
-            $message = "Erreur lors de l'ajout.";
+            $message = "Erreur lors de l'ajout: " . ($response['error'] ?? json_encode($response));
             $messageType = "danger";
         }
     } elseif ($action === 'update') {
