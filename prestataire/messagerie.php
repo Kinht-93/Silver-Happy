@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $response = callAPI('http://silverhappy_api:8080/api/messages', 'POST', [
             'content' => mb_substr($newContent, 0, 5000),
             'receiver' => $selectedPeerId,
+            'sender' => $userId,
         ], $token);
 
         if (is_array($response) && !isset($response['error'])) {
