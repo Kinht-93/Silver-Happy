@@ -93,7 +93,7 @@ foreach ($notifications as $notification) {
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-6">
+    <div class="col-12">
         <div class="admin-card p-4">
             <h5 class="mb-4">Notifications actives</h5>
             <div class="list-group list-group-flush">
@@ -137,40 +137,6 @@ foreach ($notifications as $notification) {
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="admin-card p-4">
-            <h5 class="mb-4">Alertes système</h5>
-            <div class="list-group list-group-flush">
-                <div class="list-group-item border-0 px-0 py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold text-danger"><i class="bi bi-exclamation-circle"></i> Stockage disque faible</div>
-                            <small class="text-muted">85% utilisé</small>
-                        </div>
-                        <span class="badge bg-danger">Critique</span>
-                    </div>
-                </div>
-                <div class="list-group-item border-0 px-0 py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold text-warning"><i class="bi bi-exclamation-triangle"></i> Taux erreurs élevé</div>
-                            <small class="text-muted">2,3% des requêtes</small>
-                        </div>
-                        <span class="badge bg-warning">Avertissement</span>
-                    </div>
-                </div>
-                <div class="list-group-item border-0 px-0 py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold"><i class="bi bi-info-circle"></i> Sauvegarde programmée</div>
-                            <small class="text-muted">Chaque jour à 02h00</small>
-                        </div>
-                        <span class="badge bg-info">Info</span>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
