@@ -3,7 +3,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-require_once __DIR__ . '/../../include/callapi.php';
+require_once __DIR__ . '/../include/callapi.php';
 
 $adminCurrent = 'messagerie';
 $token = (string)($_SESSION['user']['token'] ?? '');
@@ -131,7 +131,7 @@ if ($token !== '' && $userId !== '') {
     }
 }
 
-include __DIR__ . '/../../admin/include/header-admin.php';
+include __DIR__ . '/include/header-admin.php';
 ?>
 
 <section class="senier-page">
@@ -249,4 +249,4 @@ include __DIR__ . '/../../admin/include/header-admin.php';
     </div>
 </section>
 
-<?php include __DIR__ . '/../../admin/include/footer-admin.php'; ?>
+<?php include __DIR__ . '/include/footer-admin.php'; ?>
