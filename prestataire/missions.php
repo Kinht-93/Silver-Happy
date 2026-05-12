@@ -1,7 +1,6 @@
 <?php
 include_once __DIR__ . '/_auth.php';
 require_once __DIR__ . '/../db.php';
-include 'include/header-prestataire.php';
 
 $message = $_SESSION['provider_mission_message'] ?? '';
 $messageType = $_SESSION['provider_mission_message_type'] ?? '';
@@ -154,6 +153,8 @@ if ($providerData && $pdo instanceof PDO) {
 
 $basePath = '../';
 ?>
+
+<?php include 'include/header-prestataire.php'; ?>
 
 <div class="page-title h3 mb-3">Missions</div>
 <?php include __DIR__ . '/_menu.php'; ?>
