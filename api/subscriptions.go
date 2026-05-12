@@ -294,7 +294,7 @@ func handleConfirmSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 
 	_, err = db.Exec(
 		"INSERT INTO subscribed (id_user, id_subscription_type, status, subscribed_at, stripe_payment_intent_id) VALUES (?, ?, 'Actif', NOW(), ?)",
-		idUser, idSub, period, paymentIntentID,
+		idUser, idSub, paymentIntentID,
 	)
 	if err != nil {
 		jsonError(w, "Erreur activation abonnement : "+err.Error(), http.StatusInternalServerError)
