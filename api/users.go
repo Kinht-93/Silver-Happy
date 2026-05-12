@@ -231,7 +231,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		u.Phone, u.Address, u.City, u.PostalCode, u.BirthDate,
 		u.Active, u.VerifiedEmail, u.TutorialSeen)
 	if err != nil {
-		jsonError(w, "Erreur lors de la création", http.StatusInternalServerError)
+		jsonError(w, "Erreur lors de la création: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
