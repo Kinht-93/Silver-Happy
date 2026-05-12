@@ -90,9 +90,6 @@ include './include/header-admin.php';
 <div class="page-title">Notifications système</div>
 
 <div class="row mb-4">
-    <div class="col">
-        <input type="text" class="form-control" style="max-width: 250px;" placeholder="Rechercher une notification...">
-    </div>
     <div class="col text-end">
         <button class="btn btn-sm btn-success" data-modal="modalCreateNotification">+ Créer une notification</button>
     </div>
@@ -183,7 +180,7 @@ include './include/header-admin.php';
                             <td><?= htmlspecialchars($notification['title'] ? $notification['title'] : 'Notification sans titre') ?></td>
                             <td><?= isset($notification['scheduled_at']) && $notification['scheduled_at'] ? date('d/m/Y H:i', strtotime($notification['scheduled_at'])) : date('d/m/Y H:i', strtotime($notification['created_at'])) ?></td>
                             <td><?= isset($notification['limited_at']) && $notification['limited_at'] ? date('d/m/Y H:i', strtotime($notification['limited_at'])) : '-' ?></td>
-                            <td><?= $notification['first_name'] ? htmlspecialchars($notification['first_name'] . ' ' . $notification['last_name']) : 'Tous les utilisateurs' ?></td>
+                            <td><?= isset($notification['first_name']) && $notification['first_name'] ? htmlspecialchars($notification['first_name'] . ' ' . ($notification['last_name'] ?? '')) : 'Tous les utilisateurs' ?></td>
                             <td>
                                 <?php
                                 $now = time();
@@ -240,7 +237,6 @@ include './include/header-admin.php';
                             <option value="Info">Info</option>
                             <option value="Success">Success</option>
                             <option value="Warning">Warning</option>
-                            <option value="Danger">Danger/Erreur</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -250,17 +246,6 @@ include './include/header-admin.php';
                     <div class="mb-3">
                         <label for="notificationMessage" class="form-label">Message</label>
                         <textarea class="form-control" id="notificationMessage" name="message" rows="4" placeholder="Détails de la notification..." required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="notificationRecipients" class="form-label">Destinataires</label>
-                        <select class="form-control" id="notificationRecipients" name="recipients" required>
-                            <option value="">Sélectionner les destinataires</option>
-                            <option value="all">Tous les utilisateurs</option>
-                            <option value="admin">Administrateurs uniquement</option>
-                            <option value="it">Équipe IT</option>
-                            <option value="provider">Prestataires</option>
-                            <option value="senior">Seniors</option>
-                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="notificationSchedule" class="form-label">Programmer l'envoi</label>
