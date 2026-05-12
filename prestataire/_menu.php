@@ -5,6 +5,7 @@
             <a href="./mon-profil.php" class="btn btn-sm btn-outline-primary">Profil & competences</a>
             <a href="./disponibilites.php" class="btn btn-sm btn-outline-primary">Disponibilites</a>
             <a href="./missions.php" class="btn btn-sm btn-outline-primary">Missions</a>
+            <a href="./messagerie.php" class="btn btn-sm btn-outline-primary">Messagerie</a>
             <a href="./facturation.php" class="btn btn-sm btn-outline-primary">Facturation & paiements</a>
         </div>
     </div>

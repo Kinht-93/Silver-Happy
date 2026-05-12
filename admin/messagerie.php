@@ -3,16 +3,16 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-require_once __DIR__ . '/../include/callapi.php';
+require_once __DIR__ . '/../../include/callapi.php';
 
-$seniorCurrent = 'messagerie';
+$adminCurrent = 'messagerie';
 $token = (string)($_SESSION['user']['token'] ?? '');
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
 
 $errors = [];
 $success = '';
 $conversationList = [];
-$providerOptions = [];
+$userOptions = [];
 $selectedPeerId = trim((string)($_GET['with'] ?? ''));
 $currentMessages = [];
 $newContent = trim((string)($_POST['content'] ?? ''));
@@ -53,21 +53,15 @@ if (isset($_GET['sent']) && $_GET['sent'] === '1') {
 }
 
 if ($token !== '' && $userId !== '') {
-    $providersResponse = callAPI('http://silverhappy_api:8080/api/users-summary?roles=prestataire', 'GET', null, $token);
     $usersResponse = callAPI('http://silverhappy_api:8080/api/users-summary', 'GET', null, $token);
     $messagesResponse = callAPI('http://silverhappy_api:8080/api/messages?id_user=' . urlencode($userId), 'GET', null, $token);
 
     if (
-        !is_array($providersResponse) || isset($providersResponse['error']) ||
         !is_array($usersResponse) || isset($usersResponse['error']) ||
         !is_array($messagesResponse) || isset($messagesResponse['error'])
     ) {
         $errors[] = 'Impossible de charger la messagerie.';
     } else {
-        $providerOptions = array_values(array_filter($providersResponse, static function ($provider) {
-            return !empty($provider['active']);
-        }));
-
         $userMap = [];
         foreach ($usersResponse as $user) {
             $id = (string)($user['id_user'] ?? '');
@@ -75,7 +69,13 @@ if ($token !== '' && $userId !== '') {
                 continue;
             }
             $fullName = trim((string)(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')));
-            $userMap[$id] = $fullName !== '' ? $fullName : $id;
+            $userMap[$id] = [
+                'name' => $fullName !== '' ? $fullName : $id,
+                'role' => (string)($user['role'] ?? ''),
+            ];
+            if ($id !== $userId) {
+                $userOptions[] = $user;
+            }
         }
 
         $conversationMap = [];
@@ -84,7 +84,7 @@ if ($token !== '' && $userId !== '') {
             $receiver = (string)($row['receiver'] ?? '');
             $peerId = $sender === $userId ? $receiver : $sender;
 
-            if ($peerId === '') {
+            if ($peerId === '' || !isset($userMap[$peerId])) {
                 continue;
             }
 
@@ -115,9 +115,9 @@ if ($token !== '' && $userId !== '') {
                 if (!(($sender === $userId && $receiver === $selectedPeerId) || ($sender === $selectedPeerId && $receiver === $userId))) {
                     continue;
                 }
-                $row['sender_first_name'] = $sender !== '' && isset($userMap[$sender]) ? $userMap[$sender] : $sender;
+                $row['sender_first_name'] = $sender !== '' && isset($userMap[$sender]) ? $userMap[$sender]['name'] : $sender;
                 $row['sender_last_name'] = '';
-                $row['receiver_first_name'] = $receiver !== '' && isset($userMap[$receiver]) ? $userMap[$receiver] : $receiver;
+                $row['receiver_first_name'] = $receiver !== '' && isset($userMap[$receiver]) ? $userMap[$receiver]['name'] : $receiver;
                 $row['receiver_last_name'] = '';
                 $thread[] = $row;
             }
@@ -131,16 +131,16 @@ if ($token !== '' && $userId !== '') {
     }
 }
 
-include './include/header.php';
+include __DIR__ . '/../../admin/include/header-admin.php';
 ?>
 
 <section class="senier-page">
     <div class="senier-head d-flex flex-wrap align-items-end gap-2">
         <div>
             <h1 class="senier-title">Messagerie</h1>
-            <p class="senier-subtitle">Bienvenue dans votre messagerie.</p>
+            <p class="senier-subtitle">Gestion de la messagerie.</p>
         </div>
-        <div class="senier-breadcrumb">Accueil/Messagerie</div>
+        <div class="senier-breadcrumb">Admin/Messagerie</div>
     </div>
 
     <div class="senier-message-layout senier-message-layout--wide">
@@ -168,16 +168,7 @@ include './include/header.php';
                         <?php
                         $peerId = (string)$conversation['peer_id'];
                         $isActive = ($selectedPeerId === $peerId);
-                        $label = '';
-                        foreach ($providerOptions as $provider) {
-                            if ((string)($provider['id_user'] ?? '') === $peerId) {
-                                $label = trim((string)(($provider['first_name'] ?? '') . ' ' . ($provider['last_name'] ?? '')));
-                                break;
-                            }
-                        }
-                        if ($label === '') {
-                            $label = $peerId;
-                        }
+                        $label = isset($userMap[$peerId]) ? $userMap[$peerId]['name'] . ' (' . $userMap[$peerId]['role'] . ')' : $peerId;
                         ?>
                         <a
                             class="list-group-item list-group-item-action <?= $isActive ? 'active' : '' ?>"
@@ -190,22 +181,23 @@ include './include/header.php';
                 </div>
             <?php endif; ?>
 
-            <?php if (!empty($providerOptions)): ?>
+            <?php if (!empty($userOptions)): ?>
                 <form method="get" class="mt-3">
-                    <label class="form-label small mb-1" for="with">Contacter un prestataire</label>
+                    <label class="form-label small mb-1" for="with">Contacter un utilisateur</label>
                     <div class="d-flex gap-2">
                         <select class="form-select form-select-sm" id="with" name="with">
                             <option value="">Selectionner...</option>
-                            <?php foreach ($providerOptions as $provider): ?>
+                            <?php foreach ($userOptions as $user): ?>
                                 <?php
-                                $pid = (string)$provider['id_user'];
-                                $pname = trim((string)(($provider['first_name'] ?? '') . ' ' . ($provider['last_name'] ?? '')));
-                                if ($pname === '') {
-                                    $pname = $pid;
+                                $uid = (string)$user['id_user'];
+                                $uname = trim((string)(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')));
+                                $urole = (string)($user['role'] ?? '');
+                                if ($uname === '') {
+                                    $uname = $uid;
                                 }
                                 ?>
-                                <option value="<?= htmlspecialchars($pid) ?>" <?= $selectedPeerId === $pid ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($pname) ?>
+                                <option value="<?= htmlspecialchars($uid) ?>" <?= $selectedPeerId === $uid ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($uname) ?> (<?= htmlspecialchars($urole) ?>)
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -220,7 +212,7 @@ include './include/header.php';
                 <div class="senier-chat-empty">
                     <div class="fs-2 mb-2"><i class="bi bi-chat-dots"></i></div>
                     <h4>Sélectionnez une conversation</h4>
-                    <p class="mb-0">Ou commencez en contactant un prestataire.</p>
+                    <p class="mb-0">Ou commencez en contactant un utilisateur.</p>
                 </div>
             <?php else: ?>
                 <div class="border rounded p-3 mb-3 w-100" style="height:560px; overflow:auto; background:#fff;">
@@ -257,4 +249,4 @@ include './include/header.php';
     </div>
 </section>
 
-<?php include './include/footer.php'; ?>
+<?php include __DIR__ . '/../../admin/include/footer-admin.php'; ?>

@@ -127,6 +127,12 @@ $admin_url = $base_url . '/admin';
                     </li>
 
                     <li class="nav-item">
+                        <a class="nav-link" href="<?= $admin_url ?>/messagerie.php">
+                            <i class="bi bi-chat-dots"></i> Messagerie
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
                         <a class="nav-link" href="<?= $admin_url ?>/gestion-problemes.php">
                             <i class="bi bi-exclamation-circle"></i> Tickets & problèmes
                         </a>
