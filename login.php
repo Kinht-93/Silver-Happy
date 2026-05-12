@@ -93,7 +93,6 @@ $email = $formData['login_email'] ?? $email;
 
 unset($_SESSION['login_errors'], $_SESSION['form_data']);
 
-// Fusionner les erreurs de session expirée avec les erreurs de login
 $errors = array_merge($errors, $sessionErrors);
 
 include './include/header.php';

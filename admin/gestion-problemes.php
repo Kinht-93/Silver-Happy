@@ -2,8 +2,9 @@
 include './include/header-admin.php';
 require_once __DIR__ . '/../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['ticket_message'] ?? '';
+$messageType = $_SESSION['ticket_message_type'] ?? '';
+unset($_SESSION['ticket_message'], $_SESSION['ticket_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 
 $tickets = [];
@@ -22,8 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], $token);
 
             if (is_array($response) && !isset($response['error'])) {
-                $message = "Ticket créé avec succès.";
-                $messageType = "success";
+                $_SESSION['ticket_message'] = "Ticket créé avec succès.";
+                $_SESSION['ticket_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur: ' . ($response['error'] ?? 'Création impossible.');
                 $messageType = 'danger';
@@ -39,8 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], $token);
 
             if (is_array($response) && !isset($response['error'])) {
-                $message = "Ticket modifié.";
-                $messageType = "success";
+                $_SESSION['ticket_message'] = "Ticket modifié.";
+                $_SESSION['ticket_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur: ' . ($response['error'] ?? 'Mise à jour impossible.');
                 $messageType = 'danger';
@@ -51,8 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], $token);
 
             if (is_array($response) && !isset($response['error'])) {
-                $message = "Ticket fermé.";
-                $messageType = "success";
+                $_SESSION['ticket_message'] = "Ticket fermé.";
+                $_SESSION['ticket_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur: ' . ($response['error'] ?? 'Résolution impossible.');
                 $messageType = 'danger';
@@ -60,8 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'delete' && !empty($_POST['id'])) {
             $response = callAPI('http://silverhappy_api:8080/api/support-tickets/' . urlencode($_POST['id']), 'DELETE', null, $token);
             if (!is_array($response) || !isset($response['error'])) {
-                $message = "Ticket supprimé.";
-                $messageType = "success";
+                $_SESSION['ticket_message'] = "Ticket supprimé.";
+                $_SESSION['ticket_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur: ' . $response['error'];
                 $messageType = 'danger';

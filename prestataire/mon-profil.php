@@ -2,8 +2,9 @@
 include_once __DIR__ . '/_auth.php';
 include 'include/header-prestataire.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['provider_profile_message'] ?? '';
+$messageType = $_SESSION['provider_profile_message_type'] ?? '';
+unset($_SESSION['provider_profile_message'], $_SESSION['provider_profile_message_type']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
     try {
@@ -31,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
             throw new RuntimeException((string)($response['error'] ?? 'Impossible de mettre a jour le profil.'));
         }
 
-        $message = 'Profil mis a jour.';
-        $messageType = 'success';
+        $_SESSION['provider_profile_message'] = 'Profil mis a jour.';
+        $_SESSION['provider_profile_message_type'] = 'success';
 
         $_SESSION['user']['first_name'] = $firstName;
         $_SESSION['user']['last_name'] = $lastName;

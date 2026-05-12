@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once __DIR__ . '/../db.php';
 include './include/header-admin.php';
 
@@ -23,7 +22,7 @@ $opts = [
     ];
 
 $context = stream_context_create($opts);
-$response_users_summary = file_get_contents("http://silverhappy_api:8080/api/users-summary", false, $context);
+$response_usercount = file_get_contents("http://silverhappy_api:8080/api/users/active-count", false, $context);
 $response_prestations = file_get_contents("http://silverhappy_api:8080/api/service-completed/count", false, $context);
 $response_devis = file_get_contents("http://silverhappy_api:8080/api/quotes/count", false, $context);
 $response_problemes = file_get_contents("http://silverhappy_api:8080/api/notifications/probleme/count", false, $context);
@@ -32,15 +31,10 @@ $response_events = file_get_contents("http://silverhappy_api:8080/api/events", f
 $response_pending_providers = file_get_contents("http://silverhappy_api:8080/api/transactions/pending-providers", false, $context);
 $response_pending_requests = file_get_contents("http://silverhappy_api:8080/api/service-requests/pending", false, $context);
 
-if ($response_users_summary !== false) {
-    $data = json_decode($response_users_summary, true);
-    if (is_array($data)) {
-        $usercount = 0;
-        foreach ($data as $user) {
-            if (!empty($user['active'])) {
-                $usercount++;
-            }
-        }
+if ($response_usercount !== false) {
+    $data = json_decode($response_usercount, true);
+    if (isset($data['count'])) {
+        $usercount = $data["count"];
     }
 }
 
@@ -146,38 +140,6 @@ $stats = [
     </div>
 </div>
 
-<div class="row">
-    <div class="col-lg-8">
-        <div class="admin-card p-4">
-            <h3 class="h5 mb-4">Activité du mois</h3>
-            <div style="height: 300px; background: linear-gradient(180deg, rgba(40, 90, 255, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                <p class="text-muted">Graphique d'activité (données en dur)</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="admin-card p-4">
-            <h3 class="h5 mb-4">Dernières transactions</h3>
-            <div class="list-group list-group-flush">
-                <?php if (empty($transactions)): ?>
-                    <p class="text-muted text-center py-3">Aucune transaction récente.</p>
-                <?php else: ?>
-                    <?php foreach ($transactions as $tx): ?>
-                        <div class="list-group-item border-0 px-0 py-3">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div class="fw-semibold"><?= htmlspecialchars($tx['invoice_type']) ?></div>
-                                    <small class="text-muted"><?= htmlspecialchars($tx['first_name'] . ' ' . $tx['last_name']) ?> - <?= date('d/m/Y', strtotime($tx['issue_date'])) ?></small>
-                                </div>
-                                <span class="badge bg-success">+<?= number_format((float)$tx['amount_incl_tax'], 2) ?>€</span>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="row mt-4">
     <div class="col-lg-6">

@@ -8,8 +8,9 @@ $seniorCurrent = 'abonnements';
 
 $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $token = (string)($_SESSION['user']['token'] ?? '');
-$message = '';
-$messageType = '';
+$message = $_SESSION['subscription_message'] ?? '';
+$messageType = $_SESSION['subscription_message_type'] ?? '';
+unset($_SESSION['subscription_message'], $_SESSION['subscription_message_type']);
 $plans = [];
 $activeSubscription = null;
 
@@ -33,7 +34,6 @@ function getPlanDescription(string $planId, string $planName, ?string $dbDescrip
     return $map[$planId] ?? ('Formule ' . $planName . ' adaptee aux besoins du quotidien.');
 }
 
-// Retour depuis Stripe : on confirme le paiement via l'API Go
 if (isset($_GET['payment']) && $_GET['payment'] === 'success' && !empty($_GET['session_id'])) {
     $confirmResp = callAPI(
         'http://silverhappy_api:8080/api/subscriptions/confirm?session_id=' . urlencode($_GET['session_id']),
@@ -85,10 +85,8 @@ if ($userId === '' || $token === '') {
         }
     }
 
-    // Fetch subscription types
     $plansResponse = callAPI('http://silverhappy_api:8080/api/subscription-types?user_type=senior', 'GET', null, $token);
     
-    // Debug logging
     error_log('Plans Response Type: ' . gettype($plansResponse));
     error_log('Plans Response: ' . json_encode($plansResponse));
     
@@ -107,7 +105,6 @@ if ($userId === '' || $token === '') {
         $messageType = 'danger';
     }
 
-    // Fetch user subscriptions
     $subsResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/subscriptions', 'GET', null, $token);
     error_log('DEBUG: User subscriptions response: ' . json_encode($subsResponse));
     if (is_array($subsResponse) && !isset($subsResponse['error'])) {
@@ -144,9 +141,10 @@ if ($userId === '' || $token === '') {
                 $message = 'Erreur lors de la suppression : ' . $deleteResp['error'];
                 $messageType = 'danger';
             } else {
-                $message = "Votre abonnement a été supprimé.";
-                $messageType = "success";
-                $activeSubscription = null;
+                $_SESSION['subscription_message'] = "Votre abonnement a été supprimé.";
+                $_SESSION['subscription_message_type'] = "success";
+                header('Location: abonnements.php');
+                exit;
             }
         }
     }

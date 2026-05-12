@@ -10,7 +10,8 @@ $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $token = (string)($_SESSION['user']['token'] ?? '');
 
 $errors = [];
-$success = '';
+$success = $_SESSION['contact_success'] ?? '';
+unset($_SESSION['contact_success']);
 $contactName = trim((string)($_POST['contact_name'] ?? ''));
 $contactEmail = trim((string)($_POST['contact_email'] ?? ''));
 $contactSubject = trim((string)($_POST['contact_subject'] ?? ''));
@@ -62,9 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], $token);
 
             if (is_array($response) && !isset($response['error'])) {
-                $success = 'Votre message a bien ete envoye.';
-                $contactSubject = '';
-                $contactMessage = '';
+                $_SESSION['contact_success'] = 'Votre message a bien ete envoye.';
+                header('Location: contact.php');
+                exit;
             } else {
                 $errors[] = $response['error'] ?? 'Impossible d envoyer le message pour le moment.';
             }

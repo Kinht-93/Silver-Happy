@@ -42,6 +42,7 @@ CREATE TABLE users (
 CREATE TABLE `active_users` (
   `id_user` varchar(255) NOT NULL,
   `last_activity` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_user`),
   FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
@@ -174,6 +175,7 @@ CREATE TABLE event_registrations (
     paid BOOLEAN DEFAULT FALSE,
     id_user VARCHAR(255) NOT NULL,
     id_event VARCHAR(255) NOT NULL,
+    stripe_payment_intent_id varchar(255) DEFAULT NULL
     UNIQUE KEY uniq_event_registration_user_event (id_user, id_event),
     INDEX idx_er_user_status_date (id_user, status, registration_date),
     INDEX idx_er_event_status (id_event, status),
@@ -230,10 +232,10 @@ CREATE TABLE show_type (
 CREATE TABLE subscribed (
     id_user VARCHAR(255),
     id_subscription_type VARCHAR(255),
-    status VARCHAR(50) NOT NULL DEFAULT 'Actif',
-    period VARCHAR(50) NOT NULL DEFAULT 'monthly' AFTER status,
+    status VARCHAR(20) NOT NULL DEFAULT 'Actif',
     subscribed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     cancelled_at DATETIME DEFAULT NULL,
+    stripe_payment_intent_id VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id_user, id_subscription_type),
     FOREIGN KEY (id_user) REFERENCES users(id_user),
     FOREIGN KEY (id_subscription_type) REFERENCES subscription_types(id_subscription_type)
@@ -259,6 +261,7 @@ CREATE TABLE orders (
     order_date DATETIME NOT NULL,
     delivery_method VARCHAR(100) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'En attente',
+    stripe_payment_intent_id VARCHAR(255) DEFAULT NULL,
     INDEX idx_orders_user_date (id_user, order_date),
     INDEX idx_orders_status_date (status, order_date),
     FOREIGN KEY (id_user) REFERENCES users(id_user)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -8,9 +9,10 @@ import (
 
 	"github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/checkout/session"
+	"github.com/stripe/stripe-go/v76/refund"
 )
 
-// GET /api/subscription-types
+// GET subscription type
 func handleGetSubscriptionTypes(w http.ResponseWriter, r *http.Request) {
 	userType := r.URL.Query().Get("user_type")
 	if userType == "" {
@@ -69,7 +71,7 @@ func handleGetSubscriptionTypes(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(types)
 }
 
-// GET /api/users/{id}/subscriptions
+// GET users subscriptions
 func handleGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 	if userID == "" {
@@ -131,7 +133,7 @@ func handleGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(subs)
 }
 
-// DELETE /api/users/{id}/subscriptions/{subId}
+// USER SUBSCRIPTION -
 func handleDeleteUserSubscription(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 	subID := r.PathValue("subId")
@@ -140,11 +142,21 @@ func handleDeleteUserSubscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM subscribed WHERE id_user = ? AND id_subscription_type = ?", userID, subID).Scan(&count)
-	if err != nil || count == 0 {
+	var stripePaymentIntentID sql.NullString
+	err := db.QueryRow("SELECT stripe_payment_intent_id FROM subscribed WHERE id_user = ? AND id_subscription_type = ?", userID, subID).Scan(&stripePaymentIntentID)
+	if err != nil {
 		jsonError(w, "Abonnement introuvable", http.StatusNotFound)
 		return
+	}
+
+	if stripePaymentIntentID.Valid && stripePaymentIntentID.String != "" {
+		refundParams := &stripe.RefundParams{
+			PaymentIntent: stripe.String(stripePaymentIntentID.String),
+		}
+		if _, err := refund.New(refundParams); err != nil {
+			jsonError(w, "Erreur de remboursement Stripe : "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	_, err = db.Exec("DELETE FROM subscribed WHERE id_user = ? AND id_subscription_type = ?", userID, subID)
@@ -153,11 +165,18 @@ func handleDeleteUserSubscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	message := "Abonnement supprimé"
+	if stripePaymentIntentID.Valid && stripePaymentIntentID.String != "" {
+		message = "Abonnement supprimé et remboursement lancé"
+	} else {
+		message = "Abonnement supprimé mais aucun paiement Stripe trouvé pour remboursement"
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Abonnement supprimé"})
+	json.NewEncoder(w).Encode(map[string]string{"message": message})
 }
 
-// POST /api/subscriptions/checkout
+// SUBSCRIPTION CHECKOUT +
 func handleCreateSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		UserID             string `json:"id_user"`
@@ -204,7 +223,7 @@ func handleCreateSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
 						Name: stripe.String("Abonnement " + planName + " (" + label + ")"),
 					},
-					UnitAmount: stripe.Int64(int64(price * 100)), // Stripe veut des centimes
+					UnitAmount: stripe.Int64(int64(price * 100)),
 				},
 				Quantity: stripe.Int64(1),
 			},
@@ -266,11 +285,16 @@ func handleConfirmSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 		period = "monthly"
 	}
 
+	paymentIntentID := ""
+	if s.PaymentIntent != nil {
+		paymentIntentID = s.PaymentIntent.ID
+	}
+
 	db.Exec("DELETE FROM subscribed WHERE id_user = ?", idUser)
 
 	_, err = db.Exec(
-		"INSERT INTO subscribed (id_user, id_subscription_type, status, period, subscribed_at) VALUES (?, ?, 'Actif', ?, NOW())",
-		idUser, idSub, period,
+		"INSERT INTO subscribed (id_user, id_subscription_type, status, period, subscribed_at, stripe_payment_intent_id) VALUES (?, ?, 'Actif', ?, NOW(), ?)",
+		idUser, idSub, period, paymentIntentID,
 	)
 	if err != nil {
 		jsonError(w, "Erreur activation abonnement : "+err.Error(), http.StatusInternalServerError)

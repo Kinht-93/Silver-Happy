@@ -45,11 +45,12 @@ func handleGetProviderOwnAvailabilities(w http.ResponseWriter, r *http.Request) 
 	}
 
 	rows, err := db.Query(`
-		SELECT id_availability, available_date, start_time, end_time, is_available
-		FROM provider_availabilities
-		WHERE id_user = ?
-		ORDER BY available_date DESC, start_time DESC
-	`, providerID)
+		       SELECT pa.id_availability, pa.available_date, pa.start_time, pa.end_time, pa.is_available, pa.id_service_category, sc.name
+		       FROM provider_availabilities pa
+		       LEFT JOIN service_categories sc ON pa.id_service_category = sc.id_service_category
+		       WHERE pa.id_user = ?
+		       ORDER BY pa.available_date DESC, pa.start_time DESC
+	       `, providerID)
 	if err != nil {
 		jsonError(w, "Erreur lors de la récupération des disponibilités", http.StatusInternalServerError)
 		return
@@ -57,17 +58,19 @@ func handleGetProviderOwnAvailabilities(w http.ResponseWriter, r *http.Request) 
 	defer rows.Close()
 
 	type providerAvailability struct {
-		ID          int  `json:"id_availability"`
-		AvailableAt string `json:"available_date"`
-		StartTime   string `json:"start_time"`
-		EndTime     string `json:"end_time"`
-		IsAvailable bool   `json:"is_available"`
+		ID                int    `json:"id_availability"`
+		AvailableAt       string `json:"available_date"`
+		StartTime         string `json:"start_time"`
+		EndTime           string `json:"end_time"`
+		IsAvailable       bool   `json:"is_available"`
+		IDServiceCategory string `json:"id_service_category"`
+		CategoryName      string `json:"category_name"`
 	}
 
 	items := []providerAvailability{}
 	for rows.Next() {
 		var item providerAvailability
-		if err := rows.Scan(&item.ID, &item.AvailableAt, &item.StartTime, &item.EndTime, &item.IsAvailable); err != nil {
+		if err := rows.Scan(&item.ID, &item.AvailableAt, &item.StartTime, &item.EndTime, &item.IsAvailable, &item.IDServiceCategory, &item.CategoryName); err != nil {
 			continue
 		}
 		items = append(items, item)
@@ -85,15 +88,16 @@ func handleCreateProviderAvailability(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var payload struct {
-		AvailableDate string `json:"available_date"`
-		StartTime     string `json:"start_time"`
-		EndTime       string `json:"end_time"`
+		AvailableDate     string `json:"available_date"`
+		StartTime         string `json:"start_time"`
+		EndTime           string `json:"end_time"`
+		IDServiceCategory string `json:"id_service_category"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		jsonError(w, "JSON invalide", http.StatusBadRequest)
 		return
 	}
-	if payload.AvailableDate == "" || payload.StartTime == "" || payload.EndTime == "" {
+	if payload.AvailableDate == "" || payload.StartTime == "" || payload.EndTime == "" || payload.IDServiceCategory == "" {
 		jsonError(w, "Champs requis manquants", http.StatusBadRequest)
 		return
 	}
@@ -103,9 +107,9 @@ func handleCreateProviderAvailability(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := db.Exec(`
-		INSERT INTO provider_availabilities (id_user, available_date, start_time, end_time, is_available, created_at)
-		VALUES (?, ?, ?, ?, 1, NOW())
-	`, providerID, payload.AvailableDate, payload.StartTime, payload.EndTime)
+		INSERT INTO provider_availabilities (id_user, id_service_category, available_date, start_time, end_time, is_available, created_at)
+		VALUES (?, ?, ?, ?, ?, 1, NOW())
+	`, providerID, payload.IDServiceCategory, payload.AvailableDate, payload.StartTime, payload.EndTime)
 	if err != nil {
 		jsonError(w, "Erreur lors de l'ajout de la disponibilité", http.StatusInternalServerError)
 		return
@@ -241,13 +245,13 @@ func handleGetProviderBilling(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type providerBillingRow struct {
-		InvoiceID      string  `json:"id_invoice"`
-		MonthLabel     string  `json:"month_label"`
-		Amount         float64 `json:"amount"`
-		InvoiceStatus  string  `json:"invoice_status"`
-		GeneratedAt    string  `json:"generated_at"`
-		PaymentStatus  *string `json:"payment_status,omitempty"`
-		PaidAt         *string `json:"paid_at,omitempty"`
+		InvoiceID     string  `json:"id_invoice"`
+		MonthLabel    string  `json:"month_label"`
+		Amount        float64 `json:"amount"`
+		InvoiceStatus string  `json:"invoice_status"`
+		GeneratedAt   string  `json:"generated_at"`
+		PaymentStatus *string `json:"payment_status,omitempty"`
+		PaidAt        *string `json:"paid_at,omitempty"`
 	}
 
 	items := []providerBillingRow{}

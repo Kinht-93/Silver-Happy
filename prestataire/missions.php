@@ -2,8 +2,9 @@
 include_once __DIR__ . '/_auth.php';
 include 'include/header-prestataire.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['provider_mission_message'] ?? '';
+$messageType = $_SESSION['provider_mission_message_type'] ?? '';
+unset($_SESSION['provider_mission_message'], $_SESSION['provider_mission_message_type']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
     $action = $_POST['action'] ?? '';
@@ -19,8 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
             ], $token);
 
             if (is_array($response) && !isset($response['error'])) {
-                $message = 'Mission acceptee.';
-                $messageType = 'success';
+                $_SESSION['provider_mission_message'] = 'Mission acceptee.';
+                $_SESSION['provider_mission_message_type'] = 'success';
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 throw new RuntimeException((string)($response['error'] ?? 'Mission indisponible ou deja acceptee.'));
             }
@@ -60,7 +63,6 @@ $basePath = '../';
     <?php endif; ?>
 
     <?php
-    // On sépare les missions en deux groupes pour les deux onglets
     $aAccepter = array_values(array_filter($missions, fn($m) => $m['status'] === 'Proposee' && empty($m['id_user'])));
     $mesMissions = array_values(array_filter($missions, fn($m) => !($m['status'] === 'Proposee' && empty($m['id_user']))));
     ?>

@@ -6,9 +6,7 @@ import (
 	"net/http"
 )
 
-// SERVICE CATEGORIES CRUD
-
-// GET Toutes les catégories
+// GET CATEGORIES
 func handleGetAllServiceCategories(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT c.id_service_category, c.name, c.description,
@@ -180,7 +178,7 @@ func handleUpdateServiceType(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "Type mis à jour"})
 }
 
-// DELETE Type de service
+// DELETE TYPE SERVICE
 func handleDeleteServiceType(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {

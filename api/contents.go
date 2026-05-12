@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// Content structure
 type Content struct {
 	IDContent   string    `json:"id_content"`
 	Title       string    `json:"title"`
@@ -22,7 +21,6 @@ type Content struct {
 	LastName    *string   `json:"last_name"`
 }
 
-// scanContent intermediate struct for NULL handling
 type scanContent struct {
 	IDContent   string
 	Title       string
@@ -60,7 +58,7 @@ func (sc *scanContent) toContent() *Content {
 	return c
 }
 
-// handleGetAllContents returns all contents with author info
+// GET CONTENT ALL
 func handleGetAllContents(w http.ResponseWriter, r *http.Request) {
 	query := `
 		SELECT c.id_content, c.title, c.category, c.content_body, c.status, c.views, c.created_at,
@@ -91,7 +89,7 @@ func handleGetAllContents(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(contents)
 }
 
-// handleCreateContent creates a new content
+// CONTENT +
 func handleCreateContent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		jsonError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -140,14 +138,13 @@ func handleCreateContent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"Message": "Content created successfully"})
 }
 
-// handleUpdateContent updates a content
+// CHANGE CONTENT
 func handleUpdateContent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		jsonError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Extract ID from path
 	id := strings.TrimPrefix(r.URL.Path, "/api/contents/")
 
 	var req struct {
@@ -180,7 +177,7 @@ func handleUpdateContent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"Message": "Content updated successfully"})
 }
 
-// handleDeleteContent deletes a content
+// CONTENT -
 func handleDeleteContent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		jsonError(w, "Method not allowed", http.StatusMethodNotAllowed)

@@ -2,8 +2,9 @@
 include_once __DIR__ . '/_auth.php';
 include 'include/header-prestataire.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['provider_availability_message'] ?? '';
+$messageType = $_SESSION['provider_availability_message_type'] ?? '';
+unset($_SESSION['provider_availability_message'], $_SESSION['provider_availability_message_type']);
 $providerCategories = [];
 
 if ($pdo instanceof PDO && $providerData) {
@@ -85,16 +86,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
             }
 
             $insertedCount = (int)($response['inserted_count'] ?? 1);
-            $message = 'Disponibilite ajoutee (' . $insertedCount . ' creneau(x)).';
-            $messageType = 'success';
+            $_SESSION['provider_availability_message'] = 'Disponibilite ajoutee (' . $insertedCount . ' creneau(x)).';
+            $_SESSION['provider_availability_message_type'] = 'success';
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } elseif ($action === 'delete') {
             $availabilityId = (int)($_POST['id_availability'] ?? 0);
             $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities/' . urlencode((string)$availabilityId), 'DELETE', null, $token);
             if (is_array($response) && isset($response['error'])) {
                 throw new RuntimeException((string)$response['error']);
             }
-            $message = 'Disponibilite supprimee.';
-            $messageType = 'success';
+            $_SESSION['provider_availability_message'] = 'Disponibilite supprimee.';
+            $_SESSION['provider_availability_message_type'] = 'success';
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         }
     } catch (Exception $e) {
         $message = 'Erreur: ' . $e->getMessage();
@@ -362,8 +367,6 @@ $basePath = '../';
 <?php include '../include/footer.php'; ?>
 
 <script>
-// Dates qui ont au moins un créneau, générées par PHP
-// Ex: ["2026-05-10", "2026-05-11", ...]
 const datesAvec = <?= json_encode(array_values(array_unique(array_map(
     fn($r) => substr((string)($r['available_date'] ?? ''), 0, 10),
     $availabilities
@@ -373,7 +376,7 @@ const mois = ['Janvier','Février','Mars','Avril','Mai','Juin',
               'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
 let annee = new Date().getFullYear();
-let moisIdx = new Date().getMonth(); // 0 = janvier
+let moisIdx = new Date().getMonth();
 
 function afficherCalendrier() {
     const grid  = document.getElementById('calGrid');
@@ -381,8 +384,8 @@ function afficherCalendrier() {
     titre.textContent = mois[moisIdx] + ' ' + annee;
 
     const nbJours   = new Date(annee, moisIdx + 1, 0).getDate();
-    const premierJS = new Date(annee, moisIdx, 1).getDay(); // 0=dim
-    const decalage  = premierJS === 0 ? 6 : premierJS - 1;  // on veut lundi en 1er
+    const premierJS = new Date(annee, moisIdx, 1).getDay();
+    const decalage  = premierJS === 0 ? 6 : premierJS - 1;
     const aujourdhui = new Date().toISOString().slice(0, 10);
 
     let html = '';

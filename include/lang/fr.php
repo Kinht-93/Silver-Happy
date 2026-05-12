@@ -95,7 +95,7 @@ return [
     'invoice_status'     => 'Statut',
     'invoice_pdf'        => 'PDF',
 
-    // Accessibilité
+    // Lange
     'lang_select'        => 'Langue',
 
     // Accueil
