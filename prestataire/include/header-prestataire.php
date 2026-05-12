@@ -86,6 +86,11 @@ if ($userName === '') {
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link <?= $current === 'messagerie.php' ? 'active' : '' ?>" href="<?= $prestataire_url ?>/messagerie.php">
+                            <i class="bi bi-chat-dots"></i> Messagerie
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link <?= $current === 'facturation.php' ? 'active' : '' ?>" href="<?= $prestataire_url ?>/facturation.php">
                             <i class="bi bi-cash-coin"></i> Facturation & paiements
                         </a>
