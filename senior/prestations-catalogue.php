@@ -79,6 +79,9 @@ include './include/header.php';
                                         <span class="badge bg-secondary">Aucun créneau disponible</span>
                                     <?php endif; ?>
                                 </div>
+                                <div class="mb-3">
+                                    <a href="prestations-creneaux.php?category_id=<?= urlencode($categoryId) ?>&category_name=<?= urlencode((string)($category['name'] ?? '')) ?>" class="btn btn-outline-primary btn-sm">Voir les créneaux</a>
+                                </div>
                                 <?php if (empty($typesByCategory[$categoryId])): ?>
                                     <p class="mb-0 small text-muted">Aucun type de service rattaché.</p>
                                 <?php else: ?>
