@@ -2,9 +2,8 @@
 include_once __DIR__ . '/_auth.php';
 include 'include/header-prestataire.php';
 
-$message = $_SESSION['provider_availability_message'] ?? '';
-$messageType = $_SESSION['provider_availability_message_type'] ?? '';
-unset($_SESSION['provider_availability_message'], $_SESSION['provider_availability_message_type']);
+$message = '';
+$messageType = '';
 $providerCategories = [];
 
 if ($pdo instanceof PDO && $providerData) {
@@ -74,32 +73,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
                 }
             }
 
-            $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities', 'POST', [
-                'available_from_date' => $fromDate,
-                'available_to_date' => $toDate,
-                'start_time' => $start,
-                'end_time' => $end,
-                'id_service_category' => $categoryId,
-            ], $token);
-            if (!is_array($response) || isset($response['error'])) {
-                throw new RuntimeException((string)($response['error'] ?? 'Impossible d ajouter la disponibilite.'));
+            $insertedCount = 0;
+            $failedDates = [];
+            $cursor = $fromDate;
+
+            while ($cursor <= $toDate) {
+                $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities', 'POST', [
+                    'available_date' => $cursor,
+                    'start_time' => $start,
+                    'end_time' => $end,
+                ], $token);
+
+                if (is_array($response) && !isset($response['error'])) {
+                    $insertedCount++;
+                } else {
+                    $failedDates[] = [
+                        'date' => $cursor,
+                        'error' => (string)($response['error'] ?? 'Erreur inconnue'),
+                    ];
+                }
+
+                $nextTs = strtotime($cursor . ' +1 day');
+                if ($nextTs === false) {
+                    break;
+                }
+                $cursor = date('Y-m-d', $nextTs);
             }
 
-            $insertedCount = (int)($response['inserted_count'] ?? 1);
-            $_SESSION['provider_availability_message'] = 'Disponibilite ajoutee (' . $insertedCount . ' creneau(x)).';
-            $_SESSION['provider_availability_message_type'] = 'success';
-            header("Location: {$_SERVER['PHP_SELF']}");
-            exit;
+            if ($insertedCount === 0) {
+                $firstError = !empty($failedDates) ? $failedDates[0]['error'] : 'Impossible d ajouter la disponibilite.';
+                throw new RuntimeException($firstError);
+            }
+
+            if (!empty($failedDates)) {
+                $message = 'Disponibilites ajoutees (' . $insertedCount . ' creneau(x)). Certaines dates ont echoue.';
+                $messageType = 'warning';
+            } else {
+                $message = 'Disponibilite ajoutee (' . $insertedCount . ' creneau(x)).';
+                $messageType = 'success';
+            }
         } elseif ($action === 'delete') {
             $availabilityId = (int)($_POST['id_availability'] ?? 0);
             $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-availabilities/' . urlencode((string)$availabilityId), 'DELETE', null, $token);
             if (is_array($response) && isset($response['error'])) {
                 throw new RuntimeException((string)$response['error']);
             }
-            $_SESSION['provider_availability_message'] = 'Disponibilite supprimee.';
-            $_SESSION['provider_availability_message_type'] = 'success';
-            header("Location: {$_SERVER['PHP_SELF']}");
-            exit;
+            $message = 'Disponibilite supprimee.';
+            $messageType = 'success';
         }
     } catch (Exception $e) {
         $message = 'Erreur: ' . $e->getMessage();
@@ -367,6 +387,8 @@ $basePath = '../';
 <?php include '../include/footer.php'; ?>
 
 <script>
+// Dates qui ont au moins un créneau, générées par PHP
+// Ex: ["2026-05-10", "2026-05-11", ...]
 const datesAvec = <?= json_encode(array_values(array_unique(array_map(
     fn($r) => substr((string)($r['available_date'] ?? ''), 0, 10),
     $availabilities
@@ -376,7 +398,7 @@ const mois = ['Janvier','Février','Mars','Avril','Mai','Juin',
               'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
 let annee = new Date().getFullYear();
-let moisIdx = new Date().getMonth();
+let moisIdx = new Date().getMonth(); // 0 = janvier
 
 function afficherCalendrier() {
     const grid  = document.getElementById('calGrid');
@@ -384,8 +406,8 @@ function afficherCalendrier() {
     titre.textContent = mois[moisIdx] + ' ' + annee;
 
     const nbJours   = new Date(annee, moisIdx + 1, 0).getDate();
-    const premierJS = new Date(annee, moisIdx, 1).getDay();
-    const decalage  = premierJS === 0 ? 6 : premierJS - 1;
+    const premierJS = new Date(annee, moisIdx, 1).getDay(); // 0=dim
+    const decalage  = premierJS === 0 ? 6 : premierJS - 1;  // on veut lundi en 1er
     const aujourdhui = new Date().toISOString().slice(0, 10);
 
     let html = '';
