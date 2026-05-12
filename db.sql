@@ -174,6 +174,7 @@ CREATE TABLE event_registrations (
     paid BOOLEAN DEFAULT FALSE,
     id_user VARCHAR(255) NOT NULL,
     id_event VARCHAR(255) NOT NULL,
+    stripe_payment_intent_id varchar(255) DEFAULT NULL
     UNIQUE KEY uniq_event_registration_user_event (id_user, id_event),
     INDEX idx_er_user_status_date (id_user, status, registration_date),
     INDEX idx_er_event_status (id_event, status),
@@ -259,6 +260,7 @@ CREATE TABLE orders (
     order_date DATETIME NOT NULL,
     delivery_method VARCHAR(100) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'En attente',
+    stripe_payment_intent_id VARCHAR(255) DEFAULT NULL,
     INDEX idx_orders_user_date (id_user, order_date),
     INDEX idx_orders_status_date (status, order_date),
     FOREIGN KEY (id_user) REFERENCES users(id_user)

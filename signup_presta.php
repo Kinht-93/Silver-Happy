@@ -22,11 +22,9 @@ $description = trim($_POST['description'] ?? '');
 $expertiseCategoryId = trim((string)($_POST['expertise_category_id'] ?? ''));
 $categoryOptions = [];
 
-// Types MIME autorisés pour les documents (PDF ou image)
 $allowedDocMimes = ['application/pdf', 'image/jpeg', 'image/png'];
-$maxDocSize = 5 * 1024 * 1024; // 5 Mo maximum
+$maxDocSize = 5 * 1024 * 1024;
 
-// On récupère les fichiers envoyés (null si rien envoyé)
 $docCasier        = $_FILES['doc_casier'] ?? null;
 $docDiplome       = $_FILES['doc_diplome'] ?? null;
 $docRecommandation = $_FILES['doc_recommandation'] ?? null;
@@ -85,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'La base de données est indisponible pour le moment.';
     }
 
-    // --- Validation du casier judiciaire (obligatoire) ---
     if (empty($docCasier['tmp_name']) || $docCasier['error'] !== UPLOAD_ERR_OK) {
         $errors[] = 'Le casier judiciaire (B3) est obligatoire.';
     } elseif ($docCasier['size'] > $maxDocSize) {
@@ -99,7 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- Validation du diplôme (facultatif) ---
     if (!empty($docDiplome['tmp_name']) && $docDiplome['error'] === UPLOAD_ERR_OK) {
         if ($docDiplome['size'] > $maxDocSize) {
             $errors[] = 'Le fichier diplôme ne doit pas dépasser 5 Mo.';
@@ -113,7 +109,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- Validation de la recommandation (facultatif) ---
     if (!empty($docRecommandation['tmp_name']) && $docRecommandation['error'] === UPLOAD_ERR_OK) {
         if ($docRecommandation['size'] > $maxDocSize) {
             $errors[] = 'La recommandation ne doit pas dépasser 5 Mo.';
@@ -260,16 +255,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
 
-            // --- Sauvegarde des documents uploadés ---
-            // On crée le dossier de stockage s'il n'existe pas encore
             $uploadDir = __DIR__ . '/uploads/documents/';
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
             }
 
-            // On boucle sur les 3 types de documents
-            // Pour chaque fichier présent, on génère un nom aléatoire (sécurité)
-            // et on enregistre le chemin en base
             $docsToSave = [
                 'casier_judiciaire' => $docCasier,
                 'diplome'           => $docDiplome,
@@ -281,9 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     continue;
                 }
 
-                // Extension originale du fichier (ex: "pdf", "jpg")
                 $ext      = strtolower(pathinfo($fileInfo['name'], PATHINFO_EXTENSION));
-                // Nom de fichier aléatoire pour éviter les conflits et les accès directs
                 $safeName = bin2hex(random_bytes(16)) . '.' . $ext;
                 $destPath = $uploadDir . $safeName;
 

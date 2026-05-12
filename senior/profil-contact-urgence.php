@@ -10,15 +10,16 @@ $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $token = (string)($_SESSION['user']['token'] ?? '');
 
 $errors = [];
-$success = '';
+$success = $_SESSION['profile_emergency_success'] ?? '';
+unset($_SESSION['profile_emergency_success']);
 
 $emergencyName = '';
 $emergencyPhone = '';
 $emergencyRelation = '';
 
 if ($token !== '' && $userId !== '') {
-    $userResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId), 'GET', null, $token);
-    $settingsResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/senior-settings', 'GET', null, $token);
+    $userResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'GET', null, $token);
+    $settingsResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/senior-settings', 'GET', null, $token);
 
     if (is_array($userResponse) && !isset($userResponse['error'])) {
         $emergencyName = (string)($userResponse['emergency_contact_name'] ?? '');
@@ -53,16 +54,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $userUpdate = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId), 'PATCH', [
+        $userUpdate = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'PATCH', [
             'emergency_contact_name' => $emergencyName,
             'emergency_contact_phone' => $emergencyPhone,
         ], $token);
-        $settingsUpdate = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/senior-settings', 'PATCH', [
+        $settingsUpdate = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/senior-settings', 'PATCH', [
             'emergency_relation' => $emergencyRelation,
         ], $token);
 
         if (is_array($userUpdate) && !isset($userUpdate['error']) && is_array($settingsUpdate) && !isset($settingsUpdate['error'])) {
-            $success = 'Contact d urgence mis a jour avec succes.';
+            $_SESSION['profile_emergency_success'] = 'Contact d urgence mis a jour avec succes.';
+            header('Location: profil-contact-urgence.php');
+            exit;
         } else {
             $errors[] = $userUpdate['error'] ?? $settingsUpdate['error'] ?? 'Impossible d enregistrer le contact d urgence.';
         }

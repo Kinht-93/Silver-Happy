@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once __DIR__ . '/../db.php';
 include './include/header-admin.php';
 
@@ -146,38 +145,6 @@ $stats = [
     </div>
 </div>
 
-<div class="row">
-    <div class="col-lg-8">
-        <div class="admin-card p-4">
-            <h3 class="h5 mb-4">Activité du mois</h3>
-            <div style="height: 300px; background: linear-gradient(180deg, rgba(40, 90, 255, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                <p class="text-muted">Graphique d'activité (données en dur)</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="admin-card p-4">
-            <h3 class="h5 mb-4">Dernières transactions</h3>
-            <div class="list-group list-group-flush">
-                <?php if (empty($transactions)): ?>
-                    <p class="text-muted text-center py-3">Aucune transaction récente.</p>
-                <?php else: ?>
-                    <?php foreach ($transactions as $tx): ?>
-                        <div class="list-group-item border-0 px-0 py-3">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div class="fw-semibold"><?= htmlspecialchars($tx['invoice_type']) ?></div>
-                                    <small class="text-muted"><?= htmlspecialchars($tx['first_name'] . ' ' . $tx['last_name']) ?> - <?= date('d/m/Y', strtotime($tx['issue_date'])) ?></small>
-                                </div>
-                                <span class="badge bg-success">+<?= number_format((float)$tx['amount_incl_tax'], 2) ?>€</span>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="row mt-4">
     <div class="col-lg-6">

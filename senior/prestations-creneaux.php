@@ -38,7 +38,7 @@ $selectedCategoryName = trim((string)($_GET['category_name'] ?? $_POST['category
 $selectedCategory = null;
 
 if ($token !== '') {
-    $categoriesResponse = callAPI('http://silverhappy_api:8080/api/service-categories', 'GET', null, $token);
+    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories', 'GET', null, $token);
     if (is_array($categoriesResponse) && !isset($categoriesResponse['error'])) {
         $categoryOptions = $categoriesResponse;
         $selectedCategory = sh_resolve_category_from_api($categoryOptions, $selectedCategoryId, $selectedCategoryName);
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $token !== '') {
             $message = 'Veuillez choisir un type de service valide.';
             $messageType = 'danger';
         } else {
-            $response = callAPI('http://silverhappy_api:8080/api/provider-availabilities/' . urlencode((string)$availabilityId) . '/reserve', 'POST', [
+            $response = callAPI('http://localhost:8080/api/provider-availabilities/' . urlencode((string)$availabilityId) . '/reserve', 'POST', [
                 'id_user' => $userId,
                 'id_service_category' => $selectedCategoryId,
                 'category_name' => (string)$selectedCategory['name'],
@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $token !== '') {
 }
 
 if ($token !== '') {
-    $slotsResponse = callAPI('http://silverhappy_api:8080/api/provider-availabilities', 'GET', null, $token);
+    $slotsResponse = callAPI('http://localhost:8080/api/provider-availabilities', 'GET', null, $token);
     if (is_array($slotsResponse) && !isset($slotsResponse['error'])) {
         $availableSlots = array_values(array_filter($slotsResponse, static function ($slot) {
             return !empty($slot['available_date']) && !empty($slot['start_time']) && !empty($slot['end_time']);

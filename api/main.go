@@ -175,6 +175,11 @@ func main() {
 
 	// ORDERS
 	http.HandleFunc("GET /api/orders", authMiddleware(handleGetAllOrders))
+	http.HandleFunc("GET /api/users/{id}/orders", authMiddleware(handleGetUserOrders))
+	http.HandleFunc("POST /api/orders/checkout", authMiddleware(handleCreateOrderCheckout))
+	http.HandleFunc("GET /api/orders/confirm", authMiddleware(handleConfirmOrderCheckout))
+	http.HandleFunc("POST /api/orders/{id}/refund", authMiddleware(handleRefundOrder))
+	http.HandleFunc("POST /api/orders", authMiddleware(handleCreateOrder))
 	http.HandleFunc("GET /api/orders/stats", authMiddleware(handleGetOrderStats))
 	http.HandleFunc("PATCH /api/orders/{id}", authMiddleware(handleUpdateOrderStatus))
 

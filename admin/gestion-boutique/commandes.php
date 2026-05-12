@@ -12,17 +12,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($action === 'update_status') {
         $data = ['status' => $_POST['status']];
-        $response = callAPI("http://silverhappy_api:8080/api/orders/{$_POST['id']}", 'PATCH', $data, $token);
+        $response = callAPI("http://localhost:8080/api/orders/{$_POST['id']}", 'PATCH', $data, $token);
     }
 }
 
 if (!empty($token)) {
-    $response = callAPI('http://silverhappy_api:8080/api/orders', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/orders', 'GET', null, $token);
     if (is_array($response) && !isset($response['error'])) {
         $commandes = $response;
     }
     
-    $statsResponse = callAPI('http://silverhappy_api:8080/api/orders/stats', 'GET', null, $token);
+    $statsResponse = callAPI('http://localhost:8080/api/orders/stats', 'GET', null, $token);
     if (is_array($statsResponse) && !isset($statsResponse['error'])) {
         $stats = $statsResponse;
     }

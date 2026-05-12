@@ -2,8 +2,9 @@
 include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['appointment_message'] ?? '';
+$messageType = $_SESSION['appointment_message_type'] ?? '';
+unset($_SESSION['appointment_message'], $_SESSION['appointment_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 $user_id = $_SESSION['user']['id_user'] ?? '';
 $appointments = [];
@@ -22,10 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'created_by' => $user_id
         ];
         
-        $response = callAPI('http://silverhappy_api:8080/api/medical-appointments', 'POST', $data, $token);
+        $response = callAPI('http://localhost:8080/api/medical-appointments', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "RDV médical créé avec succès.";
-            $messageType = "success";
+            $_SESSION['appointment_message'] = "RDV médical créé avec succès.";
+            $_SESSION['appointment_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = $response['error'] ?? "Erreur lors de la création du RDV.";
             $messageType = "danger";
@@ -37,23 +40,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'status' => $_POST['status']
         ];
         
-        $response = callAPI("http://silverhappy_api:8080/api/medical-appointments/{$_POST['id']}", 'PATCH', $data, $token);
+        $response = callAPI("http://localhost:8080/api/medical-appointments/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "RDV médical modifié.";
-            $messageType = "success";
+            $_SESSION['appointment_message'] = "RDV médical modifié.";
+            $_SESSION['appointment_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la modification du RDV.";
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
-        $response = callAPI("http://silverhappy_api:8080/api/medical-appointments/{$_POST['id']}", 'DELETE', null, $token);
-        $message = "RDV médical supprimé.";
-        $messageType = "success";
+        $response = callAPI("http://localhost:8080/api/medical-appointments/{$_POST['id']}", 'DELETE', null, $token);
+        $_SESSION['appointment_message'] = "RDV médical supprimé.";
+        $_SESSION['appointment_message_type'] = "success";
+        header("Location: {$_SERVER['PHP_SELF']}");
+        exit;
     }
 }
 
 if (!empty($token)) {
-    $response = callAPI('http://silverhappy_api:8080/api/medical-appointments', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/medical-appointments', 'GET', null, $token);
     
     if (isset($response['error'])) {
         $message = "Erreur API: " . $response['error'];
@@ -63,7 +70,7 @@ if (!empty($token)) {
         $appointments = $response;
     }
 
-    $usersResponse = callAPI('http://silverhappy_api:8080/api/users-for-appointments', 'GET', null, $token);
+    $usersResponse = callAPI('http://localhost:8080/api/users-for-appointments', 'GET', null, $token);
     if (is_array($usersResponse) && !isset($usersResponse['error'])) {
         $users = $usersResponse;
     }

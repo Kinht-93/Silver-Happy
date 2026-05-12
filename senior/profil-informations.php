@@ -10,7 +10,8 @@ $userId = (string)($_SESSION['user']['id_user'] ?? '');
 $token = (string)($_SESSION['user']['token'] ?? '');
 
 $errors = [];
-$success = '';
+$success = $_SESSION['profile_info_success'] ?? '';
+unset($_SESSION['profile_info_success']);
 
 $form = [
     'first_name' => '',
@@ -23,7 +24,7 @@ $form = [
 ];
 
 if ($token !== '' && $userId !== '') {
-    $userResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId), 'GET', null, $token);
+    $userResponse = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'GET', null, $token);
     if (is_array($userResponse) && !isset($userResponse['error'])) {
         foreach ($form as $key => $_) {
             $form[$key] = (string)($userResponse[$key] ?? '');
@@ -52,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId), 'PATCH', [
+        $response = callAPI('http://localhost:8080/api/users/' . urlencode($userId), 'PATCH', [
             'first_name' => $form['first_name'],
             'last_name' => $form['last_name'],
             'email' => $form['email'],
@@ -69,7 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user']['email'] = $form['email'];
             }
 
-            $success = 'Informations mises a jour avec succes.';
+            $_SESSION['profile_info_success'] = 'Informations mises a jour avec succes.';
+            header('Location: profil-informations.php');
+            exit;
         } else {
             $errors[] = $response['error'] ?? 'Impossible d enregistrer vos informations.';
         }

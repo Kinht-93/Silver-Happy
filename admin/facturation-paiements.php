@@ -2,8 +2,9 @@
 include './include/header-admin.php';
 require_once __DIR__ . '/../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['invoice_message'] ?? '';
+$messageType = $_SESSION['invoice_message_type'] ?? '';
+unset($_SESSION['invoice_message'], $_SESSION['invoice_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 
 $factures = [];
@@ -16,15 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'update_status' && !empty($_POST['id']) && !empty($token)) {
         $response = callAPI(
-            'http://silverhappy_api:8080/api/admin-invoices/' . urlencode($_POST['id']) . '/status',
+            'http://localhost:8080/api/admin-invoices/' . urlencode($_POST['id']) . '/status',
             'PATCH',
             ['status' => $_POST['status'] ?? 'En attente'],
             $token
         );
 
         if (!is_array($response) || !isset($response['error'])) {
-            $message = "Statut de la facture mis à jour.";
-            $messageType = "success";
+            $_SESSION['invoice_message'] = "Statut de la facture mis à jour.";
+            $_SESSION['invoice_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur: " . $response['error'];
             $messageType = "danger";
@@ -33,8 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $statsResponse = callAPI('http://silverhappy_api:8080/api/admin-invoices/stats', 'GET', null, $token);
-    $facturesResponse = callAPI('http://silverhappy_api:8080/api/admin-invoices', 'GET', null, $token);
+    $statsResponse = callAPI('http://localhost:8080/api/admin-invoices/stats', 'GET', null, $token);
+    $facturesResponse = callAPI('http://localhost:8080/api/admin-invoices', 'GET', null, $token);
 
     if (is_array($statsResponse) && !isset($statsResponse['error'])) {
         $ca = (float) ($statsResponse['ca'] ?? 0);

@@ -524,8 +524,6 @@ func handleUpdateSeniorSettings(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(SuccessResponse{Message: "Préférences mises à jour"})
 }
 
-//  USER GET 1 SMALL
-
 func handleGetUsersSummary(w http.ResponseWriter, r *http.Request) {
 	rolesParam := strings.TrimSpace(r.URL.Query().Get("roles"))
 	query := `
@@ -585,8 +583,6 @@ func handleGetUsersSummary(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
-// PUT /api/users/{id}/tutorial-seen
-// Marque le tutoriel comme vu pour l'utilisateur connecté.
 func handleMarkTutorialSeen(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 	if userID == "" {

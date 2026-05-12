@@ -2,8 +2,9 @@
 include './include/header-admin.php';
 require_once __DIR__ . '/../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['notification_message'] ?? '';
+$messageType = $_SESSION['notification_message_type'] ?? '';
+unset($_SESSION['notification_message'], $_SESSION['notification_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -24,20 +25,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'scheduled_at' => $scheduled,
             'limited_at' => $limite
         ];
-        $response = callAPI('http://silverhappy_api:8080/api/notifications', 'POST', $data, $token);
+        $response = callAPI('http://localhost:8080/api/notifications', 'POST', $data, $token);
         if ($response && !isset($response['error'])) {
-            $message = "Notification créée et enregistrée.";
-            $messageType = "success";
+            $_SESSION['notification_message'] = "Notification créée et enregistrée.";
+            $_SESSION['notification_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la création: " . ($response['error'] ?? json_encode($response));
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
         $id = $_POST['id'] ?? '';
-        $response = callAPI("http://silverhappy_api:8080/api/notifications/{$id}", 'DELETE', null, $token);
+        $response = callAPI("http://localhost:8080/api/notifications/{$id}", 'DELETE', null, $token);
         if ($response && !isset($response['error'])) {
-            $message = "Notification supprimée.";
-            $messageType = "success";
+            $_SESSION['notification_message'] = "Notification supprimée.";
+            $_SESSION['notification_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la suppression: " . ($response['error'] ?? json_encode($response));
             $messageType = "danger";
@@ -45,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$notifications = callAPI('http://silverhappy_api:8080/api/notifications', 'GET', null, $token);
+$notifications = callAPI('http://localhost:8080/api/notifications', 'GET', null, $token);
 if (isset($notifications['error'])) {
     $message = "Erreur API: " . $notifications['error'];
     $messageType = "danger";
@@ -88,7 +93,7 @@ foreach ($notifications as $notification) {
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-6">
+    <div class="col-12">
         <div class="admin-card p-4">
             <h5 class="mb-4">Notifications actives</h5>
             <div class="list-group list-group-flush">
@@ -132,40 +137,6 @@ foreach ($notifications as $notification) {
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="admin-card p-4">
-            <h5 class="mb-4">Alertes système</h5>
-            <div class="list-group list-group-flush">
-                <div class="list-group-item border-0 px-0 py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold text-danger"><i class="bi bi-exclamation-circle"></i> Stockage disque faible</div>
-                            <small class="text-muted">85% utilisé</small>
-                        </div>
-                        <span class="badge bg-danger">Critique</span>
-                    </div>
-                </div>
-                <div class="list-group-item border-0 px-0 py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold text-warning"><i class="bi bi-exclamation-triangle"></i> Taux erreurs élevé</div>
-                            <small class="text-muted">2,3% des requêtes</small>
-                        </div>
-                        <span class="badge bg-warning">Avertissement</span>
-                    </div>
-                </div>
-                <div class="list-group-item border-0 px-0 py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold"><i class="bi bi-info-circle"></i> Sauvegarde programmée</div>
-                            <small class="text-muted">Chaque jour à 02h00</small>
-                        </div>
-                        <span class="badge bg-info">Info</span>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

@@ -10,7 +10,7 @@ import (
 	"github.com/stripe/stripe-go/v76/checkout/session"
 )
 
-// GET /api/subscription-types
+// GET subscription type
 func handleGetSubscriptionTypes(w http.ResponseWriter, r *http.Request) {
 	userType := r.URL.Query().Get("user_type")
 	if userType == "" {
@@ -69,7 +69,7 @@ func handleGetSubscriptionTypes(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(types)
 }
 
-// GET /api/users/{id}/subscriptions
+// GET users subscriptions
 func handleGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 	if userID == "" {
@@ -131,7 +131,7 @@ func handleGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(subs)
 }
 
-// DELETE /api/users/{id}/subscriptions/{subId}
+// USER SUBSCRIPTION -
 func handleDeleteUserSubscription(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 	subID := r.PathValue("subId")
@@ -157,7 +157,7 @@ func handleDeleteUserSubscription(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Abonnement supprimé"})
 }
 
-// POST /api/subscriptions/checkout
+// SUBSCRIPTION CHECKOUT +
 func handleCreateSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		UserID             string `json:"id_user"`
@@ -204,7 +204,7 @@ func handleCreateSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
 						Name: stripe.String("Abonnement " + planName + " (" + label + ")"),
 					},
-					UnitAmount: stripe.Int64(int64(price * 100)), // Stripe veut des centimes
+					UnitAmount: stripe.Int64(int64(price * 100)),
 				},
 				Quantity: stripe.Int64(1),
 			},

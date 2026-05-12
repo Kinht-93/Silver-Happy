@@ -30,7 +30,7 @@ $token = (string)($user['token'] ?? '');
 if ($token === '') {
     $dbPageError = 'Connexion API indisponible.';
 } else {
-    $userResponse = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)($user['id_user'] ?? '')), 'GET', null, $token);
+    $userResponse = callAPI('http://localhost:8080/api/users/' . urlencode((string)($user['id_user'] ?? '')), 'GET', null, $token);
     if (!is_array($userResponse) || isset($userResponse['error'])) {
         $dbPageError = 'Erreur API: ' . (string)($userResponse['error'] ?? 'Impossible de charger le profil prestataire.');
     } else {

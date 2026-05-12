@@ -2,8 +2,9 @@
 include '../include/header-admin.php';
 require_once __DIR__ . '/../../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['prestation_message'] ?? '';
+$messageType = $_SESSION['prestation_message_type'] ?? '';
+unset($_SESSION['prestation_message'], $_SESSION['prestation_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 $prestations = [];
 $categories = [];
@@ -21,10 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id_service_category' => $_POST['id_service_category']
         ];
         
-        $response = callAPI('http://silverhappy_api:8080/api/service-types', 'POST', $data, $token);
+        $response = callAPI('http://localhost:8080/api/service-types', 'POST', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Prestation ajoutée avec succès.";
-            $messageType = "success";
+            $_SESSION['prestation_message'] = "Prestation ajoutée avec succès.";
+            $_SESSION['prestation_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de l'ajout.";
             $messageType = "danger";
@@ -37,23 +40,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id_service_category' => $_POST['id_service_category'] ?? ''
         ];
         
-        $response = callAPI("http://silverhappy_api:8080/api/service-types/{$_POST['id']}", 'PATCH', $data, $token);
+        $response = callAPI("http://localhost:8080/api/service-types/{$_POST['id']}", 'PATCH', $data, $token);
         if ($response && isset($response['Message']) && !isset($response['error'])) {
-            $message = "Prestation modifiée avec succès.";
-            $messageType = "success";
+            $_SESSION['prestation_message'] = "Prestation modifiée avec succès.";
+            $_SESSION['prestation_message_type'] = "success";
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         } else {
             $message = "Erreur lors de la modification.";
             $messageType = "danger";
         }
     } elseif ($action === 'delete') {
-        $response = callAPI("http://silverhappy_api:8080/api/service-types/{$_POST['id']}", 'DELETE', null, $token);
-        $message = "Prestation supprimée.";
-        $messageType = "success";
+        $response = callAPI("http://localhost:8080/api/service-types/{$_POST['id']}", 'DELETE', null, $token);
+        $_SESSION['prestation_message'] = "Prestation supprimée.";
+        $_SESSION['prestation_message_type'] = "success";
+        header("Location: {$_SERVER['PHP_SELF']}");
+        exit;
     }
 }
 
 if (!empty($token)) {
-    $response = callAPI('http://silverhappy_api:8080/api/service-types-admin', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/service-types-admin', 'GET', null, $token);
     
     if (isset($response['error'])) {
         $message = "Erreur API: " . $response['error'];
@@ -63,7 +70,7 @@ if (!empty($token)) {
         $prestations = $response;
     }
     
-    $categoriesResponse = callAPI('http://silverhappy_api:8080/api/service-categories-admin', 'GET', null, $token);
+    $categoriesResponse = callAPI('http://localhost:8080/api/service-categories-admin', 'GET', null, $token);
     if (is_array($categoriesResponse) && !isset($categoriesResponse['error'])) {
         $categories = $categoriesResponse;
     }

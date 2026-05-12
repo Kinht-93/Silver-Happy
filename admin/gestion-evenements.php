@@ -2,8 +2,9 @@
 include './include/header-admin.php';
 require_once __DIR__ . '/../include/callapi.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['event_message'] ?? '';
+$messageType = $_SESSION['event_message_type'] ?? '';
+unset($_SESSION['event_message'], $_SESSION['event_message_type']);
 $token = $_SESSION['user']['token'] ?? '';
 
 $events = [];
@@ -12,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if (!empty($token)) {
         if ($action === 'create') {
-            $response = callAPI('http://silverhappy_api:8080/api/admin-events', 'POST', [
+            $response = callAPI('http://localhost:8080/api/admin-events', 'POST', [
                 'title' => $_POST['title'] ?? '',
                 'event_type' => $_POST['event_type'] ?? 'Autre',
                 'start_date' => $_POST['start_date'] ?? '',
@@ -21,14 +22,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], $token);
 
             if (is_array($response) && !isset($response['error'])) {
-                $message = "Événement créé avec succès.";
-                $messageType = "success";
+                $_SESSION['event_message'] = "Événement créé avec succès.";
+                $_SESSION['event_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur: ' . ($response['error'] ?? 'Création impossible.');
                 $messageType = 'danger';
             }
         } elseif ($action === 'update' && !empty($_POST['id'])) {
-            $response = callAPI('http://silverhappy_api:8080/api/admin-events/' . urlencode($_POST['id']), 'PATCH', [
+            $response = callAPI('http://localhost:8080/api/admin-events/' . urlencode($_POST['id']), 'PATCH', [
                 'title' => $_POST['title'] ?? '',
                 'start_date' => $_POST['start_date'] ?? '',
                 'max_places' => !empty($_POST['max_places']) ? (int) $_POST['max_places'] : 20,
@@ -36,17 +39,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], $token);
 
             if (is_array($response) && !isset($response['error'])) {
-                $message = "Événement modifié avec succès.";
-                $messageType = "success";
+                $_SESSION['event_message'] = "Événement modifié avec succès.";
+                $_SESSION['event_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur: ' . ($response['error'] ?? 'Mise à jour impossible.');
                 $messageType = 'danger';
             }
         } elseif ($action === 'delete' && !empty($_POST['id'])) {
-            $response = callAPI('http://silverhappy_api:8080/api/admin-events/' . urlencode($_POST['id']), 'DELETE', null, $token);
+            $response = callAPI('http://localhost:8080/api/admin-events/' . urlencode($_POST['id']), 'DELETE', null, $token);
             if (!is_array($response) || !isset($response['error'])) {
-                $message = "Événement supprimé.";
-                $messageType = "success";
+                $_SESSION['event_message'] = "Événement supprimé.";
+                $_SESSION['event_message_type'] = "success";
+                header("Location: {$_SERVER['PHP_SELF']}");
+                exit;
             } else {
                 $message = 'Erreur: ' . $response['error'];
                 $messageType = 'danger';
@@ -56,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $eventsResponse = callAPI('http://silverhappy_api:8080/api/admin-events', 'GET', null, $token);
+    $eventsResponse = callAPI('http://localhost:8080/api/admin-events', 'GET', null, $token);
     if (is_array($eventsResponse) && !isset($eventsResponse['error'])) {
         $events = $eventsResponse;
     } elseif ($message === '') {

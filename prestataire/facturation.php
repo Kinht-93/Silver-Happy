@@ -2,8 +2,9 @@
 include_once __DIR__ . '/_auth.php';
 include 'include/header-prestataire.php';
 
-$message = '';
-$messageType = '';
+$message = $_SESSION['provider_invoice_message'] ?? '';
+$messageType = $_SESSION['provider_invoice_message_type'] ?? '';
+unset($_SESSION['provider_invoice_message'], $_SESSION['provider_invoice_message_type']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
     $action = $_POST['action'] ?? '';
@@ -13,13 +14,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
         }
 
         if ($action === 'generate') {
-            $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-invoices/generate', 'POST', null, $token);
+            $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-invoices/generate', 'POST', null, $token);
             if (!is_array($response) || isset($response['error'])) {
                 throw new RuntimeException((string)($response['error'] ?? 'Impossible de generer la facture.'));
             }
 
-            $message = 'Facture mensuelle generee.';
-            $messageType = 'success';
+            $_SESSION['provider_invoice_message'] = 'Facture mensuelle generee.';
+            $_SESSION['provider_invoice_message_type'] = 'success';
+            header("Location: {$_SERVER['PHP_SELF']}");
+            exit;
         }
     } catch (Exception $e) {
         $message = 'Erreur: ' . $e->getMessage();
@@ -29,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $providerData && $token !== '') {
 
 $rows = [];
 if ($providerData && $token !== '') {
-    $response = callAPI('http://silverhappy_api:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-billing', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/users/' . urlencode((string)$providerData['id_user']) . '/provider-billing', 'GET', null, $token);
     if (is_array($response) && !isset($response['error'])) {
         $rows = $response;
     } else {

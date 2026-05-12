@@ -16,10 +16,10 @@ $alertText = "Vous n'êtes inscrit à aucun événement pour le moment";
 $alertLinkLabel = "Découvrir l'agenda";
 
 if ($token !== '' && $userId !== '') {
-    $registrations = callAPI('http://silverhappy_api:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
-    $events = callAPI('http://silverhappy_api:8080/api/events', 'GET', null, $token);
-    $serviceRequests = callAPI('http://silverhappy_api:8080/api/service-requests?id_user=' . urlencode($userId), 'GET', null, $token);
-    $messages = callAPI('http://silverhappy_api:8080/api/messages?id_user=' . urlencode($userId), 'GET', null, $token);
+    $registrations = callAPI('http://localhost:8080/api/users/' . urlencode($userId) . '/event-registrations', 'GET', null, $token);
+    $events = callAPI('http://localhost:8080/api/events', 'GET', null, $token);
+    $serviceRequests = callAPI('http://localhost:8080/api/service-requests?id_user=' . urlencode($userId), 'GET', null, $token);
+    $messages = callAPI('http://localhost:8080/api/messages?id_user=' . urlencode($userId), 'GET', null, $token);
 
     if (is_array($registrations) && !isset($registrations['error']) && is_array($events) && !isset($events['error'])) {
         $eventsById = [];

@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!empty($token)) {
-    $response = callAPI('http://silverhappy_api:8080/api/product-categories', 'GET', null, $token);
+    $response = callAPI('http://localhost:8080/api/product-categories', 'GET', null, $token);
     
     if (isset($response['error'])) {
         $message = "Erreur API: " . $response['error'];
