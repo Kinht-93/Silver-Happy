@@ -29,9 +29,6 @@ if ($userName === '') {
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        <a href="../notifications.php" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-bell"></i>
-        </a>
         <a class="navbar-brand d-flex align-items-center" href="<?= $prestataire_url ?>/index.php">
             <img src="<?= $base_url ?>/img/logo.png" alt="Logo" class="admin-logo">
             <span class="brand-text ms-2">Silver Happy - Prestataire</span>
@@ -44,7 +41,7 @@ if ($userName === '') {
         <div class="collapse navbar-collapse" id="navbarProvider">
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="btn btn-outline-secondary" href="<?= $base_url ?>/notifications.php">
+                    <a class="btn btn-outline-secondary" href="<?= $base_url ?>././notifications.php">
                         <i class="bi bi-bell"></i>
                     </a>
                 </li>
