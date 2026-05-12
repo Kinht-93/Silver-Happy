@@ -248,15 +248,6 @@ include './include/header-admin.php';
                         <textarea class="form-control" id="notificationMessage" name="message" rows="4" placeholder="Détails de la notification..." required></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="notificationRecipients" class="form-label">Destinataires</label>
-                        <select class="form-control" id="notificationRecipients" name="recipients" required>
-                            <option value="">Sélectionner les destinataires</option>
-                            <option value="all">Tous les utilisateurs</option>
-                            <option value="provider">Prestataires</option>
-                            <option value="senior">Seniors</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label for="notificationSchedule" class="form-label">Programmer l'envoi</label>
                         <input type="datetime-local" class="form-control" id="notificationSchedule" name="scheduled_at">
                     </div>
