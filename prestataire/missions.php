@@ -1,5 +1,6 @@
 <?php
 include_once __DIR__ . '/_auth.php';
+require_once __DIR__ . '/../db.php';
 include 'include/header-prestataire.php';
 
 $message = $_SESSION['provider_mission_message'] ?? '';
@@ -45,6 +46,41 @@ if ($providerData && $token !== '') {
     }
 }
 
+$seniorRequests = [];
+if ($providerData && $pdo instanceof PDO) {
+    try {
+        $categoryStmt = $pdo->prepare(
+            "SELECT id_service_category FROM provider_service_categories WHERE id_user = ?"
+        );
+        $categoryStmt->execute([(string)$providerData['id_user']]);
+        $providerCategoryIds = array_values(array_filter(array_map(
+            static fn($row) => (string)($row['id_service_category'] ?? ''),
+            $categoryStmt->fetchAll() ?: []
+        )));
+
+        if (!empty($providerCategoryIds)) {
+            $placeholders = implode(',', array_fill(0, count($providerCategoryIds), '?'));
+            $requestsSql = "
+                SELECT sr.id_request, sr.desired_date, sr.start_time, sr.estimated_duration,
+                       sr.intervention_address, sr.status, sr.created_at, sr.id_user,
+                       sr.id_service_category, COALESCE(sc.name, '') AS category_name,
+                       COALESCE(u.first_name, '') AS first_name, COALESCE(u.last_name, '') AS last_name
+                FROM service_requests sr
+                LEFT JOIN users u ON u.id_user = sr.id_user
+                LEFT JOIN service_categories sc ON sc.id_service_category = sr.id_service_category
+                WHERE sr.status = 'En attente'
+                  AND sr.id_service_category IN ($placeholders)
+                ORDER BY sr.created_at DESC
+            ";
+            $requestsStmt = $pdo->prepare($requestsSql);
+            $requestsStmt->execute($providerCategoryIds);
+            $seniorRequests = $requestsStmt->fetchAll() ?: [];
+        }
+    } catch (Exception $e) {
+        $seniorRequests = [];
+    }
+}
+
 $basePath = '../';
 ?>
 
@@ -63,8 +99,8 @@ $basePath = '../';
     <?php endif; ?>
 
     <?php
-    $aAccepter = array_values(array_filter($missions, fn($m) => $m['status'] === 'Proposee' && empty($m['id_user'])));
-    $mesMissions = array_values(array_filter($missions, fn($m) => !($m['status'] === 'Proposee' && empty($m['id_user']))));
+    $aAccepter = array_values(array_filter($missions, fn($m) => ($m['status'] ?? '') === 'Proposee'));
+    $mesMissions = array_values(array_filter($missions, fn($m) => ($m['status'] ?? '') !== 'Proposee'));
     ?>
 
     <ul class="nav nav-tabs mb-3" id="missionsTabs">
@@ -91,6 +127,30 @@ $basePath = '../';
         <div class="tab-pane fade show active" id="tabProposees">
             <div class="card">
                 <div class="card-body">
+                    <h6 class="mb-3">Demandes seniors par categorie</h6>
+                    <?php if (empty($seniorRequests)): ?>
+                        <p class="text-muted text-center my-3">Aucune demande senior en attente pour vos categories.</p>
+                    <?php else: ?>
+                        <div class="table-responsive mb-4">
+                            <table class="table align-middle">
+                                <thead><tr><th>Senior</th><th>Categorie</th><th>Date</th><th>Heure</th><th>Duree</th><th>Adresse</th></tr></thead>
+                                <tbody>
+                                <?php foreach ($seniorRequests as $sr): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars(trim((string)($sr['first_name'] ?? '') . ' ' . (string)($sr['last_name'] ?? '')) ?: (string)($sr['id_user'] ?? 'N/A')) ?></td>
+                                    <td><?= htmlspecialchars((string)($sr['category_name'] ?? (string)($sr['id_service_category'] ?? 'N/A'))) ?></td>
+                                    <td><?= htmlspecialchars(!empty($sr['desired_date']) ? date('d/m/Y', strtotime((string)$sr['desired_date'])) : '—') ?></td>
+                                    <td><?= htmlspecialchars(substr((string)($sr['start_time'] ?? ''), 0, 5)) ?></td>
+                                    <td><?= (int)($sr['estimated_duration'] ?? 0) ?> h</td>
+                                    <td><?= htmlspecialchars((string)($sr['intervention_address'] ?? '—')) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+
+                    <h6 class="mb-3">Missions a accepter</h6>
                     <?php if (empty($aAccepter)): ?>
                         <p class="text-muted text-center my-3">Aucune mission proposée pour le moment.</p>
                     <?php else: ?>
