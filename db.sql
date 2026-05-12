@@ -42,6 +42,7 @@ CREATE TABLE users (
 CREATE TABLE `active_users` (
   `id_user` varchar(255) NOT NULL,
   `last_activity` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_user`),
   FOREIGN KEY (id_user) REFERENCES users(id_user)
 );
 
