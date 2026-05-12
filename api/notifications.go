@@ -102,9 +102,13 @@ func handleGetUserNotifications(w http.ResponseWriter, r *http.Request) {
 		SELECT n.id_notification, n.type, n.title, n.message, n.created_at, n.scheduled_at, n.is_read, n.limited_at, u.first_name, u.last_name, n.recipients
 		FROM notifications n
 		LEFT JOIN users u ON n.id_user = u.id_user
-		WHERE n.id_user = ? 
+		WHERE (
+			n.id_user = ?
 			OR n.recipients = 'all'
-		   	OR n.recipients = ?
+			OR n.recipients = ?
+		)
+		AND (n.scheduled_at IS NULL OR n.scheduled_at <= NOW())
+		AND (n.limited_at IS NULL OR n.limited_at >= NOW())
 		ORDER BY n.created_at DESC
 	`, userID, recipient)
 	if err != nil {
