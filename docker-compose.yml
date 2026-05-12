@@ -1,43 +1,4 @@
 services:
-  php:
-    build:
-      context: .
-      dockerfile: Dockerfile.php
-    container_name: silverhappy_php
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    volumes:
-      - ./:/var/www/html
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASS: ${DB_PASS}
-      API_URL: ${API_URL}
-    networks:
-      - silverhappy_net
-    depends_on:
-      - api
-      - db
-
-  api:
-    build:
-      context: ./api
-    container_name: silverhappy_api
-    restart: unless-stopped
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASS: ${DB_PASS}
-    networks:
-      - silverhappy_net
-    depends_on:
-      db:
-        condition: service_healthy
 
   db:
     image: mysql:8.0
@@ -58,17 +19,64 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s
+
+  api:
+    build: ./api
+    container_name: silverhappy_api
+    restart: unless-stopped
+    volumes:
+      - ./.env:/app/.env:ro
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_BASE_URL: ${APP_BASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - silverhappy_net
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+    container_name: silverhappy_php
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      API_URL: ${API_URL}
+      APP_BASE_URL: ${APP_BASE_URL}
+      STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - api
+    networks:
+      - silverhappy_net
 
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: silverhappy_cf
     restart: unless-stopped
-    command: tunnel --url http://silverhappy_php:80
-    networks:
-      - silverhappy_net
+    command: tunnel --no-autoupdate --url http://silverhappy_php:80
     depends_on:
       - php
+    networks:
+      - silverhappy_net
 
 networks:
   silverhappy_net:

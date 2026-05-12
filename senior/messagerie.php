@@ -144,7 +144,7 @@ include './include/header.php';
         <div class="senier-breadcrumb">Accueil/Messagerie</div>
     </div>
 
-    <div class="senier-message-layout">
+    <div class="senier-message-layout senier-message-layout--wide">
         <div class="senier-conversations">
             <div class="senier-search">
                 <input type="text" class="form-control form-control-sm" placeholder="Conversations" disabled>
@@ -216,7 +216,7 @@ include './include/header.php';
             <?php endif; ?>
         </div>
 
-        <div class="senier-chat">
+        <div class="senier-chat <?= $selectedPeerId !== '' ? 'senier-chat--thread' : '' ?>">
             <?php if ($selectedPeerId === ''): ?>
                 <div class="senier-chat-empty">
                     <div class="fs-2 mb-2"><i class="bi bi-chat-dots"></i></div>
@@ -224,7 +224,7 @@ include './include/header.php';
                     <p class="mb-0">Ou commencez en contactant un prestataire.</p>
                 </div>
             <?php else: ?>
-                <div class="border rounded p-3 mb-3" style="height:320px; overflow:auto; background:#fff;">
+                <div class="border rounded p-3 mb-3 w-100" style="height:560px; overflow:auto; background:#fff;">
                     <?php if (empty($currentMessages)): ?>
                         <p class="text-muted mb-0">Aucun message pour le moment.</p>
                     <?php else: ?>
@@ -246,9 +246,9 @@ include './include/header.php';
                     <?php endif; ?>
                 </div>
 
-                <form method="post" class="d-flex flex-column gap-2">
+                <form method="post" class="d-flex flex-column gap-2 w-100">
                     <input type="hidden" name="receiver" value="<?= htmlspecialchars($selectedPeerId) ?>">
-                    <textarea class="form-control" name="content" rows="3" placeholder="Votre message..." required><?= htmlspecialchars($newContent) ?></textarea>
+                    <textarea class="form-control" name="content" rows="8" placeholder="Votre message..." required><?= htmlspecialchars($newContent) ?></textarea>
                     <div class="text-end">
                         <button type="submit" class="btn btn-success btn-sm">Envoyer</button>
                     </div>

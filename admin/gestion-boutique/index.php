@@ -148,6 +148,28 @@ if (!empty($token)) {
 </div>
 </div>
 
+<div class="modal fade" id="modalViewProduct" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Fiche produit</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1"><strong>Nom :</strong> <span id="vpName"></span></p>
+                <p class="mb-1"><strong>Catégorie :</strong> <span id="vpCategory"></span></p>
+                <p class="mb-1"><strong>Prix :</strong> <span id="vpPrice"></span></p>
+                <p class="mb-1"><strong>Stock :</strong> <span id="vpStock"></span></p>
+                <p class="mb-1"><strong>Ventes :</strong> <span id="vpSales"></span></p>
+                <p class="mb-1"><strong>Statut :</strong> <span id="vpStatus"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalAddArticle" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -227,7 +249,22 @@ if (!empty($token)) {
 <script>
 function viewProduct(btn) {
     const productData = JSON.parse(btn.getAttribute('data-product'));
-    alert('Produit: ' + productData.name + '\nCatégorie: ' + productData.category + '\nPrix: ' + productData.price + ' €\nStock: ' + productData.stock);
+    const stock = parseInt(productData.stock, 10) || 0;
+    let status = 'Rupture stock';
+    if (stock > 10) {
+        status = 'En stock';
+    } else if (stock > 0) {
+        status = 'Stock faible';
+    }
+
+    document.getElementById('vpName').textContent = productData.name || '—';
+    document.getElementById('vpCategory').textContent = productData.category || '—';
+    document.getElementById('vpPrice').textContent = (parseFloat(productData.price) || 0).toFixed(2) + ' €';
+    document.getElementById('vpStock').textContent = String(stock);
+    document.getElementById('vpSales').textContent = String(parseInt(productData.sales, 10) || 0);
+    document.getElementById('vpStatus').textContent = status;
+
+    openModal('modalViewProduct');
 }
 
 function editProduct(btn) {

@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'first_name' => $_POST['first_name'],
             'last_name' => $_POST['last_name'],
             'email' => $_POST['email'],
+            'phone' => $_POST['phone'] ?? null,
             'role' => 'senior',
             'active' => 1
         ];
@@ -32,7 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = [
             'first_name' => $_POST['first_name'],
             'last_name' => $_POST['last_name'],
-            'email' => $_POST['email']
+            'email' => $_POST['email'],
+            'phone' => $_POST['phone'] ?? null
         ];
         
         $response = callAPI("http://silverhappy_api:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
@@ -85,7 +87,6 @@ if (!empty($token)) {
             <a href="./index.php" class="btn btn-sm btn-outline-primary">Tous</a>
             <a href="./seniors.php" class="btn btn-sm btn-primary active">Seniors</a>
             <a href="./prestataires.php" class="btn btn-sm btn-outline-primary">Prestataires</a>
-            <a href="./employes.php" class="btn btn-sm btn-outline-primary">Employés</a>
             <a href="./administrateurs.php" class="btn btn-sm btn-outline-primary">Administrateurs</a>
         </div>
     </div>
@@ -125,7 +126,7 @@ if (!empty($token)) {
                             <td><?= date('d/m/Y', strtotime($senior['created_at'])) ?></td>
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-primary" data-user="<?= htmlspecialchars(json_encode($senior)) ?>" onclick="viewSenior(this)"><i class="bi bi-eye"></i></button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" data-user="<?= htmlspecialchars(json_encode($senior)) ?>" onclick="loadSeniorData(this)"><i class="bi bi-pencil"></i></button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-user="<?= htmlspecialchars(json_encode($senior)) ?>" onclick="editSenior(this)"><i class="bi bi-pencil"></i></button>
                                 <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce senior ?');">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?= htmlspecialchars($senior['id_user']) ?>">
@@ -163,6 +164,10 @@ if (!empty($token)) {
                         <label for="seniorEmail" class="form-label">Email *</label>
                         <input type="email" class="form-control" id="seniorEmail" name="email" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="seniorPhone" class="form-label">Téléphone</label>
+                        <input type="tel" class="form-control" id="seniorPhone" name="phone">
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -196,6 +201,10 @@ if (!empty($token)) {
                         <label for="editSeniorEmail" class="form-label">Email *</label>
                         <input type="email" class="form-control" id="editSeniorEmail" name="email" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="editSeniorPhone" class="form-label">Téléphone</label>
+                        <input type="tel" class="form-control" id="editSeniorPhone" name="phone">
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -210,10 +219,15 @@ if (!empty($token)) {
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Détails du senior</h5>
+                <h5 class="modal-title">Fiche senior</h5>
                 <button type="button" class="btn-close" data-modal-close></button>
             </div>
-            <div class="modal-body" id="seniorDetailContent">
+            <div class="modal-body">
+                <p class="mb-1"><strong>Nom :</strong> <span id="vsName"></span></p>
+                <p class="mb-1"><strong>Email :</strong> <span id="vsEmail"></span></p>
+                <p class="mb-1"><strong>Téléphone :</strong> <span id="vsPhone"></span></p>
+                <p class="mb-1"><strong>Statut :</strong> <span id="vsStatus"></span></p>
+                <p class="mb-1"><strong>Date d'inscription :</strong> <span id="vsCreated"></span></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-modal-close>Fermer</button>
@@ -223,42 +237,27 @@ if (!empty($token)) {
 </div>
 
 <script>
-function loadSeniorData(btn) {
-    const user = JSON.parse(btn.getAttribute('data-user'));
-    document.getElementById('editSeniorId').value = user.id_user;
-    document.getElementById('editSeniorFirstName').value = user.first_name;
-    document.getElementById('editSeniorLastName').value = user.last_name;
-    document.getElementById('editSeniorEmail').value = user.email;
-    document.getElementById('editSeniorBirthDate').value = user.birth_date || '';
-    openModal('modalEditSenior');
-}
-
 function viewSenior(btn) {
     const user = JSON.parse(btn.getAttribute('data-user'));
-    let html = `
-        <p><strong>Nom:</strong> ${user.first_name} ${user.last_name}</p>
-        <p><strong>Email:</strong> ${user.email}</p>
-        <p><strong>Statut:</strong> ${user.active ? 'Actif' : 'Inactif'}</p>
-        <p><strong>Date d'inscription:</strong> ${new Date(user.created_at).toLocaleDateString('fr-FR')}</p>
-    `;
-    document.getElementById('seniorDetailContent').innerHTML = html;
+    document.getElementById('vsName').textContent = (user.first_name || '') + ' ' + (user.last_name || '');
+    document.getElementById('vsEmail').textContent = user.email || '—';
+    document.getElementById('vsPhone').textContent = user.phone || '—';
+    document.getElementById('vsStatus').textContent = user.active ? 'Actif' : 'Inactif';
+    document.getElementById('vsCreated').textContent = user.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : '—';
     openModal('modalViewSenior');
 }
 
-function loadSeniorData(btn) {
+function editSenior(btn) {
     const user = JSON.parse(btn.getAttribute('data-user'));
     document.getElementById('editSeniorId').value = user.id_user;
     document.getElementById('editSeniorFirstName').value = user.first_name;
     document.getElementById('editSeniorLastName').value = user.last_name;
     document.getElementById('editSeniorEmail').value = user.email;
+    document.getElementById('editSeniorPhone').value = user.phone || '';
     openModal('modalEditSenior');
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-        age--;
-    }
-    return age + ' ans';
 }
 </script>
+
+<?php
+include '../include/footer-admin.php';
+?>

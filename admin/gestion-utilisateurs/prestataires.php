@@ -8,8 +8,6 @@ $messageType = '';
 $token = $_SESSION['user']['token'] ?? '';
 $prestataires = [];
 
-// --- Récupère les documents uploadés pour tous les prestataires ---
-// On groupe par id_user pour pouvoir les afficher dans le modal
 $documentsByUser = [];
 if ($pdo instanceof PDO) {
     $docRows = $pdo->query(
@@ -25,7 +23,6 @@ if ($pdo instanceof PDO) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    // --- Actions rapides Valider / Rejeter ---
     if ($action === 'validate' || $action === 'reject') {
         $newStatus = $action === 'validate' ? 'Valide' : 'Rejete';
         $userId = $_POST['id'] ?? '';
@@ -61,12 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "danger";
         }
     } elseif ($action === 'update') {
+        $skillsText = isset($_POST['skills_text']) ? trim((string)$_POST['skills_text']) : '';
         $data = [
             'first_name' => $_POST['first_name'],
             'last_name' => $_POST['last_name'],
             'email' => $_POST['email'],
             'phone' => $_POST['phone'] ?? null,
-            'company_name' => $_POST['company_name'] ?? null
+            'company_name' => $_POST['company_name'] ?? null,
+            'skills_text' => $skillsText !== '' ? $skillsText : null,
         ];
         
         $response = callAPI("http://silverhappy_api:8080/api/users/{$_POST['id']}", 'PATCH', $data, $token);
@@ -119,7 +118,6 @@ if (!empty($token)) {
             <a href="./index.php" class="btn btn-sm btn-outline-primary">Tous</a>
             <a href="./seniors.php" class="btn btn-sm btn-outline-primary">Seniors</a>
             <a href="./prestataires.php" class="btn btn-sm btn-primary active">Prestataires</a>
-            <a href="./employes.php" class="btn btn-sm btn-outline-primary">Employés</a>
             <a href="./administrateurs.php" class="btn btn-sm btn-outline-primary">Administrateurs</a>
         </div>
     </div>
@@ -148,18 +146,30 @@ if (!empty($token)) {
                     <tr><td colspan="7" class="text-center">Aucun prestataire trouvé.</td></tr>
                 <?php else: ?>
                     <?php foreach ($prestataires as $prestataire): ?>
+                        <?php
+                        $fullName = trim((string)($prestataire['first_name'] ?? '') . ' ' . (string)($prestataire['last_name'] ?? ''));
+                        $email = (string)($prestataire['email'] ?? '');
+                        $companyName = (string)($prestataire['company_name'] ?? '');
+                        $prestationsCount = (int)($prestataire['prestations_count'] ?? 0);
+                        $validationStatus = (string)($prestataire['validation_status'] ?? 'En attente');
+                        $isValidated = in_array($validationStatus, ['Validé', 'Valide'], true);
+                        $isRejected = in_array($validationStatus, ['Rejeté', 'Rejete'], true);
+                        $idUser = (string)($prestataire['id_user'] ?? '');
+                        ?>
                         <tr>
-                            <td><?= htmlspecialchars($prestataire['first_name'] . ' ' . $prestataire['last_name']) ?></td>
-                            <td><?= htmlspecialchars($prestataire['email']) ?></td>
-                            <td><?= htmlspecialchars($prestataire['company_name']) ?></td>
-                            <td><?= (int)$prestataire['prestations_count'] ?></td>
+                            <td><?= htmlspecialchars($fullName) ?></td>
+                            <td><?= htmlspecialchars($email) ?></td>
+                            <td><?= htmlspecialchars($companyName) ?></td>
+                            <td><?= $prestationsCount ?></td>
                             <td>
-                                <?php if ($prestataire['validation_status'] == 'Validé'): ?>
+                                <?php if ($isValidated): ?>
                                     <span class="badge bg-success">Validé</span>
-                                <?php elseif ($prestataire['validation_status'] == 'En attente'): ?>
+                                <?php elseif ($validationStatus === 'En attente'): ?>
                                     <span class="badge bg-warning">En attente</span>
+                                <?php elseif ($isRejected): ?>
+                                    <span class="badge bg-danger">Rejeté</span>
                                 <?php else: ?>
-                                    <span class="badge bg-secondary"><?= htmlspecialchars($prestataire['validation_status']) ?></span>
+                                    <span class="badge bg-secondary"><?= htmlspecialchars($validationStatus) ?></span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -172,23 +182,23 @@ if (!empty($token)) {
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-primary" data-user="<?= htmlspecialchars(json_encode($prestataire)) ?>" onclick="viewProvider(this)"><i class="bi bi-eye"></i></button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-user="<?= htmlspecialchars(json_encode($prestataire)) ?>" onclick="editProvider(this)"><i class="bi bi-pencil"></i></button>
-                                <?php if (($prestataire['validation_status'] ?? '') !== 'Valide'): ?>
+                                <?php if (!$isValidated): ?>
                                 <form method="POST" class="d-inline">
                                     <input type="hidden" name="action" value="validate">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars($prestataire['id_user']) ?>">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($idUser) ?>">
                                     <button type="submit" class="btn btn-sm btn-success" title="Valider ce prestataire"><i class="bi bi-check-lg"></i></button>
                                 </form>
                                 <?php endif; ?>
-                                <?php if (($prestataire['validation_status'] ?? '') !== 'Rejete'): ?>
+                                <?php if (!$isRejected): ?>
                                 <form method="POST" class="d-inline">
                                     <input type="hidden" name="action" value="reject">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars($prestataire['id_user']) ?>">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($idUser) ?>">
                                     <button type="submit" class="btn btn-sm btn-warning" title="Rejeter ce prestataire" onclick="return confirm('Rejeter ce prestataire ?')"><i class="bi bi-x-lg"></i></button>
                                 </form>
                                 <?php endif; ?>
                                 <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce prestataire ?');">
                                     <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars($prestataire['id_user']) ?>">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($idUser) ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                                 </form>
                             </td>
@@ -201,7 +211,6 @@ if (!empty($token)) {
 </div>
 </div>
 
-<!-- Modal visualisation prestataire + documents -->
 <div class="modal fade" id="modalViewProvider" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -304,16 +313,12 @@ if (!empty($token)) {
                         <input type="text" class="form-control" id="editProviderCompany" name="company_name">
                     </div>
                     <div class="mb-3">
-                        <label for="editProviderSiret" class="form-label">SIRET</label>
-                        <input type="text" class="form-control" id="editProviderSiret" name="siret_number" readonly>
+                        <label for="editProviderSkills" class="form-label">Domaine d'expertise</label>
+                        <input type="text" class="form-control" id="editProviderSkills" name="skills_text" placeholder="Ex: aide a domicile, menage, accompagnement...">
                     </div>
                     <div class="mb-3">
-                        <label for="editProviderValidation" class="form-label">Statut de validation</label>
-                        <select class="form-select" id="editProviderValidation" name="validation_status">
-                            <option value="En attente">En attente</option>
-                            <option value="Validé">Validé</option>
-                            <option value="Rejeté">Rejeté</option>
-                        </select>
+                        <label for="editProviderSiret" class="form-label">SIRET</label>
+                        <input type="text" class="form-control" id="editProviderSiret" name="siret_number" readonly>
                     </div>
                 </form>
             </div>
@@ -326,7 +331,6 @@ if (!empty($token)) {
 </div>
 
 <script>
-// Documents indexés par id_user — injectés directement depuis PHP
 const documentsByUser = <?= json_encode($documentsByUser) ?>;
 
 const docLabels = {
@@ -353,7 +357,6 @@ function viewProvider(btn) {
     } else {
         vpDocs.innerHTML = docs.map(function(doc) {
             const label = docLabels[doc.document_type] || doc.document_type;
-            // Le lien pointe vers la racine du projet + le chemin stocké en BDD
             const href = '/thib/Silver-Happy/' + doc.file_path;
             return '<div class="d-flex align-items-center gap-2 mb-2">'
                 + '<i class="bi bi-file-earmark-text text-primary fs-5"></i>'
@@ -375,8 +378,8 @@ function editProvider(btn) {
     document.getElementById('editProviderEmail').value = user.email;
     document.getElementById('editProviderPhone').value = user.phone || '';
     document.getElementById('editProviderCompany').value = user.company_name || '';
+    document.getElementById('editProviderSkills').value = user.skills_text || '';
     document.getElementById('editProviderSiret').value = user.siret_number || '';
-    document.getElementById('editProviderValidation').value = user.validation_status || 'En attente';
     openModal('modalEditProvider');
 }
 </script>

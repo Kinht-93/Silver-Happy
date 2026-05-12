@@ -24,7 +24,7 @@ if (!function_exists('sh_resolve_category_from_api')) {
     }
 }
 
-$seniorCurrent = 'prestation';
+$seniorCurrent = 'prestations';
 $message = '';
 $messageType = '';
 $availableSlots = [];

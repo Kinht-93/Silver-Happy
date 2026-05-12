@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'first_name' => $_POST['first_name'],
             'last_name' => $_POST['last_name'],
             'email' => $_POST['email'],
+            'phone' => $_POST['phone'] ?? null,
             'role' => $_POST['role'],
             'active' => 1
         ];
@@ -33,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'first_name' => $_POST['first_name'],
             'last_name' => $_POST['last_name'],
             'email' => $_POST['email'],
+            'phone' => $_POST['phone'] ?? null,
             'role' => $_POST['role']
         ];
         
@@ -87,7 +89,6 @@ if (!empty($token)) {
             <a href="./index.php" class="btn btn-sm btn-outline-primary">Tous</a>
             <a href="./seniors.php" class="btn btn-sm btn-outline-primary">Seniors</a>
             <a href="./prestataires.php" class="btn btn-sm btn-outline-primary">Prestataires</a>
-            <a href="./employes.php" class="btn btn-sm btn-outline-primary">Employés</a>
             <a href="./administrateurs.php" class="btn btn-sm btn-primary active">Administrateurs</a>
         </div>
     </div>
@@ -178,6 +179,10 @@ if (!empty($token)) {
                         <input type="email" class="form-control" id="adminEmail" name="email" required>
                     </div>
                     <div class="mb-3">
+                        <label for="adminPhone" class="form-label">Téléphone</label>
+                        <input type="tel" class="form-control" id="adminPhone" name="phone">
+                    </div>
+                    <div class="mb-3">
                         <label for="adminRole" class="form-label">Rôle *</label>
                         <select class="form-control" id="adminRole" name="role" required>
                             <option value="">Sélectionner un rôle</option>
@@ -221,6 +226,10 @@ if (!empty($token)) {
                         <input type="email" class="form-control" id="editAdminEmail" name="email" required>
                     </div>
                     <div class="mb-3">
+                        <label for="editAdminPhone" class="form-label">Téléphone</label>
+                        <input type="tel" class="form-control" id="editAdminPhone" name="phone">
+                    </div>
+                    <div class="mb-3">
                         <label for="editAdminRole" class="form-label">Rôle *</label>
                         <select class="form-control" id="editAdminRole" name="role" required>
                             <option value="superadmin">Super Admin</option>
@@ -239,10 +248,38 @@ if (!empty($token)) {
     </div>
 </div>
 
+<div class="modal fade" id="modalViewAdmin" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Fiche administrateur</h5>
+                <button type="button" class="btn-close" data-modal-close></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1"><strong>Nom :</strong> <span id="vaName"></span></p>
+                <p class="mb-1"><strong>Email :</strong> <span id="vaEmail"></span></p>
+                <p class="mb-1"><strong>Téléphone :</strong> <span id="vaPhone"></span></p>
+                <p class="mb-1"><strong>Rôle :</strong> <span id="vaRole"></span></p>
+                <p class="mb-1"><strong>Statut :</strong> <span id="vaStatus"></span></p>
+                <p class="mb-1"><strong>Date d'inscription :</strong> <span id="vaCreated"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function viewAdmin(btn) {
     const user = JSON.parse(btn.getAttribute('data-user'));
-    alert('Administrateur: ' + user.first_name + ' ' + user.last_name + '\nRôle: ' + user.role + '\nEmail: ' + user.email);
+    document.getElementById('vaName').textContent = (user.first_name || '') + ' ' + (user.last_name || '');
+    document.getElementById('vaEmail').textContent = user.email || '—';
+    document.getElementById('vaPhone').textContent = user.phone || '—';
+    document.getElementById('vaRole').textContent = user.role || '—';
+    document.getElementById('vaStatus').textContent = user.active ? 'Actif' : 'Inactif';
+    document.getElementById('vaCreated').textContent = user.created_at ? new Date(user.created_at).toLocaleString('fr-FR') : '—';
+    openModal('modalViewAdmin');
 }
 
 function editAdmin(btn) {
@@ -251,6 +288,7 @@ function editAdmin(btn) {
     document.getElementById('editAdminFirstName').value = user.first_name;
     document.getElementById('editAdminLastName').value = user.last_name;
     document.getElementById('editAdminEmail').value = user.email;
+    document.getElementById('editAdminPhone').value = user.phone || '';
     document.getElementById('editAdminRole').value = user.role || '';
     openModal('modalEditAdmin');
 }
