@@ -18,7 +18,7 @@ if ($userId === '') {
     $message = 'Utilisateur non identifié. Veuillez vous reconnecter.';
     $messageType = 'warning';
 } else {
-    $response = callAPI('http://silverhappy_api:8080/api/notifications/' . urlencode($userId), 'GET', null, $token);
+    $response = callAPI('http://silverhappy_api:8080/api/notifications', 'GET', null, $token);
     if (isset($response['error'])) {
         $message = 'Erreur API : ' . htmlspecialchars($response['error']);
         $messageType = 'danger';
