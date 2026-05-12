@@ -232,8 +232,7 @@ CREATE TABLE show_type (
 CREATE TABLE subscribed (
     id_user VARCHAR(255),
     id_subscription_type VARCHAR(255),
-    status VARCHAR(50) NOT NULL DEFAULT 'Actif',
-    period VARCHAR(50) NOT NULL DEFAULT 'monthly' AFTER status,
+    status VARCHAR(20) NOT NULL DEFAULT 'Actif',
     subscribed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     cancelled_at DATETIME DEFAULT NULL,
     stripe_payment_intent_id VARCHAR(255) DEFAULT NULL,

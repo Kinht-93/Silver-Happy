@@ -293,7 +293,7 @@ func handleConfirmSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
 	db.Exec("DELETE FROM subscribed WHERE id_user = ?", idUser)
 
 	_, err = db.Exec(
-		"INSERT INTO subscribed (id_user, id_subscription_type, status, period, subscribed_at, stripe_payment_intent_id) VALUES (?, ?, 'Actif', ?, NOW(), ?)",
+		"INSERT INTO subscribed (id_user, id_subscription_type, status, subscribed_at, stripe_payment_intent_id) VALUES (?, ?, 'Actif', ?, NOW(), ?)",
 		idUser, idSub, period, paymentIntentID,
 	)
 	if err != nil {
