@@ -134,11 +134,12 @@ func handleTouchUserActivity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := db.Exec(`
-		INSERT INTO active_users (id_user, last_activity)
-		VALUES (?, NOW())
-		ON DUPLICATE KEY UPDATE last_activity = NOW()
-	`, userID); err != nil {
+	if _, err := db.Exec(`DELETE FROM active_users WHERE id_user = ?`, userID); err != nil {
+		jsonError(w, "Erreur lors de la mise à jour de l'activité", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := db.Exec(`INSERT INTO active_users (id_user, last_activity) VALUES (?, NOW())`, userID); err != nil {
 		jsonError(w, "Erreur lors de la mise à jour de l'activité", http.StatusInternalServerError)
 		return
 	}
