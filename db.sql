@@ -235,6 +235,7 @@ CREATE TABLE subscribed (
     period VARCHAR(50) NOT NULL DEFAULT 'monthly',
     subscribed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     cancelled_at DATETIME DEFAULT NULL,
+    stripe_payment_intent_id VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id_user, id_subscription_type),
     FOREIGN KEY (id_user) REFERENCES users(id_user),
     FOREIGN KEY (id_subscription_type) REFERENCES subscription_types(id_subscription_type)
