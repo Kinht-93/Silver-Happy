@@ -173,8 +173,6 @@ include './include/header-admin.php';
                             </td>
                             <td><?= htmlspecialchars($notification['title'] ? $notification['title'] : 'Notification sans titre') ?></td>
                             <td><?= isset($notification['scheduled_at']) && $notification['scheduled_at'] ? date('d/m/Y H:i', strtotime($notification['scheduled_at'])) : date('d/m/Y H:i', strtotime($notification['created_at'])) ?></td>
-                            <td><?= isset($notification['limited_at']) && $notification['limited_at'] ? date('d/m/Y H:i', strtotime($notification['limited_at'])) : '-' ?></td>
-                            <td><?= isset($notification['first_name']) && $notification['first_name'] ? htmlspecialchars($notification['first_name'] . ' ' . ($notification['last_name'] ?? '')) : 'Tous les utilisateurs' ?></td>
                             <td>
                                 <?php
                                 $now = time();
