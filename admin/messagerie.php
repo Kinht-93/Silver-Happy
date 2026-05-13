@@ -37,13 +37,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $response = callAPI('http://silverhappy_api:8080/api/messages', 'POST', [
             'content' => mb_substr($newContent, 0, 5000),
             'receiver' => $selectedPeerId,
+            'sender' => $userId,
         ], $token);
 
         if (is_array($response) && !isset($response['error'])) {
             header('Location: messagerie.php?with=' . urlencode($selectedPeerId) . '&sent=1');
             exit;
         } else {
-            $errors[] = 'Impossible d envoyer le message pour le moment.';
+            $apiError = is_array($response) ? trim((string)($response['error'] ?? '')) : '';
+            $errors[] = $apiError !== ''
+                ? 'Impossible d envoyer le message : ' . $apiError
+                : 'Impossible d envoyer le message pour le moment.';
         }
     }
 }
