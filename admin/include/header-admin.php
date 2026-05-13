@@ -2,6 +2,8 @@
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
+
+ob_start();
 require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../active_user.php';
 
@@ -111,12 +113,6 @@ $admin_url = $base_url . '/admin';
                     <li class="nav-item">
                         <a class="nav-link" href="<?= $admin_url ?>/gestion-boutique/">
                             <i class="bi bi-shop"></i> Gestion boutique
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= $admin_url ?>/facturation-paiements.php">
-                            <i class="bi bi-cash-coin"></i> Facturation & paiements
                         </a>
                     </li>
 
