@@ -141,10 +141,18 @@ $basePath = '../';
                 <label class="form-label">Competences</label>
                 <textarea name="skills_text" class="form-control" rows="3" placeholder="Ex: Aide a domicile, courses, accompagnement medical"><?= htmlspecialchars((string)($providerProfile['skills_text'] ?? '')) ?></textarea>
             </div>
+
+            <div class="col-12">
+                <label class="form-label">Document</label>
+                <textarea name="document" class="form-control" rows="3" placeholder="Ex: Contrat, certificat, etc."><?= htmlspecialchars((string)($providerProfile['document'] ?? '')) ?></textarea>
+            </div>
+
         </div>
         <div class="mt-3 text-end">
             <button class="btn btn-primary" type="submit">Enregistrer le profil</button>
         </div>
+
+    
     </form>
     </div>
 </div>
