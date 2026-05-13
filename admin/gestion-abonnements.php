@@ -1,4 +1,5 @@
 <?php
+include './include/header-admin.php';
 require_once __DIR__ . '/../include/callapi.php';
 
 $message = $_SESSION['subscription_message'] ?? '';
@@ -79,8 +80,6 @@ if (!empty($token)) {
     $message = 'Token d\'authentification manquant.';
     $messageType = 'danger';
 }
-
-include './include/header-admin.php';
 ?>
 
 <?php if ($message): ?>

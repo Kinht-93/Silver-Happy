@@ -2,6 +2,8 @@
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
+
+ob_start();
 require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../active_user.php';
 
