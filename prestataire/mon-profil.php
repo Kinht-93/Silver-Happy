@@ -143,8 +143,8 @@ $basePath = '../';
             </div>
 
             <div class="col-12">
-                <label class="form-label">Document</label>
-                <textarea name="document" class="form-control" rows="3" placeholder="Ex: Contrat, certificat, etc."><?= htmlspecialchars((string)($providerProfile['document'] ?? '')) ?></textarea>
+                <label class="form-label">Documents d'inscription</label>
+                <textarea name="document" class="form-control" rows="3" placeholder="test"><?= htmlspecialchars((string)($providerProfile['document'] ?? '')) ?></textarea>
             </div>
 
         </div>
