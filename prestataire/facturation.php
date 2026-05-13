@@ -1,6 +1,5 @@
 <?php
 include_once __DIR__ . '/_auth.php';
-include 'include/header-prestataire.php';
 
 $message = $_SESSION['provider_invoice_message'] ?? '';
 $messageType = $_SESSION['provider_invoice_message_type'] ?? '';
@@ -42,6 +41,7 @@ if ($providerData && $token !== '') {
 }
 
 $basePath = '../';
+include 'include/header-prestataire.php';
 ?>
 
 <div class="page-title h3 mb-3">Facturation et paiements</div>
