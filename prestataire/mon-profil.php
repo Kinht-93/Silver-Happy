@@ -1,6 +1,16 @@
 <?php
 include_once __DIR__ . '/_auth.php';
+require_once __DIR__ . '/../db.php';
 include 'include/header-prestataire.php';
+
+$providerDocuments = [];
+if ($pdo instanceof PDO && isset($user['id_user'])) {
+    $docStmt = $pdo->prepare(
+        'SELECT document_type, file_name, file_path, uploaded_at FROM provider_documents WHERE id_user = :id_user ORDER BY uploaded_at ASC'
+    );
+    $docStmt->execute(['id_user' => $user['id_user']]);
+    $providerDocuments = $docStmt->fetchAll();
+}
 
 $message = $_SESSION['provider_profile_message'] ?? '';
 $messageType = $_SESSION['provider_profile_message_type'] ?? '';
@@ -142,10 +152,7 @@ $basePath = '../';
                 <textarea name="skills_text" class="form-control" rows="3" placeholder="Ex: Aide a domicile, courses, accompagnement medical"><?= htmlspecialchars((string)($providerProfile['skills_text'] ?? '')) ?></textarea>
             </div>
 
-            <div class="col-12">
-                <label class="form-label">Documents d'inscription</label>
-                <textarea name="document" class="form-control" rows="3" placeholder="test"><?= htmlspecialchars((string)($providerProfile['document'] ?? '')) ?></textarea>
-            </div>
+
 
         </div>
         <div class="mt-3 text-end">
@@ -156,6 +163,28 @@ $basePath = '../';
     </form>
     </div>
 </div>
+<?php
+$docLabels = ['casier_judiciaire' => 'Casier judiciaire (B3)', 'diplome' => 'Diplôme', 'recommandation' => 'Recommandation'];
+?>
+<div class="card mt-3">
+    <div class="card-body py-2 px-3">
+        <div class="small fw-semibold mb-2">Documents d'inscription</div>
+        <?php if (!empty($providerDocuments)): ?>
+        <ul class="list-unstyled mb-0">
+            <?php foreach ($providerDocuments as $doc): ?>
+            <li class="d-flex align-items-center gap-2 py-1 border-bottom">
+                <span class="small text-muted" style="min-width:160px"><?= $docLabels[$doc['document_type']] ?? htmlspecialchars($doc['document_type']) ?></span>
+                <a href="../<?= htmlspecialchars($doc['file_path']) ?>" target="_blank" class="small text-truncate"><?= htmlspecialchars($doc['file_name']) ?></a>
+                <span class="small text-muted ms-auto text-nowrap"><?= htmlspecialchars($doc['uploaded_at']) ?></span>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+        <?php else: ?>
+        <p class="small text-muted mb-0">Aucun document transmis lors de l'inscription.</p>
+        <?php endif; ?>
+    </div>
+</div>
+
 <?php endif; ?>
 
 <?php include '../include/footer.php'; ?>
