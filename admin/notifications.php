@@ -18,15 +18,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($recipientType !== 'all') {
             $details .= "\n\n[Destinataires: " . $recipientType . "]";
         }
-        $limite = $_POST['limited_at'] ?? null;
-        $scheduled = $_POST['scheduled_at'] ?? null;
         $data = [
             'type' => $_POST['type'],
             'title' => $_POST['title'],
             'message' => $details,
-            'recipients' => $recipientType,
-            'scheduled_at' => $scheduled,
-            'limited_at' => $limite
+            'recipients' => $recipientType
         ];
         $response = callAPI('http://silverhappy_api:8080/api/notifications', 'POST', $data, $token);
         if ($response && !isset($response['error'])) {
@@ -153,9 +149,7 @@ include './include/header-admin.php';
                 <tr>
                     <th>Type</th>
                     <th>Message</th>
-                    <th>Date programmée</th>
-                    <th>Limite</th>
-                    <th>Destinataires</th>
+                    <th>Date d'envoie</th>
                     <th>Statut</th>
                     <th>Actions</th>
                 </tr>
@@ -179,8 +173,6 @@ include './include/header-admin.php';
                             </td>
                             <td><?= htmlspecialchars($notification['title'] ? $notification['title'] : 'Notification sans titre') ?></td>
                             <td><?= isset($notification['scheduled_at']) && $notification['scheduled_at'] ? date('d/m/Y H:i', strtotime($notification['scheduled_at'])) : date('d/m/Y H:i', strtotime($notification['created_at'])) ?></td>
-                            <td><?= isset($notification['limited_at']) && $notification['limited_at'] ? date('d/m/Y H:i', strtotime($notification['limited_at'])) : '-' ?></td>
-                            <td><?= isset($notification['first_name']) && $notification['first_name'] ? htmlspecialchars($notification['first_name'] . ' ' . ($notification['last_name'] ?? '')) : 'Tous les utilisateurs' ?></td>
                             <td>
                                 <?php
                                 $now = time();
@@ -246,14 +238,6 @@ include './include/header-admin.php';
                     <div class="mb-3">
                         <label for="notificationMessage" class="form-label">Message</label>
                         <textarea class="form-control" id="notificationMessage" name="message" rows="4" placeholder="Détails de la notification..." required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="notificationSchedule" class="form-label">Programmer l'envoi</label>
-                        <input type="datetime-local" class="form-control" id="notificationSchedule" name="scheduled_at">
-                    </div>
-                    <div class="mb-3">
-                        <label for="notificationLimite" class="form-label">Date limite de la notification</label>
-                        <input type="datetime-local" class="form-control" id="notificationLimite" name="limited_at">
                     </div>
                 </form>
             </div>

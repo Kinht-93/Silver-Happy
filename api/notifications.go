@@ -179,12 +179,10 @@ func handleCreateNotification(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var payload struct {
-		Type        string  `json:"type"`
-		Title       string  `json:"title"`
-		Message     string  `json:"message"`
-		Recipients  string  `json:"recipients"`
-		ScheduledAt *string `json:"scheduled_at"`
-		LimitedAt   *string `json:"limited_at"`
+		Type       string `json:"type"`
+		Title      string `json:"title"`
+		Message    string `json:"message"`
+		Recipients string `json:"recipients"`
 	}
 
 	if err := json.Unmarshal(body, &payload); err != nil {
@@ -198,8 +196,8 @@ func handleCreateNotification(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stmt, err := db.Prepare(`
-		INSERT INTO notifications (id_notification, type, title, message, created_at, scheduled_at, is_read, limited_at, id_user, recipients)
-		VALUES (UUID(), ?, ?, ?, NOW(), ?, FALSE, ?, NULL, ?)
+    	INSERT INTO notifications (id_notification, type, title, message, created_at, is_read, id_user, recipients)
+    	VALUES (UUID(), ?, ?, ?, NOW(), FALSE, NULL, ?)
 	`)
 	if err != nil {
 		jsonError(w, "Erreur interne", http.StatusInternalServerError)
@@ -207,7 +205,7 @@ func handleCreateNotification(w http.ResponseWriter, r *http.Request) {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(payload.Type, payload.Title, payload.Message, payload.ScheduledAt, payload.LimitedAt, payload.Recipients)
+	_, err = stmt.Exec(payload.Type, payload.Title, payload.Message, payload.Recipients)
 	if err != nil {
 		createLog("système", "Création de notification", "CREATE", "Erreur lors de la création: "+err.Error(), false)
 		jsonError(w, "Erreur lors de la création de la notification", http.StatusInternalServerError)
